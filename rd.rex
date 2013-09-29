@@ -1,6 +1,6 @@
-/*REXX 1.0.0 $Rev: 1 $
-$Id: rd.rex 12 2011-11-09 10:04:14Z simplicio $
-Copyright (c) 2012, Andrew J. Armstrong
+/*REXX 1.0.0 USB Report Descriptor decoder
+
+Copyright (c) 2011-2013, Andrew J. Armstrong
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without 
@@ -38,8 +38,8 @@ trace off
     say 'This will extract anything that looks like a USB report descriptor'
     say 'from the specified input file and attempt to decode it into a'
     say 'C header file. It does this by concatenating all the hex-like'
-    say 'sequences it finds (up until the first unrecognisable sequence'
-    say 'on each line) into a single string of hex digits, and then attempts'
+    say 'sequences it finds on each line (until the first unrecognisable sequence'
+    say 'is encountered) into a single string of hex digits, and then attempts'
     say 'to decode that string as though it was a USB Report Descriptor.'
     say 'As such, it is not perfect...merely useful.'
     say 
@@ -56,7 +56,7 @@ trace off
     say '      ' sThis '-h 0501 0906 A101 C0'
     say '       ...decodes the given hex string'
     say
-    say '      ' sThis 'myinputfile.rd'
+    say '      ' sThis 'myinputfile.h'
     say '       ...decodes the hex strings found in the specified file'
     return
   end
@@ -128,10 +128,10 @@ trace off
   say '#endif'
   say
   say '/*'
-  say 'Report descriptor data (length' length(xData)/2 'bytes):'
+  say 'Report descriptor data in hex (length' length(xData)/2 'bytes):'
   call dumpHex translate(xData)
   say
-  say 'Report descriptor decoded:'
+  say 'Decoded report descriptor:'
   say
 
   featureField.0 = 0
@@ -159,201 +159,9 @@ trace off
     sValue = getLittleEndian(sParm) /* llhh --> hhll */
     xValue = right(c2x(sValue),8,'0')
     select
-      when sType = k.!TYPE.MAIN then do
-        select
-          when sTag = k.!MAIN.INPUT then do
-            sDesc = getInputDesc()
-            call say xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.!REPORT_COUNT, g.!REPORT_SIZE) sDesc
-            n = inputField.0 + 1
-            inputField.n = xValue getGlobals()','getLocals()','g.!USAGES','sDesc
-            inputField.0 = n
-            call clearLocals
-          end
-          when sTag = k.!MAIN.OUTPUT then do
-            sDesc = getOutputDesc()
-            call say xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.!REPORT_COUNT, g.!REPORT_SIZE) sDesc
-            n = outputField.0 + 1
-            outputField.n = xValue getGlobals()','getLocals()','g.!USAGES','sDesc
-            outputField.0 = n
-            call clearLocals
-          end
-          when sTag = k.!MAIN.FEATURE then do
-            sDesc = getFeatureDesc()
-            call say xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.!REPORT_COUNT, g.!REPORT_SIZE) sDesc
-            n = featureField.0 + 1
-            featureField.n = xValue getGlobals()','getLocals()','g.!USAGES','sDesc
-            featureField.0 = n
-            call clearLocals
-          end
-          when sTag = k.!MAIN.COLLECTION then do
-            xPage = g.!USAGE_PAGE
-            xUsage = g.!USAGE
-            parse var k.!USAGE.xPage.xUsage sCollectionName '('
-            k.!COLLECTION_NAME = space(sCollectionName,0)
-            sValue = getLittleEndian(sParm)
-            nValue = c2d(sValue)
-            xValue = c2x(sValue)
-            sCollectionStack = nValue sCollectionStack
-            select 
-              when nValue > 127 then sMeaning = 'Vendor Defined'
-              when nValue > 6   then sMeaning = 'Reserved'
-              otherwise sMeaning = g.!COLLECTION.xParm
-            end
-            call say xItem,xParm,'MAIN','COLLECTION',xValue,sMeaning
-            g.!INDENT = g.!INDENT + 2
-            g.!USAGES = ''
-          end
-          when sTag = k.!MAIN.END_COLLECTION then do
-            g.!INDENT = g.!INDENT - 2
-            call say xItem,xParm,'MAIN','END_COLLECTION'
-            nCollectionType = word(sCollectionStack,1)
-            sCollectionStack = subword(sCollectionStack,2)
-            if nCollectionType = 1
-            then do
-              say '*/'
-              say
-              if featureField.0 > 0 then call emitFeatureFields
-              if inputField.0 > 0   then call emitInputFields
-              if outputField.0 > 0  then call emitOutputFields
-              say '/*'
-              featureField.0 = 0
-              inputField.0 = 0
-              outputField.0 = 0
-              g.!USAGES = ''
-            end
-            else do
-              say 
-            end
-          end
-          otherwise call say xItem,xParm,'MAIN','Invalid'
-        end
-      end
-      when sType = k.!TYPE.GLOBAL then do
-        xValue = c2x(sValue)
-        nValue = x2d(xValue,2*length(sValue))
-        sMeaning = ''
-        select
-          when sTag = k.!GLOBAL.USAGE_PAGE then do
-            xPage = right(xValue,4,'0')
-            g.!USAGE_PAGE = xPage
-            xValue = xPage 
-            parse var k.!PAGE.xPage sMeaning','
-          end
-          when sTag = k.!GLOBAL.LOGICAL_MINIMUM then do
-            g.!LOGICAL_MINIMUM = nValue
-            sMeaning = '('nValue')'
-          end
-          when sTag = k.!GLOBAL.LOGICAL_MAXIMUM then do
-            g.!LOGICAL_MAXIMUM = nValue
-            sMeaning = '('nValue')'
-          end
-          when sTag = k.!GLOBAL.PHYSICAL_MINIMUM then do
-            g.!PHYSICAL_MINIMUM = nValue
-            sMeaning = '('nValue')'
-          end
-          when sTag = k.!GLOBAL.PHYSICAL_MAXIMUM then do
-            g.!PHYSICAL_MAXIMUM = nValue
-            sMeaning = '('nValue')'
-          end
-          when sTag = k.!GLOBAL.UNIT_EXPONENT then do
-            g.!UNIT_EXPONENT = nValue
-            sMeaning = '('nValue')'
-          end
-          when sTag = k.!GLOBAL.UNIT then do
-            g.!UNIT = nValue
-            sMeaning = '('k.!UNIT.xValue')'
-          end
-          when sTag = k.!GLOBAL.REPORT_SIZE then do
-            g.!REPORT_SIZE = nValue
-            sMeaning = '('nValue') Number of bits per field'
-          end
-          when sTag = k.!GLOBAL.REPORT_ID then do
-            g.!REPORT_ID = xValue
-          end
-          when sTag = k.!GLOBAL.REPORT_COUNT then do
-            g.!REPORT_COUNT = nValue
-            sMeaning = '('nValue') Number of fields'
-          end
-          when sTag = k.!GLOBAL.PUSH then do
-            xValue = ''
-            call pushStack getGlobals()
-          end
-          when sTag = k.!GLOBAL.POP then do
-            xValue = ''
-            call setGlobals popStack()
-          end
-          otherwise sMeaning = 'Invalid Item'
-        end
-        if xValue = ''
-        then call say xItem,xParm,'GLOBAL',k.!GLOBAL.sTag
-        else call say xItem,xParm,'GLOBAL',k.!GLOBAL.sTag,xValue,sMeaning
-      end
-      when sType = k.!TYPE.LOCAL then do
-        xValue = c2x(sValue)
-        nValue = x2d(xValue,2*length(sValue))
-        xPage = g.!USAGE_PAGE
-        sMeaning = ''
-        select
-          when sTag = k.!LOCAL.USAGE then do
-            if length(sValue) = 4
-            then do /* Both page and usage are specified: ppppuuuu */
-              parse var xValue xUsage +4 xPage +4
-            end
-            else do /* Only usage is specified: uuuu */
-              xUsage = right(xValue,4,'0')
-              xValue = xPage || xUsage
-            end
-            g.!USAGES = g.!USAGES xValue
-            g.!USAGE = xUsage
-            sMeaning = k.!USAGE.xPage.xUsage
-          end
-          when sTag = k.!LOCAL.USAGE_MINIMUM then do
-            xUsage = right(xValue,4,'0')
-            g.!USAGE_MINIMUM = xUsage
-            xValue = xPage || xUsage
-            sMeaning = k.!USAGE.xPage.xUsage
-          end
-          when sTag = k.!LOCAL.USAGE_MAXIMUM then do
-            xUsage = right(xValue,4,'0')
-            g.!USAGE_MAXIMUM = xUsage
-            xValue = xPage || xUsage
-            sMeaning = k.!USAGE.xPage.xUsage
-          end
-          when sTag = k.!LOCAL.DESIGNATOR_INDEX then do
-            g.!DESIGNATOR_INDEX = nValue
-            sMeaning = '('nValue')'
-          end
-          when sTag = k.!LOCAL.DESIGNATOR_MINIMUM then do
-            g.!DESIGNATOR_MINIMUM = nValue
-            sMeaning = '('nValue')'
-          end
-          when sTag = k.!LOCAL.DESIGNATOR_MAXIMUM then do
-            g.!DESIGNATOR_MAXIMUM = nValue
-            sMeaning = '('nValue')'
-          end
-          when sTag = k.!LOCAL.STRING_INDEX then do
-            g.!STRING_INDEX = nValue
-            sMeaning = '('nValue')'
-          end
-          when sTag = k.!LOCAL.STRING_MINIMUM then do
-            g.!STRING_MINIMUM = nValue
-            sMeaning = '('nValue')'
-          end
-          when sTag = k.!LOCAL.STRING_MAXIMUM then do
-            g.!STRING_MAXIMUM = nValue
-            sMeaning = '('nValue')'
-          end
-          when sTag = k.!LOCAL.DELIMITER then do
-            select
-              when nValue = 1 then sMeaning = '('nValue') Open set'
-              when nValue = 0 then sMeaning = '('nValue') Close set'
-              otherwise sMeaning = '('nValue') Invalid'
-            end
-          end
-          otherwise sMeaning = 'Invalid Item'
-        end
-        call say xItem,xParm,'LOCAL',k.!LOCAL.sTag,xValue,sMeaning
-      end
+      when sType = k.!TYPE.MAIN   then call processMAIN
+      when sType = k.!TYPE.GLOBAL then call processGLOBAL
+      when sType = k.!TYPE.LOCAL  then call processLOCAL
       otherwise call say xItem,xParm,'LOCAL','Invalid Item'
     end
   end
@@ -361,6 +169,205 @@ trace off
   say '*/'
   call Epilog
 return
+
+processMAIN:
+  select
+    when sTag = k.!MAIN.INPUT then do
+      sDesc = getInputDesc()
+      call say xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.!REPORT_COUNT, g.!REPORT_SIZE) sDesc
+      n = inputField.0 + 1
+      inputField.n = xValue getGlobals()','getLocals()','g.!USAGES','sDesc
+      inputField.0 = n
+      call clearLocals
+    end
+    when sTag = k.!MAIN.OUTPUT then do
+      sDesc = getOutputDesc()
+      call say xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.!REPORT_COUNT, g.!REPORT_SIZE) sDesc
+      n = outputField.0 + 1
+      outputField.n = xValue getGlobals()','getLocals()','g.!USAGES','sDesc
+      outputField.0 = n
+      call clearLocals
+    end
+    when sTag = k.!MAIN.FEATURE then do
+      sDesc = getFeatureDesc()
+      call say xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.!REPORT_COUNT, g.!REPORT_SIZE) sDesc
+      n = featureField.0 + 1
+      featureField.n = xValue getGlobals()','getLocals()','g.!USAGES','sDesc
+      featureField.0 = n
+      call clearLocals
+    end
+    when sTag = k.!MAIN.COLLECTION then do
+      xPage = g.!USAGE_PAGE
+      xUsage = g.!USAGE
+      parse value getUsageDesc(xPage,xUsage) with sCollectionName '('
+      k.!COLLECTION_NAME = space(sCollectionName,0)
+      sValue = getLittleEndian(sParm)
+      nValue = c2d(sValue)
+      xValue = c2x(sValue)
+      sCollectionStack = nValue sCollectionStack
+      select 
+        when nValue > 127 then sMeaning = 'Vendor Defined'
+        when nValue > 6   then sMeaning = 'Reserved'
+        otherwise sMeaning = g.!COLLECTION.xParm
+      end
+      call say xItem,xParm,'MAIN','COLLECTION',xValue,sMeaning
+      g.!INDENT = g.!INDENT + 2
+      g.!USAGES = ''
+    end
+    when sTag = k.!MAIN.END_COLLECTION then do
+      g.!INDENT = g.!INDENT - 2
+      call say xItem,xParm,'MAIN','END_COLLECTION'
+      nCollectionType = word(sCollectionStack,1)
+      sCollectionStack = subword(sCollectionStack,2)
+      if nCollectionType = 1
+      then do
+        say '*/'
+        say
+        if featureField.0 > 0 then call emitFeatureFields
+        if inputField.0 > 0   then call emitInputFields
+        if outputField.0 > 0  then call emitOutputFields
+        say '/*'
+        featureField.0 = 0
+        inputField.0 = 0
+        outputField.0 = 0
+        g.!USAGES = ''
+      end
+      else do
+        say 
+      end
+    end
+    otherwise call say xItem,xParm,'MAIN','Invalid'
+  end
+return
+
+processGLOBAL:
+  xValue = c2x(sValue)
+  nValue = x2d(xValue,2*length(sValue))
+  sMeaning = ''
+  select
+    when sTag = k.!GLOBAL.USAGE_PAGE then do
+      xPage = right(xValue,4,'0')
+      g.!USAGE_PAGE = xPage
+      xValue = xPage 
+      sMeaning = getPageDesc(xPage)
+    end
+    when sTag = k.!GLOBAL.LOGICAL_MINIMUM then do
+      g.!LOGICAL_MINIMUM = nValue
+      sMeaning = '('nValue')'
+    end
+    when sTag = k.!GLOBAL.LOGICAL_MAXIMUM then do
+      g.!LOGICAL_MAXIMUM = nValue
+      sMeaning = '('nValue')'
+    end
+    when sTag = k.!GLOBAL.PHYSICAL_MINIMUM then do
+      g.!PHYSICAL_MINIMUM = nValue
+      sMeaning = '('nValue')'
+    end
+    when sTag = k.!GLOBAL.PHYSICAL_MAXIMUM then do
+      g.!PHYSICAL_MAXIMUM = nValue
+      sMeaning = '('nValue')'
+    end
+    when sTag = k.!GLOBAL.UNIT_EXPONENT then do
+      g.!UNIT_EXPONENT = nValue
+      sMeaning = '('nValue')'
+    end
+    when sTag = k.!GLOBAL.UNIT then do
+      g.!UNIT = nValue
+      sMeaning = '('k.!UNIT.xValue')'
+    end
+    when sTag = k.!GLOBAL.REPORT_SIZE then do
+      g.!REPORT_SIZE = nValue
+      sMeaning = '('nValue') Number of bits per field'
+    end
+    when sTag = k.!GLOBAL.REPORT_ID then do
+      g.!REPORT_ID = xValue
+    end
+    when sTag = k.!GLOBAL.REPORT_COUNT then do
+      g.!REPORT_COUNT = nValue
+      sMeaning = '('nValue') Number of fields'
+    end
+    when sTag = k.!GLOBAL.PUSH then do
+      xValue = ''
+      call pushStack getGlobals()
+    end
+    when sTag = k.!GLOBAL.POP then do
+      xValue = ''
+      call setGlobals popStack()
+    end
+    otherwise sMeaning = 'Invalid Item'
+  end
+  if xValue = ''
+  then call say xItem,xParm,'GLOBAL',k.!GLOBAL.sTag
+  else call say xItem,xParm,'GLOBAL',k.!GLOBAL.sTag,xValue,sMeaning
+return
+
+processLOCAL:
+  xValue = c2x(sValue)
+  nValue = x2d(xValue,2*length(sValue))
+  xPage = g.!USAGE_PAGE
+  sMeaning = ''
+  select
+    when sTag = k.!LOCAL.USAGE then do
+      if length(sValue) = 4
+      then do /* Both page and usage are specified: ppppuuuu */
+        parse var xValue xUsage +4 xPage +4
+      end
+      else do /* Only usage is specified: uuuu */
+        xUsage = right(xValue,4,'0')
+        xValue = xPage || xUsage
+      end
+      g.!USAGES = g.!USAGES xValue
+      g.!USAGE = xUsage
+      sMeaning = getUsageDesc(xPage,xUsage)
+    end
+    when sTag = k.!LOCAL.USAGE_MINIMUM then do
+      xUsage = right(xValue,4,'0')
+      g.!USAGE_MINIMUM = xUsage
+      xValue = xPage || xUsage
+      sMeaning = getUsageDesc(xPage,xUsage)
+    end
+    when sTag = k.!LOCAL.USAGE_MAXIMUM then do
+      xUsage = right(xValue,4,'0')
+      g.!USAGE_MAXIMUM = xUsage
+      xValue = xPage || xUsage
+      sMeaning = getUsageDesc(xPage,xUsage)
+    end
+    when sTag = k.!LOCAL.DESIGNATOR_INDEX then do
+      g.!DESIGNATOR_INDEX = nValue
+      sMeaning = '('nValue')'
+    end
+    when sTag = k.!LOCAL.DESIGNATOR_MINIMUM then do
+      g.!DESIGNATOR_MINIMUM = nValue
+      sMeaning = '('nValue')'
+    end
+    when sTag = k.!LOCAL.DESIGNATOR_MAXIMUM then do
+      g.!DESIGNATOR_MAXIMUM = nValue
+      sMeaning = '('nValue')'
+    end
+    when sTag = k.!LOCAL.STRING_INDEX then do
+      g.!STRING_INDEX = nValue
+      sMeaning = '('nValue')'
+    end
+    when sTag = k.!LOCAL.STRING_MINIMUM then do
+      g.!STRING_MINIMUM = nValue
+      sMeaning = '('nValue')'
+    end
+    when sTag = k.!LOCAL.STRING_MAXIMUM then do
+      g.!STRING_MAXIMUM = nValue
+      sMeaning = '('nValue')'
+    end
+    when sTag = k.!LOCAL.DELIMITER then do
+      select
+        when nValue = 1 then sMeaning = '('nValue') Open set'
+        when nValue = 0 then sMeaning = '('nValue') Close set'
+        otherwise sMeaning = '('nValue') Invalid'
+      end
+    end
+    otherwise sMeaning = 'Invalid Item'
+  end
+  call say xItem,xParm,'LOCAL',k.!LOCAL.sTag,xValue,sMeaning
+return
+
 
 getDimension: procedure 
   parse arg nCount,nBits
@@ -379,92 +386,96 @@ getStatement: procedure
 return left(sLabel, max(length(sLabel),37)) '//' sComment
 
 emitInputFields: procedure expose inputField. k.
-  parse var inputField.1 xFlags sGlobals','sLocals','xExplicitUsages','sDesc
-  call setGlobals sGlobals
-  call setLocals sLocals
-  if g.!REPORT_ID <> 0
-  then do
-    say 'typedef struct' 
-    say '{'
-    say '  'getStatement(k.!U8 'reportId;','Report ID = 0x'g.!REPORT_ID)
-  end
-  else do
-    say 'typedef struct'
-    say '{'
-    say '  'getStatement(,'No REPORT ID byte')
-  end 
+  /* Cycle through all the input fields accumulated and when the report_id
+     changes, then emit a new structure */
+  xLastReportId = ''
   do i = 1 to inputField.0
+    parse var inputField.i xFlags sGlobals','sLocals','xExplicitUsages','sDesc
+    call setGlobals sGlobals
+    call setLocals sLocals
+    if xLastReportId <> g.!REPORT_ID
+    then do /* The report id has changed */
+      if i > 1 
+      then call emitEndStructure 'inputReport',xLastReportId
+      call emitBeginStructure 'inputReport',g.!REPORT_ID,'Device --> Host'
+      xLastReportId = g.!REPORT_ID
+    end
     call emitField i,inputField.i
   end
-  if g.!REPORT_ID <> 0
-  then do
-    say '} inputReport'g.!REPORT_ID';'
-  end
-  else do
-    say '} inputReport;'
-  end
-  say
+  call emitEndStructure 'inputReport',xLastReportId
 return            
 
 emitOutputFields: procedure expose outputField. k.
-  parse var outputField.1 xFlags sGlobals','sLocals','xExplicitUsages','sDesc
-  sFlags = x2c(xFlags)
-  call setGlobals sGlobals
-  call setLocals sLocals
-  if g.!REPORT_ID <> 0
+  /* Cycle through all the output fields accumulated and when the report_id
+     changes, then emit a new structure */
+  xLastReportId = ''
+  do i = 1 to outputField.0
+    parse var outputField.i xFlags sGlobals','sLocals','xExplicitUsages','sDesc
+    call setGlobals sGlobals
+    call setLocals sLocals
+    if xLastReportId <> g.!REPORT_ID
+    then do /* The report id has changed */
+      if i > 1 
+      then call emitEndStructure 'outputReport',xLastReportId
+      call emitBeginStructure 'outputReport',g.!REPORT_ID,'Device <-- Host'
+      xLastReportId = g.!REPORT_ID
+    end
+    call emitField i,outputField.i
+  end
+  call emitEndStructure 'outputReport',xLastReportId
+return            
+
+emitFeatureFields: procedure expose featureField. k.
+  /* Cycle through all the feature fields accumulated and when the report_id
+     changes, then emit a new structure */
+  xLastReportId = ''
+  do i = 1 to featureField.0
+    parse var featureField.i xFlags sGlobals','sLocals','xExplicitUsages','sDesc
+    call setGlobals sGlobals
+    call setLocals sLocals
+    if xLastReportId <> g.!REPORT_ID
+    then do /* The report id has changed */
+      if i > 1 
+      then call emitEndStructure 'featureReport',xLastReportId
+      call emitBeginStructure 'featureReport',g.!REPORT_ID,'Device --> Host'
+      xLastReportId = g.!REPORT_ID
+    end
+    call emitField i,featureField.i
+  end
+  call emitEndStructure 'featureReport',xLastReportId
+return            
+
+emitBeginStructure: procedure expose g. k.
+  parse arg sStructureName,xReportId,sDirection
+  say 
+  say '//---------------------------------------------------------------------'
+  say '//' getPageDesc(g.!USAGE_PAGE) sStructureName xReportId '('sDirection')'
+  say '//---------------------------------------------------------------------'
+  say 
+  if xReportId <> 0
   then do
-    say 'typedef struct'
+    say 'typedef struct' 
     say '{'
-    say '  'getStatement(k.!U8 'reportId;','Report ID = 0x'g.!REPORT_ID)
+    say '  'getStatement(k.!U8 'reportId;','Report ID = 0x'xReportId)
   end
   else do
     say 'typedef struct'
     say '{'
     say '  'getStatement(,'No REPORT ID byte')
-  end 
-  do i = 1 to outputField.0
-    call emitField i,outputField.i
   end
-  if g.!REPORT_ID <> 0
-  then do
-    say '} outputReport'g.!REPORT_ID';'
-  end
-  else do
-    say '} outputReport;'
-  end
-  say
-return            
+return
 
-emitFeatureFields: procedure expose featureField. k.
-  parse var featureField.1 xFlags sGlobals','sLocals','xExplicitUsages','sDesc
-  sFlags = x2c(xFlags)
-  call setGlobals sGlobals
-  call setLocals sLocals
-  if g.!REPORT_ID <> 0
+emitEndStructure: procedure expose g.
+  parse arg sStructureName,xReportId
+  if xReportId <> 0
   then do
-    say 'typedef struct'
-    say '{'
-    say '  'getStatement(k.!U8 'reportId;','Report ID = 0x'g.!REPORT_ID)
+    say '}' sStructureName || xReportId';'
   end
   else do
-    say 'typedef struct'
-    say '{'
-    say '  // No REPORT ID byte'
-  end 
-  do i = 1 to featureField.0
-    call emitField i,featureField.i
-  end
-  if g.!REPORT_ID <> 0
-  then do
-    say '} featureReport'g.!REPORT_ID';'
-  end
-  else do
-    say '} featureReport;'
+    say '}' sStructureName';'
   end
   say
 return
-
-
 
 emitField: procedure expose k.
   parse arg nField,xFlags sGlobals','sLocals','xExplicitUsages','sFlags
@@ -540,7 +551,7 @@ emitField: procedure expose k.
 
     */
     say '  // Type:    Variable'
-    say '  'getStatement('', xPage k.!PAGE.xPage)
+    say '  'getStatement('', xPage getPageDesc(xPage))
     select
       when nExplicitUsages > 0 then do /* Emit a list of usages */
         do i = 1 to nExplicitUsages-1 while i <= g.!REPORT_COUNT
@@ -632,7 +643,7 @@ emitField: procedure expose k.
        LOGICAL_MAXIMUM - LOGICAL_MINIMUM + 1.
     */
     say '  // Type:    Array'
-    say '  'getStatement('', xPage k.!PAGE.xPage)
+    say '  'getStatement('', xPage getPageDesc(xPage))
     /* todo: coming up with a field name is tricky...each field can
              index many usages, so a particular usage name can't be
              used.
@@ -644,7 +655,7 @@ emitField: procedure expose k.
       do i = 1 to nExplicitUsages 
         xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
         parse var xExtendedUsage xPage +4 xUsage +4
-        say '  'getStatement('', nLogical '=' xPage xUsage k.!USAGE.xPage.xUsage)
+        say '  'getStatement('', nLogical '=' xPage xUsage getUsageDesc(xPage,xUsage))
         nLogical = nLogical + 1
       end
     end
@@ -652,7 +663,7 @@ emitField: procedure expose k.
       do nUsage = nUsageMin to nUsageMax
         xPage = g.!USAGE_PAGE
         xUsage = d2x(nUsage,4)
-        say '  'getStatement('', nLogical '=' xPage xUsage k.!USAGE.xPage.xUsage)
+        say '  'getStatement('', nLogical '=' xPage xUsage getUsageDesc(xPage,xUsage))
         nLogical = nLogical + 1
       end
     end
@@ -667,11 +678,11 @@ emitFieldDecl: procedure expose g. k.
   if wordpos(g.!REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
-    then say '  'getStatement(g.!FIELD_TYPE sFieldName';'                   , xPage xUsage k.!USAGE.xPage.xUsage getRange())
-    else say '  'getStatement(g.!FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage k.!USAGE.xPage.xUsage getRange())
+    then say '  'getStatement(g.!FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+    else say '  'getStatement(g.!FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
   end
   else do i = 1 to nReportCount
-    say '  'getStatement(g.!FIELD_TYPE sFieldName ':' g.!REPORT_SIZE';', xPage xUsage k.!USAGE.xPage.xUsage getRange())
+    say '  'getStatement(g.!FIELD_TYPE sFieldName ':' g.!REPORT_SIZE';', xPage xUsage getUsageDesc(xPage,xUsage) getRange())
   end
 return
 
@@ -683,11 +694,11 @@ emitArrayDecl: procedure expose g. k.
   if wordpos(g.!REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
-    then say '  'getStatement(g.!FIELD_TYPE sFieldName';'                   , xPage xUsage k.!USAGE.xPage.xUsage getRange())
-    else say '  'getStatement(g.!FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage k.!USAGE.xPage.xUsage getRange())
+    then say '  'getStatement(g.!FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+    else say '  'getStatement(g.!FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
   end
   else do i = 1 to nReportCount
-    say '  'getStatement(g.!FIELD_TYPE sFieldName ':' g.!REPORT_SIZE';', xPage xUsage k.!USAGE.xPage.xUsage getRange())
+    say '  'getStatement(g.!FIELD_TYPE sFieldName ':' g.!REPORT_SIZE';', xPage xUsage getUsageDesc(xPage,xUsage) getRange())
   end
 return
 
@@ -740,15 +751,35 @@ return 'Padding' getDimension(g.!REPORT_COUNT, g.!REPORT_SIZE)
 getFieldName: procedure expose k.
   parse arg xPage +4 xUsage +4
   sLabel = k.!LABEL.xPage.xUsage
-  if sLabel = '' then parse var k.!USAGE.xPage.xUsage sLabel'('
+  if sLabel = '' then parse value getUsageDesc(xPage,xUsage) with sLabel'('
   if sLabel = '' then sLabel = xUsage
   if sLabel = '' then sLabel = k.!COLLECTION_NAME
 return space(getShortPageName(xPage)'_'sLabel,0)
 
 getShortPageName: procedure expose k.
   parse arg xPage +4
-  parse var k.!PAGE.xPage sPage','sShortPageName
+  parse value getPageName(xPage) with sPage','sShortPageName
 return sShortPageName
+
+getPageDesc: procedure expose k.
+  parse arg xPage +4
+  parse value getPageName(xPage) with sPage','sShortPageName
+return sPage
+
+getPageName: procedure expose k.
+  parse arg xPage +4
+  sPage = x2c(xPage)
+  select
+    when sPage > '0092'x & sPage < 'ff00'x then sPageDesc =  'Reserved,RES'
+    when sPage >= 'ff00'x then sPageDesc = 'Vendor-defined,VEN'
+    otherwise sPageDesc = k.!PAGE.xPage
+  end
+return sPageDesc
+
+getUsageDesc: procedure expose k.
+  parse arg xPage,xUsage
+  sUsageDesc = k.!USAGE.xPage.xUsage
+return sUsageDesc
 
 getInputDesc:
   if isVariable(sValue)
@@ -1334,7 +1365,6 @@ PAGE 03 Virtual Reality Controls Page,VR
 0A Animatronic Device,CA,
 20 Stereo Enable,OOC
 21 Display Enable,OOC
-
 
 PAGE 04 Sport Controls Page,SC
 00 Unidentified
@@ -2204,7 +2234,15 @@ PAGE 0D Digitizers,DIG
 45 Eraser,MC,
 46 Tablet Pick,MC,
 
+PAGE 0E Reserved,RES
+
+PAGE 0F Physical Interfacd Device Page,PID
+
 PAGE 10 Unicode Page,UNI
+
+PAGE 11 Reserved,RES
+PAGE 12 Reserved,RES
+PAGE 13 Reserved,RES
 
 PAGE 14 Alphanumeric Display Page,AD
 00 Undefined 
@@ -2277,6 +2315,52 @@ PAGE 14 Alphanumeric Display Page,AD
 94 Soft Button Offset 2,SV,.3
 95 Soft Button Report,SV,.3
 
+PAGE 15 Reserved,RES
+PAGE 16 Reserved,RES
+PAGE 17 Reserved,RES
+PAGE 18 Reserved,RES
+PAGE 19 Reserved,RES
+PAGE 1A Reserved,RES
+PAGE 1B Reserved,RES
+PAGE 1C Reserved,RES
+PAGE 1D Reserved,RES
+PAGE 1E Reserved,RES
+PAGE 1F Reserved,RES
+
+PAGE 20 Reserved,RES
+PAGE 21 Reserved,RES
+PAGE 22 Reserved,RES
+PAGE 23 Reserved,RES
+PAGE 24 Reserved,RES
+PAGE 25 Reserved,RES
+PAGE 26 Reserved,RES
+PAGE 17 Reserved,RES
+PAGE 28 Reserved,RES
+PAGE 29 Reserved,RES
+PAGE 2A Reserved,RES
+PAGE 2B Reserved,RES
+PAGE 2C Reserved,RES
+PAGE 2D Reserved,RES
+PAGE 2E Reserved,RES
+PAGE 2F Reserved,RES
+
+PAGE 30 Reserved,RES
+PAGE 31 Reserved,RES
+PAGE 32 Reserved,RES
+PAGE 33 Reserved,RES
+PAGE 34 Reserved,RES
+PAGE 35 Reserved,RES
+PAGE 36 Reserved,RES
+PAGE 37 Reserved,RES
+PAGE 38 Reserved,RES
+PAGE 39 Reserved,RES
+PAGE 3A Reserved,RES
+PAGE 3B Reserved,RES
+PAGE 3C Reserved,RES
+PAGE 3D Reserved,RES
+PAGE 3E Reserved,RES
+PAGE 3F Reserved,RES
+
 PAGE 40 Medical Instrument Page,MED
 00 Undefined
 01 Medical Ultrasound,CA,
@@ -2308,5 +2392,94 @@ PAGE 40 Medical Instrument Page,MED
 89 2-D Mode Adjust,LC,ModeAdjust2D
 A0 Soft Control Select,OSC,
 A1 Soft Control Adjust,LC,
+
+PAGE 41 Reserved,RES
+PAGE 42 Reserved,RES
+PAGE 43 Reserved,RES
+PAGE 44 Reserved,RES
+PAGE 45 Reserved,RES
+PAGE 46 Reserved,RES
+PAGE 47 Reserved,RES
+PAGE 48 Reserved,RES
+PAGE 49 Reserved,RES
+PAGE 4A Reserved,RES
+PAGE 4B Reserved,RES
+PAGE 4C Reserved,RES
+PAGE 4D Reserved,RES
+PAGE 4E Reserved,RES
+PAGE 4F Reserved,RES
+
+PAGE 50 Reserved,RES
+PAGE 51 Reserved,RES
+PAGE 52 Reserved,RES
+PAGE 53 Reserved,RES
+PAGE 54 Reserved,RES
+PAGE 55 Reserved,RES
+PAGE 56 Reserved,RES
+PAGE 57 Reserved,RES
+PAGE 58 Reserved,RES
+PAGE 59 Reserved,RES
+PAGE 5A Reserved,RES
+PAGE 5B Reserved,RES
+PAGE 5C Reserved,RES
+PAGE 5D Reserved,RES
+PAGE 5E Reserved,RES
+PAGE 5F Reserved,RES
+
+PAGE 60 Reserved,RES
+PAGE 61 Reserved,RES
+PAGE 62 Reserved,RES
+PAGE 63 Reserved,RES
+PAGE 64 Reserved,RES
+PAGE 65 Reserved,RES
+PAGE 66 Reserved,RES
+PAGE 67 Reserved,RES
+PAGE 68 Reserved,RES
+PAGE 69 Reserved,RES
+PAGE 6A Reserved,RES
+PAGE 6B Reserved,RES
+PAGE 6C Reserved,RES
+PAGE 6D Reserved,RES
+PAGE 6E Reserved,RES
+PAGE 6F Reserved,RES
+
+PAGE 70 Reserved,RES
+PAGE 71 Reserved,RES
+PAGE 72 Reserved,RES
+PAGE 73 Reserved,RES
+PAGE 74 Reserved,RES
+PAGE 75 Reserved,RES
+PAGE 76 Reserved,RES
+PAGE 77 Reserved,RES
+PAGE 78 Reserved,RES
+PAGE 79 Reserved,RES
+PAGE 7A Reserved,RES
+PAGE 7B Reserved,RES
+PAGE 7C Reserved,RES
+PAGE 7D Reserved,RES
+PAGE 7E Reserved,RES
+PAGE 7F Reserved,RES
+
+PAGE 80 Monitor Page,MON
+PAGE 81 Monitor Page,MON
+PAGE 82 Monitor Page,MON
+PAGE 83 Monitor Page,MON
+
+PAGE 84 Power Page,POW
+PAGE 85 Power Page,POW
+PAGE 86 Power Page,POW
+PAGE 87 Power Page,POW
+
+PAGE 8C Bar Code Scanner Page,BAR
+
+PAGE 8D Scale Page,SCA
+
+PAGE 8E Magnetic Stripe Reading Devices,MSR
+
+PAGE 8F Point Of Sale Devices,POS
+
+PAGE 90 Camera Control Page,CAM
+
+PAGE 91 Arcade Page,ARC
 
 END*/
