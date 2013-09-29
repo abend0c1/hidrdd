@@ -128,11 +128,12 @@ trace off
   say '#endif'
   say
   say '/*'
-  say 'Report descriptor data in hex (length' length(xData)/2 'bytes):'
+  call emitHeading 'Report descriptor data in hex (length' length(xData)/2 'bytes)'
+  say
   call dumpHex translate(xData)
   say
-  say 'Decoded report descriptor:'
-  say
+  call emitHeading 'Decoded report descriptor'
+  say 
 
   featureField.0 = 0
   inputField.0 = 0
@@ -447,11 +448,7 @@ return
 
 emitBeginStructure: procedure expose g. k.
   parse arg sStructureName,xReportId,sDirection
-  say 
-  say '//---------------------------------------------------------------------'
-  say '//' getPageDesc(g.!USAGE_PAGE) sStructureName xReportId '('sDirection')'
-  say '//---------------------------------------------------------------------'
-  say 
+  call emitHeading getPageDesc(g.!USAGE_PAGE) sStructureName xReportId '('sDirection')'
   if xReportId <> 0
   then do
     say 'typedef struct' 
@@ -476,6 +473,15 @@ emitEndStructure: procedure expose g.
   end
   say
 return
+
+emitHeading: procedure
+  parse arg sHeading
+  say 
+  say '//------------------------------------------------------------------------'
+  say '//' sHeading
+  say '//------------------------------------------------------------------------'
+  say 
+return  
 
 emitField: procedure expose k.
   parse arg nField,xFlags sGlobals','sLocals','xExplicitUsages','sFlags
