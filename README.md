@@ -15,10 +15,13 @@ As such, it is not perfect...merely useful.
 Syntax
 ------
     rexx rd.rex [-b] filein
+
 or
+
     rexx rd.rex -h hex
 
 Where
+
     filein    = Input file path to be decoded
     -h hex    = Decode the hexadecimal string "hex"
                 Spaces are ignored.
