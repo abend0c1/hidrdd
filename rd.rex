@@ -33,14 +33,16 @@ trace off
   if sFileIn = ''
   then do
     parse source . . sThis .
-    say 'USB Report Descriptor decoder v1.00'
+    say 'HID Report Descriptor decoder v1.00'
     say
-    say 'This will extract anything that looks like a USB report descriptor'
-    say 'from the specified input file and attempt to decode it into a'
-    say 'C header file. It does this by concatenating all the hex-like'
-    say 'sequences it finds on each line (until the first unrecognisable sequence'
-    say 'is encountered) into a single string of hex digits, and then attempts'
-    say 'to decode that string as though it was a USB Report Descriptor.'
+    say 'This will extract anything that looks like a USB Human'
+    say 'Interface Device (HID) report descriptor from the specified'
+    say 'input file and attempt to decode it into a C header file.'
+    say 'It does this by concatenating all the printable-hex-like'
+    say 'sequences it finds on each line (until the first unrecognisable'
+    say 'sequence is encountered) into a single string of hex digits, and'
+    say 'then attempts to decode that string as though it was a HID Report'
+    say 'Descriptor.'
     say 'As such, it is not perfect...merely useful.'
     say 
     say 'Syntax:' sThis '[-b] filein'
