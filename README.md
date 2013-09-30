@@ -30,8 +30,8 @@ Where
 Prerequisites
 -------------
 You need a REXX interpreter installed, such as
-  1. Regina REXX
-  2. Object REXX
+  1. [Regina REXX](http://regina-rexx.sourceforge.net)
+  2. [Open Object REXX](http://www.oorexx.org/)
 
 Example
 -------
