@@ -80,7 +80,7 @@ trace off
     end
     say 
     say 'Example:'
-    say '      ' sThis '-h 0501 0906 A101 C0'
+    say '      ' sThis '-h 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
     say '       ...decodes the given hex string'
     say
     say '      ' sThis 'myinputfile.h'

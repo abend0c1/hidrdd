@@ -40,7 +40,7 @@ You need a REXX interpreter installed, such as
 
 Example
 -------
-    rexx rd.rex -h 0501 0906 A101 C0
+    rexx rd.rex -h 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0
     ...decodes the given hex string
 
     rexx rd.rex myinputfile.h
