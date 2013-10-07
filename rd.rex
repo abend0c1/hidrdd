@@ -29,8 +29,33 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 trace off
-  parse arg sFileIn .
-  if sFileIn = ''
+  parse arg sCommandLine
+
+  numeric digits 16
+  
+  g. = '' /* global variables */
+  k. = '' /* global constants */
+  o. = '' /* global options   */
+
+  call Prolog sCommandLine
+
+  if getOption('--version')
+  then do
+    parse value sourceline(1) with . sVersion sDesc
+    say sDesc 'v'sVersion
+    return
+  end
+
+  sFile        = g.!REST
+  sData        = getOption('--hex')
+  o.!BINARY    = getOption('--binary')
+  o.!VERBOSITY = getOption('--verbose')
+  o.!STRUCT    = getOption('--struct')
+  o.!DECODE    = getOption('--decode')
+  o.!DUMP      = getOption('--dump')
+  o.!HELP      = getOption('--help')
+
+  if o.!HELP | sCommandLine = ''
   then do
     parse source . . sThis .
     say 'HID Report Descriptor decoder v1.00'
@@ -45,14 +70,14 @@ trace off
     say 'Descriptor.'
     say 'As such, it is not perfect...merely useful.'
     say 
-    say 'Syntax:' sThis '[-b] filein'
-    say '    or:' sThis '-h hex'        
+    say 'Syntax: rexx' sThis '[-bvdsx] filein'
+    say '    or: rexx' sThis '-h[vdsx] hex'        
     say
     say 'Where:'    
-    say '      filein    = Input file path to be decoded'
-    say '      -h hex    = Decode the hexadecimal string "hex"'
-    say '                  Spaces are ignored.'
-    say '      -b        = Input file is binary (not text)'        
+    say '      filein           = Input file path to be decoded'
+    do i = 1 to g.!OPTION_INDEX.0
+      say '      'left(strip(g.!OPTION_SHORT.i g.!OPTION_LONG.i),16) '=' g.!OPTION_DESC.i
+    end
     say 
     say 'Example:'
     say '      ' sThis '-h 0501 0906 A101 C0'
@@ -63,29 +88,23 @@ trace off
     return
   end
 
-  numeric digits 16
-  
-  g. = '' /* global variables */
-  k. = '' /* global constants */
+  if \(o.!DECODE | o.!STRUCT | o.!DUMP) /* If neither --decode nor --struct nor --dump was specified */
+  then o.!STRUCT = 1          /* then assume --struct was specified */
 
-  call Prolog
 
-  bBinary = 0
-  if sFileIn = '-h'
+  if sData <> ''
   then do
-    parse arg . xData
-    xData = space(xData,0)
+    xData = space(sData,0)
+    if \datatype(xData,'XADECIMAL')
+    then do
+      say 'HRD0002E Expecting printable hexadecimal data. Found:' sData
+      xData = ''
+    end
   end
   else do
-    if sFileIn = '-b'
-    then do
-      parse arg . sFileIn
-      bBinary = 1
-    end
     xData = ''
-    sFile = sFileIn
     rc = stream(sFile,'COMMAND','OPEN READ')
-    if bBinary
+    if o.!BINARY
     then do
       sData = charin(sFile, 1, chars(sFile))
       xData = c2x(sData)
@@ -117,26 +136,20 @@ trace off
   k.!U8 = 'uint8_t'
   k.!I16 = 'int16_t'
   k.!U16 = 'uint16_t'
-  g.!I32 = 'int32_t'
+  k.!I32 = 'int32_t'
   k.!U32 = 'uint32_t'
-  say '#ifndef USB_REPORT_DESCRIPTOR_TYPES'
-  say '  typedef signed short          'k.!I8';'
-  say '  typedef unsigned short        'k.!U8';'
-  say '  typedef signed int            'k.!I16';'
-  say '  typedef unsigned int          'k.!U16';'
-  say '  typedef signed long           'g.!I32';'
-  say '  typedef unsigned long         'k.!U32';'
-  say '  #define USB_REPORT_DESCRIPTOR_TYPES'
-  say '#endif'
-  say
-  say '/*'
-  call emitHeading 'Report descriptor data in hex (length' length(xData)/2 'bytes)'
-  say
-  call dumpHex translate(xData)
-  say
-  call emitHeading 'Decoded report descriptor'
-  say 
-
+  if o.!DUMP
+  then do
+    call emitHeading 'Report descriptor data in hex (length' length(xData)/2 'bytes)'
+    say
+    call dumpHex translate(xData)
+    say
+  end
+  if o.!DECODE
+  then do
+    call emitHeading 'Decoded report descriptor'
+    say 
+  end
   featureField.0 = 0
   inputField.0 = 0
   outputField.0 = 0
@@ -168,8 +181,6 @@ trace off
       otherwise call say xItem,xParm,'LOCAL','Invalid Item'
     end
   end
-  say '  End of Report Descriptor'
-  say '*/'
   call Epilog
 return
 
@@ -224,12 +235,13 @@ processMAIN:
       sCollectionStack = subword(sCollectionStack,2)
       if nCollectionType = 1
       then do
-        say '*/'
-        say
-        if featureField.0 > 0 then call emitFeatureFields
-        if inputField.0 > 0   then call emitInputFields
-        if outputField.0 > 0  then call emitOutputFields
-        say '/*'
+        if o.!STRUCT 
+        then do
+          say
+          if featureField.0 > 0 then call emitFeatureFields
+          if inputField.0 > 0   then call emitInputFields
+          if outputField.0 > 0  then call emitOutputFields
+        end
         featureField.0 = 0
         inputField.0 = 0
         outputField.0 = 0
@@ -388,7 +400,7 @@ getStatement: procedure
   parse arg sLabel,sComment
 return left(sLabel, max(length(sLabel),37)) '//' sComment
 
-emitInputFields: procedure expose inputField. k.
+emitInputFields: procedure expose inputField. k. o.
   /* Cycle through all the input fields accumulated and when the report_id
      changes, then emit a new structure */
   xLastReportId = ''
@@ -408,7 +420,7 @@ emitInputFields: procedure expose inputField. k.
   call emitEndStructure 'inputReport',xLastReportId
 return            
 
-emitOutputFields: procedure expose outputField. k.
+emitOutputFields: procedure expose outputField. k. o.
   /* Cycle through all the output fields accumulated and when the report_id
      changes, then emit a new structure */
   xLastReportId = ''
@@ -428,7 +440,7 @@ emitOutputFields: procedure expose outputField. k.
   call emitEndStructure 'outputReport',xLastReportId
 return            
 
-emitFeatureFields: procedure expose featureField. k.
+emitFeatureFields: procedure expose featureField. k. o.
   /* Cycle through all the feature fields accumulated and when the report_id
      changes, then emit a new structure */
   xLastReportId = ''
@@ -485,30 +497,36 @@ emitHeading: procedure
   say 
 return  
 
-emitField: procedure expose k.
+emitField: procedure expose k. o.
   parse arg nField,xFlags sGlobals','sLocals','xExplicitUsages','sFlags
   call setGlobals sGlobals
   call setLocals sLocals
-  say
-  say '  // Field:  ' nField
-  say '  // Width:  ' g.!REPORT_SIZE
-  say '  // Count:  ' g.!REPORT_COUNT
-  say '  // Flags:  ' xFlags':' sFlags
-  say '  // Globals:' getFormattedGlobals()
-  say '  // Locals: ' getFormattedLocals()
-  say '  // Usages: ' strip(xExplicitUsages) /* list of specified usages, if any */
+  if o.!VERBOSITY > 0
+  then do
+    say
+    say '  // Field:  ' nField
+    say '  // Width:  ' g.!REPORT_SIZE
+    say '  // Count:  ' g.!REPORT_COUNT
+    say '  // Flags:  ' xFlags':' sFlags
+    say '  // Globals:' getFormattedGlobals()
+    say '  // Locals: ' getFormattedLocals()
+    say '  // Usages: ' strip(xExplicitUsages) /* list of specified usages, if any */
+  end
   sFlags = x2c(xFlags)
   nUsageMin = x2d(g.!USAGE_MINIMUM)
   nUsageMax = x2d(g.!USAGE_MAXIMUM)
   nUsage = nUsageMin /* first usage to be emitted in the range */
   nExplicitUsages = words(xExplicitUsages)
   g.!FIELD_TYPE = getFieldType()
-  if isData(sFlags)
-  then do /* data i.e. can be changed */
-    say '  // Access:  Read/Write'
-  end
-  else do
-    say '  // Access:  Read/Only'
+  if o.!VERBOSITY > 0
+  then do
+    if isData(sFlags)
+    then do /* data i.e. can be changed */
+      say '  // Access:  Read/Write'
+    end
+    else do
+      say '  // Access:  Read/Only'
+    end
   end
   xPage = g.!USAGE_PAGE
   /*
@@ -551,42 +569,41 @@ emitField: procedure expose k.
               4      C
               5      C
 
-       or,
-
-    3. Specifying no USAGE tags and no USAGE_MINIMUM and no USAGE_MAXIMUM.
-       In this case REPORT_COUNT padding fields of width REPORT_SIZE are 
-       created.
-
     */
-    say '  // Type:    Variable'
-    say '  'getStatement('', xPage getPageDesc(xPage))
-    select
-      when nExplicitUsages > 0 then do /* Emit a list of usages */
-        do i = 1 to nExplicitUsages-1 while i <= g.!REPORT_COUNT
-          xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
-          call emitFieldDecl 1,xExtendedUsage
+    if o.!VERBOSITY > 0
+    then do
+      say '  // Type:    Variable'
+      say '  'getStatement('', xPage getPageDesc(xPage))
+    end
+    if isData(sFlags)
+    then do /* data */
+      select
+        when nExplicitUsages > 0 then do /* Emit a list of usages */
+          do i = 1 to nExplicitUsages-1 while i <= g.!REPORT_COUNT
+            xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
+            call emitFieldDecl 1,xExtendedUsage
+          end
+          xExtendedUsage = word(xExplicitUsages,nExplicitUsages) /* ppppuuuu */
+          nRemainingReportCount = g.!REPORT_COUNT - nExplicitUsages + 1
+          call emitFieldDecl nRemainingReportCount,xExtendedUsage
         end
-        xExtendedUsage = word(xExplicitUsages,nExplicitUsages) /* ppppuuuu */
-        nRemainingReportCount = g.!REPORT_COUNT - nExplicitUsages + 1
-        call emitFieldDecl nRemainingReportCount,xExtendedUsage
-      end
-      when nUsageMin < nUsageMax then do /* Emit a range of usages */
-        nUsage = nUsageMin
-        nUsages = nUsageMax - nUsageMin + 1
-        do i = 1 to nUsages-1 while i <= g.!REPORT_COUNT
-          xExtendedUsage = g.!USAGE_PAGE || d2x(nUsage,4)
-          call emitFieldDecl 1,xExtendedUsage
-          nUsage = nUsage + 1
+        when nUsageMin < nUsageMax then do /* Emit a range of usages */
+          nUsage = nUsageMin
+          nUsages = nUsageMax - nUsageMin + 1
+          do i = 1 to nUsages-1 while i <= g.!REPORT_COUNT
+            xExtendedUsage = g.!USAGE_PAGE || d2x(nUsage,4)
+            call emitFieldDecl 1,xExtendedUsage
+            nUsage = nUsage + 1
+          end
+          xExtendedUsage = g.!USAGE_PAGE || d2x(nUsageMax,4)
+          nRemainingReportCount = g.!REPORT_COUNT - nUsages + 1
+          call emitFieldDecl nRemainingReportCount,xExtendedUsage
         end
-        xExtendedUsage = g.!USAGE_PAGE || d2x(nUsageMax,4)
-        nRemainingReportCount = g.!REPORT_COUNT - nUsages + 1
-        call emitFieldDecl nRemainingReportCount,xExtendedUsage
+        otherwise nop /* should not happen */
       end
-      when nUsageMin = 0 & nUsageMax = 0 & nExplicitUsages = 0 then do /* Emit padding fields */
-        xExtendedUsage = g.!USAGE_PAGE || '0000'
-        call emitFieldDecl g.!REPORT_COUNT,xExtendedUsage
-      end
-      otherwise say '// What?'
+    end
+    else do /* constant, so emit padding field(s) */
+      call emitPaddingFieldDecl g.!REPORT_COUNT,nField
     end
   end
   /*
@@ -635,53 +652,64 @@ emitField: procedure expose k.
        If a report contained 7 and 9, it means that both usage 'A' and 'C' are
        currently asserted, but does not say which was asserted first.
 
-       or, 
 
-    3. Specifying no USAGE tags and no USAGE_MINIMUM and no USAGE_MAXIMUM.
-       In this case REPORT_COUNT padding fields of width REPORT_SIZE are 
-       created (?).
-
-       Note: This is not like a string of characters in a buffer, each array 
-       element can contain an INDEX to a usage, so if, in a keyboard example, 
-       three keys on a keyboard are pressed simultaneously, then three elements 
-       of the array will contain an index to the corresponding usage (a key in 
-       this case) - and not necessarily in the order there were pressed. The
-       maximum number of keys that can be asserted at once is limited by the
-       REPORT_COUNT. The maximum number of keys that can be represented is:
-       LOGICAL_MAXIMUM - LOGICAL_MINIMUM + 1.
+    Note: An array is not like a string of characters in a buffer, each array 
+    element can contain an INDEX to a usage, so if, in a keyboard example, 
+    three keys on a keyboard are pressed simultaneously, then three elements 
+    of the array will contain an index to the corresponding usage (a key in 
+    this case) - and not necessarily in the order they were pressed. The
+    maximum number of keys that can be asserted at once is limited by the
+    REPORT_COUNT. The maximum number of keys that can be represented is:
+    LOGICAL_MAXIMUM - LOGICAL_MINIMUM + 1.
     */
-    say '  // Type:    Array'
-    say '  'getStatement('', xPage getPageDesc(xPage))
+    if o.!VERBOSITY > 0
+    then do
+      say '  // Type:    Array'
+      say '  'getStatement('', xPage getPageDesc(xPage))
+    end
     /* todo: coming up with a field name is tricky...each field can
              index many usages, so a particular usage name can't be
              used.
     */
-    call emitFieldDecl g.!REPORT_COUNT,xPage
-    nLogical = x2d(g.!LOGICAL_MINIMUM)
-    if nExplicitUsages > 0 
-    then do /* list of usages */
-      do i = 1 to nExplicitUsages 
-        xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
-        parse var xExtendedUsage xPage +4 xUsage +4
-        say '  'getStatement('', nLogical '=' xPage xUsage getUsageDesc(xPage,xUsage))
-        nLogical = nLogical + 1
-      end
+    if isData(sFlags)
+    then do /* data */
+      call emitFieldDecl g.!REPORT_COUNT,xPage
     end
-    else do /* range of usages */
-      do nUsage = nUsageMin to nUsageMax
-        xPage = g.!USAGE_PAGE
-        xUsage = d2x(nUsage,4)
-        say '  'getStatement('', nLogical '=' xPage xUsage getUsageDesc(xPage,xUsage))
-        nLogical = nLogical + 1
+    else do /* constant, so emit padding field */
+      call emitPaddingFieldDecl g.!REPORT_COUNT,nField
+    end
+    nLogical = x2d(g.!LOGICAL_MINIMUM)
+    if o.!VERBOSITY > 1
+    then do
+      if nExplicitUsages > 0 
+      then do /* list of usages */
+        do i = 1 to nExplicitUsages 
+          xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
+          parse var xExtendedUsage xPage +4 xUsage +4
+          sUsageDesc = getUsageDesc(xPage,xUsage)
+          if sUsageDesc <> '' | (sUsageDesc = '' & o.!VERBOSITY > 2)
+          then say '  'getStatement('', nLogical '=' xPage xUsage sUsageDesc)
+          nLogical = nLogical + 1
+        end
+      end
+      else do /* range of usages */
+        do nUsage = nUsageMin to nUsageMax
+          xPage = g.!USAGE_PAGE
+          xUsage = d2x(nUsage,4)
+          sUsageDesc = getUsageDesc(xPage,xUsage)
+          if sUsageDesc <> '' | (sUsageDesc = '' & o.!VERBOSITY > 2)
+          then say '  'getStatement('', nLogical '=' xPage xUsage sUsageDesc)
+          nLogical = nLogical + 1
+        end
       end
     end
   end
 return
 
 emitFieldDecl: procedure expose g. k.
-  parse arg nReportCount,xExtendedUsage
+  parse arg nReportCount,xExtendedUsage,sPad
   if nReportCount < 1 then return
-  sFieldName = getFieldName(xExtendedUsage)
+  sFieldName = getFieldName(xExtendedUsage)sPad
   parse var xExtendedUsage xPage +4 xUsage +4
   if wordpos(g.!REPORT_SIZE,'8 16 32') > 0
   then do
@@ -694,21 +722,20 @@ emitFieldDecl: procedure expose g. k.
   end
 return
 
-emitArrayDecl: procedure expose g. k.
-  parse arg nReportCount,xExtendedUsage
+emitPaddingFieldDecl: procedure expose g. k.
+  parse arg nReportCount,nField
   if nReportCount < 1 then return
-  sFieldName = getFieldName(xExtendedUsage)
-  parse var xExtendedUsage xPage +4 xUsage +4
   if wordpos(g.!REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
-    then say '  'getStatement(g.!FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
-    else say '  'getStatement(g.!FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+    then say '  'getStatement(g.!FIELD_TYPE 'pad_'nField';', 'Pad')
+    else say '  'getStatement(g.!FIELD_TYPE 'pad_'nField'['nReportCount'];', 'Pad')
   end
   else do i = 1 to nReportCount
-    say '  'getStatement(g.!FIELD_TYPE sFieldName ':' g.!REPORT_SIZE';', xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+    say '  'getStatement(g.!FIELD_TYPE ':' g.!REPORT_SIZE';', 'Pad')
   end
 return
+
 
 getFieldType: procedure expose g. k.
   select
@@ -916,11 +943,14 @@ isOn: procedure
 return bitand(sByte,sBit) = sBit
 
 
-say: procedure expose g.
-  parse arg sCode,sParm,sType,sTag,xValue,sDescription
-  if xValue = '' 
-  then say sCode left(sParm,8) left('',g.!INDENT) left('('sType')',8) left(sTag,18) sDescription
-  else say sCode left(sParm,8) left('',g.!INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
+say: procedure expose g. o.
+  if o.!DECODE
+  then do
+    parse arg sCode,sParm,sType,sTag,xValue,sDescription
+    if xValue = '' 
+    then say sCode left(sParm,8) left('',g.!INDENT) left('('sType')',8) left(sTag,18) sDescription
+    else say sCode left(sParm,8) left('',g.!INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
+  end
 return
 
 getLittleEndian: procedure expose g.
@@ -960,7 +990,207 @@ peekStack: procedure expose g.
   item = g.!E.tos       /* get item at top of stack */
 return item
 
+isWhole: procedure 
+  parse arg sValue
+return datatype(sValue,'WHOLE')
+
+addOption: procedure expose g. k.
+  parse arg nOptionType,sShort,sLong,sDesc,sInitialValue
+  nOption = g.!OPTION_INDEX.0 + 1
+  g.!OPTION_INDEX.0 = nOption
+  if sLong <> ''
+  then do
+    g.!OPTION_INDEX.sLong  = nOption /* Map long option name to index */
+    g.!OPTION_LONG.nOption = sLong
+  end
+  if sShort <> ''
+  then do
+    g.!OPTION_INDEX.sShort = nOption /* Map short option name to index */
+    g.!OPTION_SHORT.nOption = sShort
+  end
+  g.!OPTION.nOption = sInitialValue
+  if isWhole(nOptionType)
+  then g.!OPTION_TYPE.nOption = nOptionType
+  else g.!OPTION_TYPE.nOption = k.!OPTION_BOOLEAN /* Default option type */
+  g.!OPTION_DESC.nOption = sDesc
+return
+
+getOptionName: procedure expose g.
+  parse arg nOption
+  select
+    when g.!OPTION_LONG.nOption <> '' then sOption = g.!OPTION_LONG.nOption 
+    when g.!OPTION_SHORT.nOption <> '' then sOption = g.!OPTION_SHORT.nOption 
+    otherwise sOption = ''
+  end
+return sOption
+
+getOptionIndex: procedure expose g. k.
+  parse arg sOption
+  if g.!OPTION_INDEX.sOption <> ''
+  then nOption = g.!OPTION_INDEX.sOption
+  else nOption = 0
+return nOption
+
+getOptionType: procedure expose g. k.
+  parse arg sOption
+  nOption = getOptionIndex(sOption)
+return g.!OPTION_TYPE.nOption
+
+setOption: procedure expose g. k.
+  parse arg sOption,sValue
+  nOption = getOptionIndex(sOption)
+  if nOption = 0
+  then say 'HRD0001W Invalid option ignored:' sToken
+  else do
+    nOptionType = getOptionType(sOption)
+    select
+      when nOptionType = k.!OPTION_COUNT then do
+        g.!OPTION.nOption = g.!OPTION.nOption + 1
+      end
+      when nOptionType = k.!OPTION_BOOLEAN then do
+        g.!OPTION.nOption = \g.!OPTION.nOption
+      end
+      otherwise do
+        g.!OPTION.nOption = sValue
+      end
+    end
+  end
+return
+
+getOption: procedure expose g. k.
+  parse arg sOption
+  nOption = getOptionIndex(sOption)
+return g.!OPTION.nOption
+
+setOptions: procedure expose g. k.
+  parse arg sCommandLine
+  /* A command line can consist of any combination of:
+     1. --option (with no args, the option is boolean)
+     2. --option (with no args, successive instances are counted)
+     3. --option (with zero to n args)
+     4. --option (with zero or more args)
+
+     For example:
+     --debug -v -v -t on --coord 3 4 --list one two three -f filename
+     1       2  2  3     3           4                     4
+  */
+  g.!REST = sCommandLine
+  g.!TOKEN = getNextToken()
+  do while g.!TOKEN <> ''
+    if isOptionLike(g.!TOKEN)
+    then do
+      sOption = g.!TOKEN
+      if left(sOption,2) = '--' 
+      then do /* long option */
+        bGetNextToken = handleOption(sOption)
+      end
+      else do /* short option(s) */
+        do i = 2 to length(sOption)
+          sShortOption = '-'substr(sOption,i,1)
+          bGetNextToken = handleOption(sShortOption)
+        end
+      end
+    end
+    else do /* eat the rest of the command line */
+      g.!REST = strip(g.!TOKEN g.!REST)
+      g.!TOKEN = ''
+      bGetNextToken = 0
+    end
+    if bGetNextToken
+    then g.!TOKEN = getNextToken()
+  end
+return
+
+handleOption: procedure expose g. k.
+  parse arg sOption
+  bGetNextToken = 1
+  if getOptionIndex(sOption) = 0
+  then do
+    say 'HRD0001W Invalid option ignored:' sOption
+  end
+  else do
+    nOptionType = getOptionType(sOption)
+    select
+      when nOptionType = k.!OPTION_COUNT then do /* --key [--key ...] */
+        call setOption sOption
+      end
+      when nOptionType = k.!OPTION_LIST then do /* --key [val ...] */
+        sArgs = ''
+        g.!TOKEN = getNextToken()
+        do while \isOptionLike(g.!TOKEN) & g.!TOKEN <> ''
+          sArgs = sArgs g.!TOKEN
+          g.!TOKEN = getNextToken()
+          bGetNextToken = 0
+        end
+        call setOption sOption,strip(sArgs)
+      end
+      when nOptionType = k.!OPTION_BOOLEAN then do /* --key */
+        call setOption sOption
+      end
+      otherwise do           /* --key val1 ... valn */
+        sArgs = ''
+        g.!TOKEN = getNextToken()
+        nMaxArgs = nOptionType
+        do i = 1 to nMaxArgs while \isOptionLike(g.!TOKEN) & g.!TOKEN <> ''
+          sArgs = sArgs g.!TOKEN
+          g.!TOKEN = getNextToken()
+          bGetNextToken = 0
+        end
+        call setOption sOption,strip(sArgs)
+      end
+    end
+  end
+return bGetNextToken
+
+isOptionLike: procedure expose g.
+  parse arg sToken
+return left(sToken,1) = '-'
+
+getNextToken: procedure expose g.
+  parse var g.!REST sToken g.!REST
+return sToken
+
+addBooleanOption: procedure expose g. k.
+  parse arg sShort,sLong,sDesc,bInitialValue
+  call addOption k.!OPTION_BOOLEAN,sShort,sLong,sDesc,bInitialValue=1
+return
+
+addCountableOption: procedure expose g. k.
+  parse arg sShort,sLong,sDesc,nInitialValue
+  if \datatype(nInitialValue,'WHOLE') 
+  then nInitialValue = 0
+  call addOption k.!OPTION_COUNT,sShort,sLong,sDesc,nInitialValue
+return
+
+addListOption: procedure expose g. k.
+  parse arg sShort,sLong,sDesc,sInitialValue
+  call addOption k.!OPTION_LIST,sShort,sLong,sDesc,sInitialValue
+return
+
+addBoundedListOption: procedure expose g. k.
+  parse arg sShort,sLong,sDesc,sInitialValue,nMaxListSize
+  if \datatype(nMaxListSize,'WHOLE') | nMaxListSize <= 0
+  then nMaxListSize = 1
+  call addOption nMaxListSize,sShort,sLong,sInitialValue,sDesc
+return
+
 Prolog:
+  g.!OPTION_INDEX.0 = 0 /* Number of valid options */
+  k.!OPTION_COUNT   = -2
+  k.!OPTION_LIST    = -1
+  k.!OPTION_BOOLEAN = 0
+
+  call addListOption      '-h','--hex'     ,'Read hex input from command line'
+  call addBooleanOption   '-b','--binary'  ,'Input file is binary (not text)'
+  call addBooleanOption   '-s','--struct'  ,'Output C structure declarations (default)'
+  call addBooleanOption   '-d','--decode'  ,'Output decoded report descriptor'
+  call addBooleanOption   '-x','--dump'    ,'Output hex dump of report descriptor'
+  call addCountableOption '-v','--verbose' ,'Output more detail'
+  call addBooleanOption       ,'--version' ,'Display version and exit'
+  call addBooleanOption   '-?','--help'    ,'Display this information'
+
+  call setOptions sCommandLine
+
   call initStack
   k.!UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   k.!LOWER = 'abcdefghijklmnopqrstuvwxyz'
