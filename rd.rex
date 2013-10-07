@@ -286,6 +286,10 @@ processGLOBAL:
     end
     when sTag = k.!GLOBAL.REPORT_ID then do
       g.!REPORT_ID = xValue
+      c = x2c(xValue)
+      if isAlphanumeric(c)
+      then sMeaning = '('x2d(xValue)')' "'"c"'"
+      else sMeaning = '('x2d(xValue)')'
     end
     when sTag = k.!GLOBAL.REPORT_COUNT then do
       g.!REPORT_COUNT = nValue
@@ -457,7 +461,11 @@ emitBeginStructure: procedure expose g. k.
   then do
     say 'typedef struct' 
     say '{'
-    say '  'getStatement(k.!U8 'reportId;','Report ID = 0x'xReportId)
+    c = x2c(xReportId)
+    if isAlphanumeric(c)
+    then sDesc = '('x2d(xReportId)')' "'"c"'"
+    else sDesc = '('x2d(xReportId)')'
+    say '  'getStatement(k.!U8 'reportId;','Report ID = 0x'xReportId sDesc)
   end
   else do
     say 'typedef struct'
@@ -980,6 +988,10 @@ peekStack: procedure expose g.
   item = g.!E.tos       /* get item at top of stack */
 return item
 
+isAlphanumeric: procedure expose k.
+  parse arg c
+return pos(c,k.!ALPHANUM) > 0
+
 isWhole: procedure 
   parse arg sValue
 return datatype(sValue,'WHOLE')
@@ -1184,6 +1196,7 @@ Prolog:
   call initStack
   k.!UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
   k.!LOWER = 'abcdefghijklmnopqrstuvwxyz'
+  k.!ALPHANUM = k.!UPPER || k.!LOWER || '0123456789'
 
   k.!TYPE.MAIN                  = '00000000'b
   k.!TYPE.GLOBAL                = '00000100'b
