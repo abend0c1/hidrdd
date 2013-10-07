@@ -8,24 +8,29 @@ It does this by concatenating all the printable-hex-like
 sequences it finds on each line (until the first unrecognisable
 sequence is encountered) into a single string of hex digits, and
 then attempts to decode that string as though it was a HID Report
-Descriptor.
-
-As such, it is not perfect...merely useful.
+Descriptor. If your input file is already in binary format, 
+then specify the -b option.
 
 Syntax
 ------
-    rexx rd.rex [-b] filein
+
+    rexx rd.rex [-bvdsx] filein
 
 or
 
-    rexx rd.rex -h hex
+    rexx rd.rex -h[vdsx] xx...
 
 Where
 
-    filein    = Input file path to be decoded
-    -h hex    = Decode the hexadecimal string "hex"
-                Spaces are ignored.
-    -b        = Input file is binary (not text)
+    filein           = Input file path to be decoded
+    -h --hex         = Read hex input (xx...) from command line
+    -b --binary      = Input file is binary (not text)
+    -s --struct      = Output C structure declarations (default)
+    -d --decode      = Output decoded report descriptor
+    -x --dump        = Output hex dump of report descriptor
+    -v --verbose     = Output more detail
+    --version        = Display version and exit
+    -? --help        = Display this information
 
 Prerequisites
 -------------
