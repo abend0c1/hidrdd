@@ -70,10 +70,10 @@ trace off
     end
     say 
     say 'Example:'
-    say '      ' sThis '-h 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
+    say '      rexx' sThis '-h 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
     say '       ...decodes the given hex string'
     say
-    say '      ' sThis 'myinputfile.h'
+    say '      rexx' sThis 'myinputfile.h'
     say '       ...decodes the hex strings found in the specified file'
     return
   end
@@ -804,8 +804,12 @@ getPageName: procedure expose k.
   sPage = x2c(xPage)
   select
     when sPage > '0092'x & sPage < 'ff00'x then sPageDesc =  'Reserved,RES'
-    when sPage >= 'ff00'x then sPageDesc = 'Vendor-defined,VEN'
-    otherwise sPageDesc = k.!PAGE.xPage
+    when sPage >= 'ff00'x then do
+        if k.!PAGE.xPage = ''
+        then sPageDesc = 'Vendor-defined,VEN'
+        else sPageDesc = k.!PAGE.xPage
+    end
+    otherwise sPageDesc = k.!PAGE.xPAGE
   end
 return sPageDesc
 
@@ -1187,6 +1191,7 @@ Prolog:
   call addBooleanOption   '-s','--struct'  ,'Output C structure declarations (default)'
   call addBooleanOption   '-d','--decode'  ,'Output decoded report descriptor'
   call addBooleanOption   '-x','--dump'    ,'Output hex dump of report descriptor'
+  call addListOption      '-i','--include' ,'Read vendor-specific definition file'
   call addCountableOption '-v','--verbose' ,'Output more detail'
   call addBooleanOption       ,'--version' ,'Display version and exit'
   call addBooleanOption   '-?','--help'    ,'Display this information'
@@ -1316,24 +1321,39 @@ Prolog:
   do i = 1 until sourceline(i) = '/*DATA'
   end
   do i = i + 1 while sourceline(i) <> 'END*/'
-    sLine = sourceline(i)
-    parse upper var sLine s1 s2 .
-    select
-      when sLine = '' then nop
-      when s1 = 'PAGE' then do
-        parse var sLine . xPage sPage
-        xPage = right(xPage,4,'0')
-        k.!PAGE.xPage = sPage
-      end
-      when datatype(s1,'X') then do
-        parse var sLine xUsage sUsage','sType','sLabel
-        xUsage = right(xUsage,4,'0')
-        sDesc = k.!TYPE.sType
-        k.!USAGE.xPage.xUsage = sUsage '('sDesc')'
-        k.!LABEL.xPage.xUsage = getCamelCase(sUsage, sLabel)
-      end
-      otherwise nop
+    call parseUsageDefinition sourceline(i)
+  end
+
+  sFile = getOption('--include')
+  if sFile <> ''
+  then do
+    sState = stream(sFile,'COMMAND','OPEN READ')
+    do while chars(sFile) > 0
+      call parseUsageDefinition linein(sFile)
     end
+    sState = stream(sFile,'COMMAND','CLOSE')  
+  end
+return
+
+parseUsageDefinition: procedure expose k. g.
+  parse arg sLine
+  parse upper arg s1 s2 .
+  select
+    when s1 = 'PAGE' then do
+      parse var sLine . xPage sPage
+      xPage = right(xPage,4,'0')
+      k.!PAGE.xPage = sPage
+      g.!PAGE = xPage
+    end
+    when datatype(s1,'X') then do
+      parse var sLine xUsage sUsage','sType','sLabel
+      xUsage = right(xUsage,4,'0')
+      sDesc = k.!TYPE.sType
+      xPage = g.!PAGE
+      k.!USAGE.xPage.xUsage = sUsage '('sDesc')'
+      k.!LABEL.xPage.xUsage = getCamelCase(sUsage, sLabel)
+    end
+    otherwise nop
   end
 return
 
@@ -1463,6 +1483,19 @@ Epilog:
 return
 
 
+/*
+The following is a list of the known usage codes.
+
+The format of PAGE entries is:
+PAGE xx longname,variableprefix
+
+The format of USAGE entries under each PAGE entry is:
+xx longname[,datatype[,shortname]]
+Normally, "shortname" is derived from "longname" by removing spaces,
+but occasionally the "longname" contains special characters that
+can't easily be converted to a short name so "shortname", if 
+present, is used instead.
+*/
 
 /*DATA
 
@@ -2535,9 +2568,9 @@ PAGE 14 Alphanumeric Display Page,AD
 4B Char Attr Enhance,OOC,
 4C Char Attr Underline,OOC,
 4D Char Attr Blink,OOC,
-80 Bitmap Size X,SV,.1
-81 Bitmap Size Y,SV,.1
-83 Bit Depth Format,SV,.2
+80 Bitmap Size X,SV,
+81 Bitmap Size Y,SV,
+83 Bit Depth Format,SV,
 84 Display Orientation,DV,
 85 Palette Report,CL,
 86 Palette Data Size,SV,
@@ -2549,12 +2582,12 @@ PAGE 14 Alphanumeric Display Page,AD
 8D Blit Rectangle X2,SV,
 8E Blit Rectangle Y2,SV,
 8F Blit Data,BB,
-90 Soft Button,CL,.3
-91 Soft Button ID,SV,.3
-92 Soft Button Side,SV,.3
-93 Soft Button Offset 1,SV,.3
-94 Soft Button Offset 2,SV,.3
-95 Soft Button Report,SV,.3
+90 Soft Button,CL,
+91 Soft Button ID,SV,
+92 Soft Button Side,SV,
+93 Soft Button Offset 1,SV,
+94 Soft Button Offset 2,SV,
+95 Soft Button Report,SV,
 
 PAGE 15 Reserved,RES
 PAGE 16 Reserved,RES
