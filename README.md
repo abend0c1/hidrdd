@@ -14,17 +14,19 @@ then specify the -b option.
 Syntax
 ------
 
-    rexx rd.rex [-bvdsx] filein
+    rexx rd.rex [-bvdsx] filein [-i path]
 
 or
 
-    rexx rd.rex -h[vdsx] xx...
+    rexx rd.rex -h[vdsx] [-i path] xx...
 
 Where
 
     filein           = Input file path to be decoded
+    path             = Vendor-specific definition file to be included
     -h --hex         = Read hex input (xx...) from command line
     -b --binary      = Input file is binary (not text)
+    -i --include     = Include vendor-specific definitions file
     -s --struct      = Output C structure declarations (default)
     -d --decode      = Output decoded report descriptor
     -x --dump        = Output hex dump of report descriptor
@@ -44,5 +46,8 @@ Example
     ...decodes the given hex string
 
     rexx rd.rex myinputfile.h
-    ...decodes the hex strings found in the specified file
+    ...decodes the hex strings found in myinputfile.h
 
+    rexx rd.rex --include mybuttonmap.txt myinputfile.h
+    ...decodes the hex strings found in myinputfile.h using vendor-defined
+       usages defined in mybuttonmap.txt
