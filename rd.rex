@@ -36,16 +36,16 @@ trace off
     return
   end
 
-  sFile        = g.!REST
+  sFile        = g.0REST
   sData        = getOption('--hex')
-  o.!BINARY    = getOption('--binary')
-  o.!VERBOSITY = getOption('--verbose')
-  o.!STRUCT    = getOption('--struct')
-  o.!DECODE    = getOption('--decode')
-  o.!DUMP      = getOption('--dump')
-  o.!HELP      = getOption('--help')
+  o.0BINARY    = getOption('--binary')
+  o.0VERBOSITY = getOption('--verbose')
+  o.0STRUCT    = getOption('--struct')
+  o.0DECODE    = getOption('--decode')
+  o.0DUMP      = getOption('--dump')
+  o.0HELP      = getOption('--help')
 
-  if o.!HELP | sCommandLine = ''
+  if o.0HELP | sCommandLine = ''
   then do
     parse source . . sThis .
     say 'HID Report Descriptor decoder v1.00'
@@ -65,8 +65,8 @@ trace off
     say
     say 'Where:'    
     say '      filein           = Input file path to be decoded'
-    do i = 1 to g.!OPTION_INDEX.0
-      say '      'left(strip(g.!OPTION_SHORT.i g.!OPTION_LONG.i),16) '=' g.!OPTION_DESC.i
+    do i = 1 to g.0OPTION_INDEX.0
+      say '      'left(strip(g.0OPTION_SHORT.i g.0OPTION_LONG.i),16) '=' g.0OPTION_DESC.i
     end
     say 
     say 'Example:'
@@ -78,8 +78,8 @@ trace off
     return
   end
 
-  if \(o.!DECODE | o.!STRUCT | o.!DUMP) /* If neither --decode nor --struct nor --dump was specified */
-  then o.!STRUCT = 1          /* then assume --struct was specified */
+  if \(o.0DECODE | o.0STRUCT | o.0DUMP) /* If neither --decode nor --struct nor --dump was specified */
+  then o.0STRUCT = 1          /* then assume --struct was specified */
 
 
   if sData <> ''
@@ -94,7 +94,7 @@ trace off
   else do
     xData = ''
     rc = stream(sFile,'COMMAND','OPEN READ')
-    if o.!BINARY
+    if o.0BINARY
     then do
       sData = charin(sFile, 1, chars(sFile))
       xData = c2x(sData)
@@ -122,20 +122,20 @@ trace off
     end
     rc = stream(sFile,'COMMAND','CLOSE')  
   end
-  k.!I8 = 'int8_t'
-  k.!U8 = 'uint8_t'
-  k.!I16 = 'int16_t'
-  k.!U16 = 'uint16_t'
-  k.!I32 = 'int32_t'
-  k.!U32 = 'uint32_t'
-  if o.!DUMP
+  k.0I8 = 'int8_t'
+  k.0U8 = 'uint8_t'
+  k.0I16 = 'int16_t'
+  k.0U16 = 'uint16_t'
+  k.0I32 = 'int32_t'
+  k.0U32 = 'uint32_t'
+  if o.0DUMP
   then do
     call emitHeading 'Report descriptor data in hex (length' length(xData)/2 'bytes)'
     say
     call dumpHex translate(xData)
     say
   end
-  if o.!DECODE
+  if o.0DECODE
   then do
     call emitHeading 'Decoded report descriptor'
     say 
@@ -144,7 +144,7 @@ trace off
   inputField.0 = 0
   outputField.0 = 0
   sCollectionStack = ''
-  g.!INDENT = 0
+  g.0INDENT = 0
 
   sData = x2c(xData)
   nIndent = 0
@@ -165,9 +165,9 @@ trace off
     sValue = getLittleEndian(sParm) /* llhh --> hhll */
     xValue = right(c2x(sValue),8,'0')
     select
-      when sType = k.!TYPE.MAIN   then call processMAIN
-      when sType = k.!TYPE.GLOBAL then call processGLOBAL
-      when sType = k.!TYPE.LOCAL  then call processLOCAL
+      when sType = k.0TYPE.MAIN   then call processMAIN
+      when sType = k.0TYPE.GLOBAL then call processGLOBAL
+      when sType = k.0TYPE.LOCAL  then call processLOCAL
       otherwise call say xItem,xParm,'LOCAL','Invalid Item'
     end
   end
@@ -176,35 +176,35 @@ return
 
 processMAIN:
   select
-    when sTag = k.!MAIN.INPUT then do
+    when sTag = k.0MAIN.INPUT then do
       sDesc = getInputDesc()
-      call say xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.!REPORT_COUNT, g.!REPORT_SIZE) sDesc
+      call say xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc
       n = inputField.0 + 1
-      inputField.n = xValue getGlobals()','getLocals()','g.!USAGES','sDesc
+      inputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sDesc
       inputField.0 = n
       call clearLocals
     end
-    when sTag = k.!MAIN.OUTPUT then do
+    when sTag = k.0MAIN.OUTPUT then do
       sDesc = getOutputDesc()
-      call say xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.!REPORT_COUNT, g.!REPORT_SIZE) sDesc
+      call say xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc
       n = outputField.0 + 1
-      outputField.n = xValue getGlobals()','getLocals()','g.!USAGES','sDesc
+      outputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sDesc
       outputField.0 = n
       call clearLocals
     end
-    when sTag = k.!MAIN.FEATURE then do
+    when sTag = k.0MAIN.FEATURE then do
       sDesc = getFeatureDesc()
-      call say xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.!REPORT_COUNT, g.!REPORT_SIZE) sDesc
+      call say xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc
       n = featureField.0 + 1
-      featureField.n = xValue getGlobals()','getLocals()','g.!USAGES','sDesc
+      featureField.n = xValue getGlobals()','getLocals()','g.0USAGES','sDesc
       featureField.0 = n
       call clearLocals
     end
-    when sTag = k.!MAIN.COLLECTION then do
-      xPage = g.!USAGE_PAGE
-      xUsage = g.!USAGE
+    when sTag = k.0MAIN.COLLECTION then do
+      xPage = g.0USAGE_PAGE
+      xUsage = g.0USAGE
       parse value getUsageDesc(xPage,xUsage) with sCollectionName '('
-      k.!COLLECTION_NAME = space(sCollectionName,0)
+      k.0COLLECTION_NAME = space(sCollectionName,0)
       sValue = getLittleEndian(sParm)
       nValue = c2d(sValue)
       xValue = c2x(sValue)
@@ -212,20 +212,20 @@ processMAIN:
       select 
         when nValue > 127 then sMeaning = 'Vendor Defined'
         when nValue > 6   then sMeaning = 'Reserved'
-        otherwise sMeaning = g.!COLLECTION.xParm
+        otherwise sMeaning = g.0COLLECTION.xParm
       end
       call say xItem,xParm,'MAIN','COLLECTION',xValue,sMeaning
-      g.!INDENT = g.!INDENT + 2
-      g.!USAGES = ''
+      g.0INDENT = g.0INDENT + 2
+      g.0USAGES = ''
     end
-    when sTag = k.!MAIN.END_COLLECTION then do
-      g.!INDENT = g.!INDENT - 2
+    when sTag = k.0MAIN.END_COLLECTION then do
+      g.0INDENT = g.0INDENT - 2
       call say xItem,xParm,'MAIN','END_COLLECTION'
       nCollectionType = word(sCollectionStack,1)
       sCollectionStack = subword(sCollectionStack,2)
       if nCollectionType = 1
       then do
-        if o.!STRUCT 
+        if o.0STRUCT 
         then do
           say
           if featureField.0 > 0 then call emitFeatureFields
@@ -235,7 +235,7 @@ processMAIN:
         featureField.0 = 0
         inputField.0 = 0
         outputField.0 = 0
-        g.!USAGES = ''
+        g.0USAGES = ''
       end
       else do
         say 
@@ -250,73 +250,73 @@ processGLOBAL:
   nValue = x2d(xValue,2*length(sValue))
   sMeaning = ''
   select
-    when sTag = k.!GLOBAL.USAGE_PAGE then do
+    when sTag = k.0GLOBAL.USAGE_PAGE then do
       xPage = right(xValue,4,'0')
-      g.!USAGE_PAGE = xPage
+      g.0USAGE_PAGE = xPage
       xValue = xPage 
       sMeaning = getPageDesc(xPage)
     end
-    when sTag = k.!GLOBAL.LOGICAL_MINIMUM then do
-      g.!LOGICAL_MINIMUM = nValue
+    when sTag = k.0GLOBAL.LOGICAL_MINIMUM then do
+      g.0LOGICAL_MINIMUM = nValue
       sMeaning = '('nValue')'
     end
-    when sTag = k.!GLOBAL.LOGICAL_MAXIMUM then do
-      g.!LOGICAL_MAXIMUM = nValue
+    when sTag = k.0GLOBAL.LOGICAL_MAXIMUM then do
+      g.0LOGICAL_MAXIMUM = nValue
       sMeaning = '('nValue')'
     end
-    when sTag = k.!GLOBAL.PHYSICAL_MINIMUM then do
-      g.!PHYSICAL_MINIMUM = nValue
+    when sTag = k.0GLOBAL.PHYSICAL_MINIMUM then do
+      g.0PHYSICAL_MINIMUM = nValue
       sMeaning = '('nValue')'
     end
-    when sTag = k.!GLOBAL.PHYSICAL_MAXIMUM then do
-      g.!PHYSICAL_MAXIMUM = nValue
+    when sTag = k.0GLOBAL.PHYSICAL_MAXIMUM then do
+      g.0PHYSICAL_MAXIMUM = nValue
       sMeaning = '('nValue')'
     end
-    when sTag = k.!GLOBAL.UNIT_EXPONENT then do
-      g.!UNIT_EXPONENT = nValue
+    when sTag = k.0GLOBAL.UNIT_EXPONENT then do
+      g.0UNIT_EXPONENT = nValue
       sMeaning = '('nValue')'
     end
-    when sTag = k.!GLOBAL.UNIT then do
-      g.!UNIT = nValue
-      sMeaning = '('k.!UNIT.xValue')'
+    when sTag = k.0GLOBAL.UNIT then do
+      g.0UNIT = nValue
+      sMeaning = '('k.0UNIT.xValue')'
     end
-    when sTag = k.!GLOBAL.REPORT_SIZE then do
-      g.!REPORT_SIZE = nValue
+    when sTag = k.0GLOBAL.REPORT_SIZE then do
+      g.0REPORT_SIZE = nValue
       sMeaning = '('nValue') Number of bits per field'
     end
-    when sTag = k.!GLOBAL.REPORT_ID then do
-      g.!REPORT_ID = xValue
+    when sTag = k.0GLOBAL.REPORT_ID then do
+      g.0REPORT_ID = xValue
       c = x2c(xValue)
       if isAlphanumeric(c)
       then sMeaning = '('x2d(xValue)')' "'"c"'"
       else sMeaning = '('x2d(xValue)')'
     end
-    when sTag = k.!GLOBAL.REPORT_COUNT then do
-      g.!REPORT_COUNT = nValue
+    when sTag = k.0GLOBAL.REPORT_COUNT then do
+      g.0REPORT_COUNT = nValue
       sMeaning = '('nValue') Number of fields'
     end
-    when sTag = k.!GLOBAL.PUSH then do
+    when sTag = k.0GLOBAL.PUSH then do
       xValue = ''
       call pushStack getGlobals()
     end
-    when sTag = k.!GLOBAL.POP then do
+    when sTag = k.0GLOBAL.POP then do
       xValue = ''
       call setGlobals popStack()
     end
     otherwise sMeaning = 'Invalid Item'
   end
   if xValue = ''
-  then call say xItem,xParm,'GLOBAL',k.!GLOBAL.sTag
-  else call say xItem,xParm,'GLOBAL',k.!GLOBAL.sTag,xValue,sMeaning
+  then call say xItem,xParm,'GLOBAL',k.0GLOBAL.sTag
+  else call say xItem,xParm,'GLOBAL',k.0GLOBAL.sTag,xValue,sMeaning
 return
 
 processLOCAL:
   xValue = c2x(sValue)
   nValue = x2d(xValue,2*length(sValue))
-  xPage = g.!USAGE_PAGE
+  xPage = g.0USAGE_PAGE
   sMeaning = ''
   select
-    when sTag = k.!LOCAL.USAGE then do
+    when sTag = k.0LOCAL.USAGE then do
       if length(sValue) = 4
       then do /* Both page and usage are specified: ppppuuuu */
         parse var xValue xUsage +4 xPage +4
@@ -325,47 +325,47 @@ processLOCAL:
         xUsage = right(xValue,4,'0')
         xValue = xPage || xUsage
       end
-      g.!USAGES = g.!USAGES xValue
-      g.!USAGE = xUsage
+      g.0USAGES = g.0USAGES xValue
+      g.0USAGE = xUsage
       sMeaning = getUsageDesc(xPage,xUsage)
     end
-    when sTag = k.!LOCAL.USAGE_MINIMUM then do
+    when sTag = k.0LOCAL.USAGE_MINIMUM then do
       xUsage = right(xValue,4,'0')
-      g.!USAGE_MINIMUM = xUsage
+      g.0USAGE_MINIMUM = xUsage
       xValue = xPage || xUsage
       sMeaning = getUsageDesc(xPage,xUsage)
     end
-    when sTag = k.!LOCAL.USAGE_MAXIMUM then do
+    when sTag = k.0LOCAL.USAGE_MAXIMUM then do
       xUsage = right(xValue,4,'0')
-      g.!USAGE_MAXIMUM = xUsage
+      g.0USAGE_MAXIMUM = xUsage
       xValue = xPage || xUsage
       sMeaning = getUsageDesc(xPage,xUsage)
     end
-    when sTag = k.!LOCAL.DESIGNATOR_INDEX then do
-      g.!DESIGNATOR_INDEX = nValue
+    when sTag = k.0LOCAL.DESIGNATOR_INDEX then do
+      g.0DESIGNATOR_INDEX = nValue
       sMeaning = '('nValue')'
     end
-    when sTag = k.!LOCAL.DESIGNATOR_MINIMUM then do
-      g.!DESIGNATOR_MINIMUM = nValue
+    when sTag = k.0LOCAL.DESIGNATOR_MINIMUM then do
+      g.0DESIGNATOR_MINIMUM = nValue
       sMeaning = '('nValue')'
     end
-    when sTag = k.!LOCAL.DESIGNATOR_MAXIMUM then do
-      g.!DESIGNATOR_MAXIMUM = nValue
+    when sTag = k.0LOCAL.DESIGNATOR_MAXIMUM then do
+      g.0DESIGNATOR_MAXIMUM = nValue
       sMeaning = '('nValue')'
     end
-    when sTag = k.!LOCAL.STRING_INDEX then do
-      g.!STRING_INDEX = nValue
+    when sTag = k.0LOCAL.STRING_INDEX then do
+      g.0STRING_INDEX = nValue
       sMeaning = '('nValue')'
     end
-    when sTag = k.!LOCAL.STRING_MINIMUM then do
-      g.!STRING_MINIMUM = nValue
+    when sTag = k.0LOCAL.STRING_MINIMUM then do
+      g.0STRING_MINIMUM = nValue
       sMeaning = '('nValue')'
     end
-    when sTag = k.!LOCAL.STRING_MAXIMUM then do
-      g.!STRING_MAXIMUM = nValue
+    when sTag = k.0LOCAL.STRING_MAXIMUM then do
+      g.0STRING_MAXIMUM = nValue
       sMeaning = '('nValue')'
     end
-    when sTag = k.!LOCAL.DELIMITER then do
+    when sTag = k.0LOCAL.DELIMITER then do
       select
         when nValue = 1 then sMeaning = '('nValue') Open set'
         when nValue = 0 then sMeaning = '('nValue') Close set'
@@ -374,7 +374,7 @@ processLOCAL:
     end
     otherwise sMeaning = 'Invalid Item'
   end
-  call say xItem,xParm,'LOCAL',k.!LOCAL.sTag,xValue,sMeaning
+  call say xItem,xParm,'LOCAL',k.0LOCAL.sTag,xValue,sMeaning
 return
 
 
@@ -402,12 +402,12 @@ emitInputFields: procedure expose inputField. k. o.
     parse var inputField.i xFlags sGlobals','sLocals','xExplicitUsages','sDesc
     call setGlobals sGlobals
     call setLocals sLocals
-    if xLastReportId <> g.!REPORT_ID
+    if xLastReportId <> g.0REPORT_ID
     then do /* The report id has changed */
       if i > 1 
       then call emitEndStructure 'inputReport',xLastReportId
-      call emitBeginStructure 'inputReport',g.!REPORT_ID,'Device --> Host'
-      xLastReportId = g.!REPORT_ID
+      call emitBeginStructure 'inputReport',g.0REPORT_ID,'Device --> Host'
+      xLastReportId = g.0REPORT_ID
     end
     call emitField i,inputField.i
   end
@@ -422,12 +422,12 @@ emitOutputFields: procedure expose outputField. k. o.
     parse var outputField.i xFlags sGlobals','sLocals','xExplicitUsages','sDesc
     call setGlobals sGlobals
     call setLocals sLocals
-    if xLastReportId <> g.!REPORT_ID
+    if xLastReportId <> g.0REPORT_ID
     then do /* The report id has changed */
       if i > 1 
       then call emitEndStructure 'outputReport',xLastReportId
-      call emitBeginStructure 'outputReport',g.!REPORT_ID,'Device <-- Host'
-      xLastReportId = g.!REPORT_ID
+      call emitBeginStructure 'outputReport',g.0REPORT_ID,'Device <-- Host'
+      xLastReportId = g.0REPORT_ID
     end
     call emitField i,outputField.i
   end
@@ -442,12 +442,12 @@ emitFeatureFields: procedure expose featureField. k. o.
     parse var featureField.i xFlags sGlobals','sLocals','xExplicitUsages','sDesc
     call setGlobals sGlobals
     call setLocals sLocals
-    if xLastReportId <> g.!REPORT_ID
+    if xLastReportId <> g.0REPORT_ID
     then do /* The report id has changed */
       if i > 1 
       then call emitEndStructure 'featureReport',xLastReportId
-      call emitBeginStructure 'featureReport',g.!REPORT_ID,'Device --> Host'
-      xLastReportId = g.!REPORT_ID
+      call emitBeginStructure 'featureReport',g.0REPORT_ID,'Device --> Host'
+      xLastReportId = g.0REPORT_ID
     end
     call emitField i,featureField.i
   end
@@ -456,7 +456,7 @@ return
 
 emitBeginStructure: procedure expose g. k.
   parse arg sStructureName,xReportId,sDirection
-  call emitHeading getPageDesc(g.!USAGE_PAGE) sStructureName xReportId '('sDirection')'
+  call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName xReportId '('sDirection')'
   if xReportId <> 0
   then do
     say 'typedef struct' 
@@ -465,7 +465,7 @@ emitBeginStructure: procedure expose g. k.
     if isAlphanumeric(c)
     then sDesc = '('x2d(xReportId)')' "'"c"'"
     else sDesc = '('x2d(xReportId)')'
-    say '  'getStatement(k.!U8 'reportId;','Report ID = 0x'xReportId sDesc)
+    say '  'getStatement(k.0U8 'reportId;','Report ID = 0x'xReportId sDesc)
   end
   else do
     say 'typedef struct'
@@ -499,24 +499,24 @@ emitField: procedure expose k. o.
   parse arg nField,xFlags sGlobals','sLocals','xExplicitUsages','sFlags
   call setGlobals sGlobals
   call setLocals sLocals
-  if o.!VERBOSITY > 0
+  if o.0VERBOSITY > 0
   then do
     say
     say '  // Field:  ' nField
-    say '  // Width:  ' g.!REPORT_SIZE
-    say '  // Count:  ' g.!REPORT_COUNT
+    say '  // Width:  ' g.0REPORT_SIZE
+    say '  // Count:  ' g.0REPORT_COUNT
     say '  // Flags:  ' xFlags':' sFlags
     say '  // Globals:' getFormattedGlobals()
     say '  // Locals: ' getFormattedLocals()
     say '  // Usages: ' strip(xExplicitUsages) /* list of specified usages, if any */
   end
   sFlags = x2c(xFlags)
-  nUsageMin = x2d(g.!USAGE_MINIMUM)
-  nUsageMax = x2d(g.!USAGE_MAXIMUM)
+  nUsageMin = x2d(g.0USAGE_MINIMUM)
+  nUsageMax = x2d(g.0USAGE_MAXIMUM)
   nUsage = nUsageMin /* first usage to be emitted in the range */
   nExplicitUsages = words(xExplicitUsages)
-  g.!FIELD_TYPE = getFieldType()
-  if o.!VERBOSITY > 0
+  g.0FIELD_TYPE = getFieldType()
+  if o.0VERBOSITY > 0
   then do
     if isData(sFlags)
     then do /* data i.e. can be changed */
@@ -526,7 +526,7 @@ emitField: procedure expose k. o.
       say '  // Access:  Read/Only'
     end
   end
-  xPage = g.!USAGE_PAGE
+  xPage = g.0USAGE_PAGE
   /*
    *-----------------------------------------------------------
    * VARIABLE
@@ -568,7 +568,7 @@ emitField: procedure expose k. o.
               5      C
 
     */
-    if o.!VERBOSITY > 0
+    if o.0VERBOSITY > 0
     then do
       say '  // Type:    Variable'
       say '  'getStatement('', xPage getPageDesc(xPage))
@@ -577,31 +577,31 @@ emitField: procedure expose k. o.
     then do /* data */
       select
         when nExplicitUsages > 0 then do /* Emit a list of usages */
-          do i = 1 to nExplicitUsages-1 while i <= g.!REPORT_COUNT
+          do i = 1 to nExplicitUsages-1 while i <= g.0REPORT_COUNT
             xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
             call emitFieldDecl 1,xExtendedUsage
           end
           xExtendedUsage = word(xExplicitUsages,nExplicitUsages) /* ppppuuuu */
-          nRemainingReportCount = g.!REPORT_COUNT - nExplicitUsages + 1
+          nRemainingReportCount = g.0REPORT_COUNT - nExplicitUsages + 1
           call emitFieldDecl nRemainingReportCount,xExtendedUsage
         end
         when nUsageMin < nUsageMax then do /* Emit a range of usages */
           nUsage = nUsageMin
           nUsages = nUsageMax - nUsageMin + 1
-          do i = 1 to nUsages-1 while i <= g.!REPORT_COUNT
-            xExtendedUsage = g.!USAGE_PAGE || d2x(nUsage,4)
+          do i = 1 to nUsages-1 while i <= g.0REPORT_COUNT
+            xExtendedUsage = g.0USAGE_PAGE || d2x(nUsage,4)
             call emitFieldDecl 1,xExtendedUsage
             nUsage = nUsage + 1
           end
-          xExtendedUsage = g.!USAGE_PAGE || d2x(nUsageMax,4)
-          nRemainingReportCount = g.!REPORT_COUNT - nUsages + 1
+          xExtendedUsage = g.0USAGE_PAGE || d2x(nUsageMax,4)
+          nRemainingReportCount = g.0REPORT_COUNT - nUsages + 1
           call emitFieldDecl nRemainingReportCount,xExtendedUsage
         end
         otherwise nop /* should not happen */
       end
     end
     else do /* constant, so emit padding field(s) */
-      call emitPaddingFieldDecl g.!REPORT_COUNT,nField
+      call emitPaddingFieldDecl g.0REPORT_COUNT,nField
     end
   end
   /*
@@ -660,7 +660,7 @@ emitField: procedure expose k. o.
     REPORT_COUNT. The maximum number of keys that can be represented is:
     LOGICAL_MAXIMUM - LOGICAL_MINIMUM + 1.
     */
-    if o.!VERBOSITY > 0
+    if o.0VERBOSITY > 0
     then do
       say '  // Type:    Array'
       say '  'getStatement('', xPage getPageDesc(xPage))
@@ -671,13 +671,13 @@ emitField: procedure expose k. o.
     */
     if isData(sFlags)
     then do /* data */
-      call emitFieldDecl g.!REPORT_COUNT,xPage
+      call emitFieldDecl g.0REPORT_COUNT,xPage
     end
     else do /* constant, so emit padding field */
-      call emitPaddingFieldDecl g.!REPORT_COUNT,nField
+      call emitPaddingFieldDecl g.0REPORT_COUNT,nField
     end
-    nLogical = x2d(g.!LOGICAL_MINIMUM)
-    if o.!VERBOSITY > 1
+    nLogical = x2d(g.0LOGICAL_MINIMUM)
+    if o.0VERBOSITY > 1
     then do
       if nExplicitUsages > 0 
       then do /* list of usages */
@@ -685,17 +685,17 @@ emitField: procedure expose k. o.
           xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
           parse var xExtendedUsage xPage +4 xUsage +4
           sUsageDesc = getUsageDesc(xPage,xUsage)
-          if sUsageDesc <> '' | (sUsageDesc = '' & o.!VERBOSITY > 2)
+          if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
           then say '  'getStatement('', nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
         end
       end
       else do /* range of usages */
         do nUsage = nUsageMin to nUsageMax
-          xPage = g.!USAGE_PAGE
+          xPage = g.0USAGE_PAGE
           xUsage = d2x(nUsage,4)
           sUsageDesc = getUsageDesc(xPage,xUsage)
-          if sUsageDesc <> '' | (sUsageDesc = '' & o.!VERBOSITY > 2)
+          if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
           then say '  'getStatement('', nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
         end
@@ -709,84 +709,84 @@ emitFieldDecl: procedure expose g. k.
   if nReportCount < 1 then return
   sFieldName = getFieldName(xExtendedUsage)sPad
   parse var xExtendedUsage xPage +4 xUsage +4
-  if wordpos(g.!REPORT_SIZE,'8 16 32') > 0
+  if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
-    then say '  'getStatement(g.!FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
-    else say '  'getStatement(g.!FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+    then say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+    else say '  'getStatement(g.0FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
   end
   else do i = 1 to nReportCount
-    say '  'getStatement(g.!FIELD_TYPE sFieldName ':' g.!REPORT_SIZE';', xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+    say '  'getStatement(g.0FIELD_TYPE sFieldName ':' g.0REPORT_SIZE';', xPage xUsage getUsageDesc(xPage,xUsage) getRange())
   end
 return
 
 emitPaddingFieldDecl: procedure expose g. k.
   parse arg nReportCount,nField
   if nReportCount < 1 then return
-  if wordpos(g.!REPORT_SIZE,'8 16 32') > 0
+  if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
-    then say '  'getStatement(g.!FIELD_TYPE 'pad_'nField';', 'Pad')
-    else say '  'getStatement(g.!FIELD_TYPE 'pad_'nField'['nReportCount'];', 'Pad')
+    then say '  'getStatement(g.0FIELD_TYPE 'pad_'nField';', 'Pad')
+    else say '  'getStatement(g.0FIELD_TYPE 'pad_'nField'['nReportCount'];', 'Pad')
   end
   else do i = 1 to nReportCount
-    say '  'getStatement(g.!FIELD_TYPE ':' g.!REPORT_SIZE';', 'Pad')
+    say '  'getStatement(g.0FIELD_TYPE ':' g.0REPORT_SIZE';', 'Pad')
   end
 return
 
 
 getFieldType: procedure expose g. k.
   select
-    when g.!REPORT_SIZE < 8 then do
-      nBits = g.!REPORT_SIZE * g.!REPORT_COUNT
+    when g.0REPORT_SIZE < 8 then do
+      nBits = g.0REPORT_SIZE * g.0REPORT_COUNT
       select
         when nBits <=  8 then do
-          if g.!LOGICAL_MINIMUM < 0 
-          then sFieldType = k.!I8
-          else sFieldType = k.!U8
+          if g.0LOGICAL_MINIMUM < 0 
+          then sFieldType = k.0I8
+          else sFieldType = k.0U8
         end
         when nBits <= 16 then do
-          if g.!LOGICAL_MINIMUM < 0 
-          then sFieldType = k.!I16
-          else sFieldType = k.!U16
+          if g.0LOGICAL_MINIMUM < 0 
+          then sFieldType = k.0I16
+          else sFieldType = k.0U16
         end
         otherwise do
-          if g.!LOGICAL_MINIMUM < 0 
-          then sFieldType = k.!I32
-          else sFieldType = k.!U32
+          if g.0LOGICAL_MINIMUM < 0 
+          then sFieldType = k.0I32
+          else sFieldType = k.0U32
         end
       end
     end
-    when g.!REPORT_SIZE = 8 then do
-      if g.!LOGICAL_MINIMUM < 0 
-      then sFieldType = k.!I8
-      else sFieldType = k.!U8
+    when g.0REPORT_SIZE = 8 then do
+      if g.0LOGICAL_MINIMUM < 0 
+      then sFieldType = k.0I8
+      else sFieldType = k.0U8
     end
-    when g.!REPORT_SIZE = 16 then do
-      if g.!LOGICAL_MINIMUM < 0 
-      then sFieldType = k.!I16
-      else sFieldType = k.!U16
+    when g.0REPORT_SIZE = 16 then do
+      if g.0LOGICAL_MINIMUM < 0 
+      then sFieldType = k.0I16
+      else sFieldType = k.0U16
     end
     otherwise do
-      if g.!LOGICAL_MINIMUM < 0 
-      then sFieldType = k.!I32
-      else sFieldType = k.!U32
+      if g.0LOGICAL_MINIMUM < 0 
+      then sFieldType = k.0I32
+      else sFieldType = k.0U32
     end
   end
 return sFieldType
 
 getRange: procedure expose g.
-return 'Value =' g.!LOGICAL_MINIMUM 'to' g.!LOGICAL_MAXIMUM
+return 'Value =' g.0LOGICAL_MINIMUM 'to' g.0LOGICAL_MAXIMUM
 
 getPadding: procedure expose g.
-return 'Padding' getDimension(g.!REPORT_COUNT, g.!REPORT_SIZE)
+return 'Padding' getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE)
 
 getFieldName: procedure expose k.
   parse arg xPage +4 xUsage +4
-  sLabel = k.!LABEL.xPage.xUsage
+  sLabel = k.0LABEL.xPage.xUsage
   if sLabel = '' then parse value getUsageDesc(xPage,xUsage) with sLabel'('
   if sLabel = '' then sLabel = xUsage
-  if sLabel = '' then sLabel = k.!COLLECTION_NAME
+  if sLabel = '' then sLabel = k.0COLLECTION_NAME
 return space(getShortPageName(xPage)'_'sLabel,0)
 
 getShortPageName: procedure expose k.
@@ -805,17 +805,17 @@ getPageName: procedure expose k.
   select
     when sPage > '0092'x & sPage < 'ff00'x then sPageDesc =  'Reserved,RES'
     when sPage >= 'ff00'x then do
-        if k.!PAGE.xPage = ''
+        if k.0PAGE.xPage = ''
         then sPageDesc = 'Vendor-defined,VEN'
-        else sPageDesc = k.!PAGE.xPage
+        else sPageDesc = k.0PAGE.xPage
     end
-    otherwise sPageDesc = k.!PAGE.xPAGE
+    otherwise sPageDesc = k.0PAGE.xPAGE
   end
 return sPageDesc
 
 getUsageDesc: procedure expose k.
   parse arg xPage,xUsage
-  sUsageDesc = k.!USAGE.xPage.xUsage
+  sUsageDesc = k.0USAGE.xPage.xUsage
 return sUsageDesc
 
 getInputDesc:
@@ -946,12 +946,12 @@ return bitand(sByte,sBit) = sBit
 
 
 say: procedure expose g. o.
-  if o.!DECODE
+  if o.0DECODE
   then do
     parse arg sCode,sParm,sType,sTag,xValue,sDescription
     if xValue = '' 
-    then say sCode left(sParm,8) left('',g.!INDENT) left('('sType')',8) left(sTag,18) sDescription
-    else say sCode left(sParm,8) left('',g.!INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
+    then say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
+    else say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
   end
 return
 
@@ -971,30 +971,30 @@ getQuantity: procedure
 return nCount sPlural  
 
 initStack: procedure expose g.
-  g.!T = 0              /* set top of stack index */
+  g.0T = 0              /* set top of stack index */
 return
 
 pushStack: procedure expose g.
   parse arg item
-  tos = g.!T + 1        /* get new top of stack index */
-  g.!E.tos = item       /* set new top of stack item */
-  g.!T = tos            /* set new top of stack index */
+  tos = g.0T + 1        /* get new top of stack index */
+  g.0E.tos = item       /* set new top of stack item */
+  g.0T = tos            /* set new top of stack index */
 return
 
 popStack: procedure expose g.
-  tos = g.!T            /* get top of stack index for */
-  item = g.!E.tos       /* get item at top of stack */
-  g.!T = max(tos-1,1)
+  tos = g.0T            /* get top of stack index for */
+  item = g.0E.tos       /* get item at top of stack */
+  g.0T = max(tos-1,1)
 return item
 
 peekStack: procedure expose g.
-  tos = g.!T            /* get top of stack index */
-  item = g.!E.tos       /* get item at top of stack */
+  tos = g.0T            /* get top of stack index */
+  item = g.0E.tos       /* get item at top of stack */
 return item
 
 isAlphanumeric: procedure expose k.
   parse arg c
-return pos(c,k.!ALPHANUM) > 0
+return pos(c,k.0ALPHANUM) > 0
 
 isWhole: procedure 
   parse arg sValue
@@ -1002,45 +1002,45 @@ return datatype(sValue,'WHOLE')
 
 addOption: procedure expose g. k.
   parse arg nOptionType,sShort,sLong,sDesc,sInitialValue
-  nOption = g.!OPTION_INDEX.0 + 1
-  g.!OPTION_INDEX.0 = nOption
+  nOption = g.0OPTION_INDEX.0 + 1
+  g.0OPTION_INDEX.0 = nOption
   if sLong <> ''
   then do
-    g.!OPTION_INDEX.sLong  = nOption /* Map long option name to index */
-    g.!OPTION_LONG.nOption = sLong
+    g.0OPTION_INDEX.sLong  = nOption /* Map long option name to index */
+    g.0OPTION_LONG.nOption = sLong
   end
   if sShort <> ''
   then do
-    g.!OPTION_INDEX.sShort = nOption /* Map short option name to index */
-    g.!OPTION_SHORT.nOption = sShort
+    g.0OPTION_INDEX.sShort = nOption /* Map short option name to index */
+    g.0OPTION_SHORT.nOption = sShort
   end
-  g.!OPTION.nOption = sInitialValue
+  g.0OPTION.nOption = sInitialValue
   if isWhole(nOptionType)
-  then g.!OPTION_TYPE.nOption = nOptionType
-  else g.!OPTION_TYPE.nOption = k.!OPTION_BOOLEAN /* Default option type */
-  g.!OPTION_DESC.nOption = sDesc
+  then g.0OPTION_TYPE.nOption = nOptionType
+  else g.0OPTION_TYPE.nOption = k.0OPTION_BOOLEAN /* Default option type */
+  g.0OPTION_DESC.nOption = sDesc
 return
 
 getOptionName: procedure expose g.
   parse arg nOption
   select
-    when g.!OPTION_LONG.nOption <> '' then sOption = g.!OPTION_LONG.nOption 
-    when g.!OPTION_SHORT.nOption <> '' then sOption = g.!OPTION_SHORT.nOption 
+    when g.0OPTION_LONG.nOption <> '' then sOption = g.0OPTION_LONG.nOption 
+    when g.0OPTION_SHORT.nOption <> '' then sOption = g.0OPTION_SHORT.nOption 
     otherwise sOption = ''
   end
 return sOption
 
 getOptionIndex: procedure expose g. k.
   parse arg sOption
-  if g.!OPTION_INDEX.sOption <> ''
-  then nOption = g.!OPTION_INDEX.sOption
+  if g.0OPTION_INDEX.sOption <> ''
+  then nOption = g.0OPTION_INDEX.sOption
   else nOption = 0
 return nOption
 
 getOptionType: procedure expose g. k.
   parse arg sOption
   nOption = getOptionIndex(sOption)
-return g.!OPTION_TYPE.nOption
+return g.0OPTION_TYPE.nOption
 
 setOption: procedure expose g. k.
   parse arg sOption,sValue
@@ -1050,14 +1050,14 @@ setOption: procedure expose g. k.
   else do
     nOptionType = getOptionType(sOption)
     select
-      when nOptionType = k.!OPTION_COUNT then do
-        g.!OPTION.nOption = g.!OPTION.nOption + 1
+      when nOptionType = k.0OPTION_COUNT then do
+        g.0OPTION.nOption = g.0OPTION.nOption + 1
       end
-      when nOptionType = k.!OPTION_BOOLEAN then do
-        g.!OPTION.nOption = \g.!OPTION.nOption
+      when nOptionType = k.0OPTION_BOOLEAN then do
+        g.0OPTION.nOption = \g.0OPTION.nOption
       end
       otherwise do
-        g.!OPTION.nOption = sValue
+        g.0OPTION.nOption = sValue
       end
     end
   end
@@ -1066,7 +1066,7 @@ return
 getOption: procedure expose g. k.
   parse arg sOption
   nOption = getOptionIndex(sOption)
-return g.!OPTION.nOption
+return g.0OPTION.nOption
 
 setOptions: procedure expose g. k.
   parse arg sCommandLine
@@ -1080,12 +1080,12 @@ setOptions: procedure expose g. k.
      --debug -v -v -t on --coord 3 4 --list one two three -f filename
      1       2  2  3     3           4                     4
   */
-  g.!REST = sCommandLine
-  g.!TOKEN = getNextToken()
-  do while g.!TOKEN <> ''
-    if isOptionLike(g.!TOKEN)
+  g.0REST = sCommandLine
+  g.0TOKEN = getNextToken()
+  do while g.0TOKEN <> ''
+    if isOptionLike(g.0TOKEN)
     then do
-      sOption = g.!TOKEN
+      sOption = g.0TOKEN
       if left(sOption,2) = '--' 
       then do /* long option */
         bGetNextToken = handleOption(sOption)
@@ -1098,12 +1098,12 @@ setOptions: procedure expose g. k.
       end
     end
     else do /* eat the rest of the command line */
-      g.!REST = strip(g.!TOKEN g.!REST)
-      g.!TOKEN = ''
+      g.0REST = strip(g.0TOKEN g.0REST)
+      g.0TOKEN = ''
       bGetNextToken = 0
     end
     if bGetNextToken
-    then g.!TOKEN = getNextToken()
+    then g.0TOKEN = getNextToken()
   end
 return
 
@@ -1117,29 +1117,29 @@ handleOption: procedure expose g. k.
   else do
     nOptionType = getOptionType(sOption)
     select
-      when nOptionType = k.!OPTION_COUNT then do /* --key [--key ...] */
+      when nOptionType = k.0OPTION_COUNT then do /* --key [--key ...] */
         call setOption sOption
       end
-      when nOptionType = k.!OPTION_LIST then do /* --key [val ...] */
+      when nOptionType = k.0OPTION_LIST then do /* --key [val ...] */
         sArgs = ''
-        g.!TOKEN = getNextToken()
-        do while \isOptionLike(g.!TOKEN) & g.!TOKEN <> ''
-          sArgs = sArgs g.!TOKEN
-          g.!TOKEN = getNextToken()
+        g.0TOKEN = getNextToken()
+        do while \isOptionLike(g.0TOKEN) & g.0TOKEN <> ''
+          sArgs = sArgs g.0TOKEN
+          g.0TOKEN = getNextToken()
           bGetNextToken = 0
         end
         call setOption sOption,strip(sArgs)
       end
-      when nOptionType = k.!OPTION_BOOLEAN then do /* --key */
+      when nOptionType = k.0OPTION_BOOLEAN then do /* --key */
         call setOption sOption
       end
       otherwise do           /* --key val1 ... valn */
         sArgs = ''
-        g.!TOKEN = getNextToken()
+        g.0TOKEN = getNextToken()
         nMaxArgs = nOptionType
-        do i = 1 to nMaxArgs while \isOptionLike(g.!TOKEN) & g.!TOKEN <> ''
-          sArgs = sArgs g.!TOKEN
-          g.!TOKEN = getNextToken()
+        do i = 1 to nMaxArgs while \isOptionLike(g.0TOKEN) & g.0TOKEN <> ''
+          sArgs = sArgs g.0TOKEN
+          g.0TOKEN = getNextToken()
           bGetNextToken = 0
         end
         call setOption sOption,strip(sArgs)
@@ -1153,24 +1153,24 @@ isOptionLike: procedure expose g.
 return left(sToken,1) = '-'
 
 getNextToken: procedure expose g.
-  parse var g.!REST sToken g.!REST
+  parse var g.0REST sToken g.0REST
 return sToken
 
 addBooleanOption: procedure expose g. k.
   parse arg sShort,sLong,sDesc,bInitialValue
-  call addOption k.!OPTION_BOOLEAN,sShort,sLong,sDesc,bInitialValue=1
+  call addOption k.0OPTION_BOOLEAN,sShort,sLong,sDesc,bInitialValue=1
 return
 
 addCountableOption: procedure expose g. k.
   parse arg sShort,sLong,sDesc,nInitialValue
   if \datatype(nInitialValue,'WHOLE') 
   then nInitialValue = 0
-  call addOption k.!OPTION_COUNT,sShort,sLong,sDesc,nInitialValue
+  call addOption k.0OPTION_COUNT,sShort,sLong,sDesc,nInitialValue
 return
 
 addListOption: procedure expose g. k.
   parse arg sShort,sLong,sDesc,sInitialValue
-  call addOption k.!OPTION_LIST,sShort,sLong,sDesc,sInitialValue
+  call addOption k.0OPTION_LIST,sShort,sLong,sDesc,sInitialValue
 return
 
 addBoundedListOption: procedure expose g. k.
@@ -1181,10 +1181,10 @@ addBoundedListOption: procedure expose g. k.
 return
 
 Prolog:
-  g.!OPTION_INDEX.0 = 0 /* Number of valid options */
-  k.!OPTION_COUNT   = -2
-  k.!OPTION_LIST    = -1
-  k.!OPTION_BOOLEAN = 0
+  g.0OPTION_INDEX.0 = 0 /* Number of valid options */
+  k.0OPTION_COUNT   = -2
+  k.0OPTION_LIST    = -1
+  k.0OPTION_BOOLEAN = 0
 
   call addListOption      '-h','--hex'     ,'Read hex input from command line'
   call addBooleanOption   '-b','--binary'  ,'Input file is binary (not text)'
@@ -1199,14 +1199,14 @@ Prolog:
   call setOptions sCommandLine
 
   call initStack
-  k.!UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  k.!LOWER = 'abcdefghijklmnopqrstuvwxyz'
-  k.!ALPHANUM = k.!UPPER || k.!LOWER || '0123456789'
+  k.0UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  k.0LOWER = 'abcdefghijklmnopqrstuvwxyz'
+  k.0ALPHANUM = k.0UPPER || k.0LOWER || '0123456789'
 
-  k.!TYPE.MAIN                  = '00000000'b
-  k.!TYPE.GLOBAL                = '00000100'b
-  k.!TYPE.LOCAL                 = '00001000'b
-  k.!TYPE.RESERVED              = '00001100'b
+  k.0TYPE.MAIN                  = '00000000'b
+  k.0TYPE.GLOBAL                = '00000100'b
+  k.0TYPE.LOCAL                 = '00001000'b
+  k.0TYPE.RESERVED              = '00001100'b
 
   call addMain '10000000'b,'INPUT'
   call addMain '10010000'b,'OUTPUT'
@@ -1240,13 +1240,13 @@ Prolog:
   call addLocal '10010000'b,'STRING_MAXIMUM'        
   call addLocal '10100000'b,'DELIMITER'             
 
-  g.!COLLECTION.00 = 'Physical'
-  g.!COLLECTION.01 = 'Application'
-  g.!COLLECTION.02 = 'Logical'
-  g.!COLLECTION.03 = 'Report'
-  g.!COLLECTION.04 = 'Named Array'
-  g.!COLLECTION.05 = 'Usage Switch'
-  g.!COLLECTION.06 = 'Usage Modifier'
+  g.0COLLECTION.00 = 'Physical'
+  g.0COLLECTION.01 = 'Application'
+  g.0COLLECTION.02 = 'Logical'
+  g.0COLLECTION.03 = 'Report'
+  g.0COLLECTION.04 = 'Named Array'
+  g.0COLLECTION.05 = 'Usage Switch'
+  g.0COLLECTION.06 = 'Usage Modifier'
 
   call addType 'BB','Buffered Bytes'
   call addType 'CA','Application Collection'
@@ -1269,54 +1269,54 @@ Prolog:
   call addType 'UM','Usage Modifier'
   call addType 'US','Usage Switch'
 
-  k.!UNIT.00 = 'System: None'
-  k.!UNIT.01 = 'System: SI Linear'
-  k.!UNIT.02 = 'System: SI Rotation'
-  k.!UNIT.03 = 'System: English Linear'
-  k.!UNIT.04 = 'System: English Rotation'
-  k.!UNIT.0F = 'System: Vendor-defined'
+  k.0UNIT.00 = 'System: None'
+  k.0UNIT.01 = 'System: SI Linear'
+  k.0UNIT.02 = 'System: SI Rotation'
+  k.0UNIT.03 = 'System: English Linear'
+  k.0UNIT.04 = 'System: English Rotation'
+  k.0UNIT.0F = 'System: Vendor-defined'
 
-  k.!UNIT.10 = 'Length: None'
-  k.!UNIT.11 = 'Length: Centimetre'
-  k.!UNIT.12 = 'Rotation: Radians'
-  k.!UNIT.13 = 'Length: Inch'
-  k.!UNIT.14 = 'Rotation: Degrees'
-  k.!UNIT.1F = 'Length: Vendor-defined'
+  k.0UNIT.10 = 'Length: None'
+  k.0UNIT.11 = 'Length: Centimetre'
+  k.0UNIT.12 = 'Rotation: Radians'
+  k.0UNIT.13 = 'Length: Inch'
+  k.0UNIT.14 = 'Rotation: Degrees'
+  k.0UNIT.1F = 'Length: Vendor-defined'
 
-  k.!UNIT.20 = 'Mass: None'
-  k.!UNIT.21 = 'Mass: Gram'
-  k.!UNIT.22 = 'Mass: Gram'
-  k.!UNIT.23 = 'Mass: Slug'
-  k.!UNIT.24 = 'Mass: Slug'
-  k.!UNIT.2F = 'Mass: Vendor-defined'
+  k.0UNIT.20 = 'Mass: None'
+  k.0UNIT.21 = 'Mass: Gram'
+  k.0UNIT.22 = 'Mass: Gram'
+  k.0UNIT.23 = 'Mass: Slug'
+  k.0UNIT.24 = 'Mass: Slug'
+  k.0UNIT.2F = 'Mass: Vendor-defined'
 
-  k.!UNIT.30 = 'Time: None'
-  k.!UNIT.31 = 'Time: Seconds'
-  k.!UNIT.32 = 'Time: Seconds'
-  k.!UNIT.33 = 'Time: Seconds'
-  k.!UNIT.34 = 'Time: Seconds'
-  k.!UNIT.3F = 'Time: Vendor-defined'
+  k.0UNIT.30 = 'Time: None'
+  k.0UNIT.31 = 'Time: Seconds'
+  k.0UNIT.32 = 'Time: Seconds'
+  k.0UNIT.33 = 'Time: Seconds'
+  k.0UNIT.34 = 'Time: Seconds'
+  k.0UNIT.3F = 'Time: Vendor-defined'
 
-  k.!UNIT.40 = 'Temperature: None'
-  k.!UNIT.41 = 'Temperature: Kelvin'
-  k.!UNIT.42 = 'Temperature: Kelvin'
-  k.!UNIT.43 = 'Temperature: Fahrenheit'
-  k.!UNIT.44 = 'Temperature: Fahrenheit'
-  k.!UNIT.4F = 'Temperature: Vendor-defined'
+  k.0UNIT.40 = 'Temperature: None'
+  k.0UNIT.41 = 'Temperature: Kelvin'
+  k.0UNIT.42 = 'Temperature: Kelvin'
+  k.0UNIT.43 = 'Temperature: Fahrenheit'
+  k.0UNIT.44 = 'Temperature: Fahrenheit'
+  k.0UNIT.4F = 'Temperature: Vendor-defined'
 
-  k.!UNIT.50 = 'Current: None'
-  k.!UNIT.51 = 'Current: Ampere'
-  k.!UNIT.52 = 'Current: Ampere'
-  k.!UNIT.53 = 'Current: Ampere'
-  k.!UNIT.54 = 'Current: Ampere'
-  k.!UNIT.5F = 'Current: Vendor-defined'
+  k.0UNIT.50 = 'Current: None'
+  k.0UNIT.51 = 'Current: Ampere'
+  k.0UNIT.52 = 'Current: Ampere'
+  k.0UNIT.53 = 'Current: Ampere'
+  k.0UNIT.54 = 'Current: Ampere'
+  k.0UNIT.5F = 'Current: Vendor-defined'
 
-  k.!UNIT.60 = 'Luminous Intensity: None'
-  k.!UNIT.61 = 'Luminous Intensity: Candela'
-  k.!UNIT.62 = 'Luminous Intensity: Candela'
-  k.!UNIT.63 = 'Luminous Intensity: Candela'
-  k.!UNIT.64 = 'Luminous Intensity: Candela'
-  k.!UNIT.6F = 'Luminous Intensity: Vendor-defined'
+  k.0UNIT.60 = 'Luminous Intensity: None'
+  k.0UNIT.61 = 'Luminous Intensity: Candela'
+  k.0UNIT.62 = 'Luminous Intensity: Candela'
+  k.0UNIT.63 = 'Luminous Intensity: Candela'
+  k.0UNIT.64 = 'Luminous Intensity: Candela'
+  k.0UNIT.6F = 'Luminous Intensity: Vendor-defined'
 
   do i = 1 until sourceline(i) = '/*DATA'
   end
@@ -1342,16 +1342,16 @@ parseUsageDefinition: procedure expose k. g.
     when s1 = 'PAGE' then do
       parse var sLine . xPage sPage
       xPage = right(xPage,4,'0')
-      k.!PAGE.xPage = sPage
-      g.!PAGE = xPage
+      k.0PAGE.xPage = sPage
+      g.0PAGE = xPage
     end
     when datatype(s1,'X') then do
       parse var sLine xUsage sUsage','sType','sLabel
       xUsage = right(xUsage,4,'0')
-      sDesc = k.!TYPE.sType
-      xPage = g.!PAGE
-      k.!USAGE.xPage.xUsage = sUsage '('sDesc')'
-      k.!LABEL.xPage.xUsage = getCamelCase(sUsage, sLabel)
+      sDesc = k.0TYPE.sType
+      xPage = g.0PAGE
+      k.0USAGE.xPage.xUsage = sUsage '('sDesc')'
+      k.0LABEL.xPage.xUsage = getCamelCase(sUsage, sLabel)
     end
     otherwise nop
   end
@@ -1363,7 +1363,7 @@ getCamelCase: procedure expose k.
   sCamelCase = ''
   do i = 1 to words(sUsage)
     sWord = translate(word(sUsage,i),'','/-')
-    sWord = translate(sWord,k.!LOWER,k.!UPPER)
+    sWord = translate(sWord,k.0LOWER,k.0UPPER)
     parse var sWord sFirst +1 sRest
     sWord = translate(sFirst)sRest
     sCamelCase = sCamelCase sWord
@@ -1372,25 +1372,25 @@ return space(sCamelCase,0)
 
 addType: procedure expose k.
   parse arg sType,sMeaning
-  k.!TYPE.sType = sMeaning
+  k.0TYPE.sType = sMeaning
 return
 
 addMain: procedure expose k.
   parse arg sCode,sName
-  k.!MAIN.sCode = sName
-  k.!MAIN.sName = sCode
+  k.0MAIN.sCode = sName
+  k.0MAIN.sName = sCode
 return
 
 addGlobal: procedure expose k.
   parse arg sCode,sName
-  k.!GLOBAL.sCode = sName
-  k.!GLOBAL.sName = sCode
+  k.0GLOBAL.sCode = sName
+  k.0GLOBAL.sName = sCode
 return
 
 addLocal: procedure expose k.
   parse arg sCode,sName
-  k.!LOCAL.sCode = sName
-  k.!LOCAL.sName = sCode
+  k.0LOCAL.sCode = sName
+  k.0LOCAL.sName = sCode
 return
 
 clearGlobals: procedure expose g.
@@ -1399,83 +1399,83 @@ return
 
 clearLocals: procedure expose g.
   call setLocals 0 0 0 0 0 0 0 0 0
-  g.!USAGES = ''             
+  g.0USAGES = ''             
 return
 
 getFormattedGlobals: procedure expose g.
-  sGlobals = 'PAGE:'g.!USAGE_PAGE,
-             'LMIN:'g.!LOGICAL_MINIMUM,
-             'LMAX:'g.!LOGICAL_MAXIMUM,
-             'PMIN:'g.!PHYSICAL_MINIMUM,
-             'PMAX:'g.!PHYSICAL_MAXIMUM,
-             'UEXP:'g.!UNIT_EXPONENT,
-             'UNIT:'g.!UNIT,
-             'RSIZ:'g.!REPORT_SIZE,
-             'RID:'g.!REPORT_ID,
-             'RCNT:'g.!REPORT_COUNT
+  sGlobals = 'PAGE:'g.0USAGE_PAGE,
+             'LMIN:'g.0LOGICAL_MINIMUM,
+             'LMAX:'g.0LOGICAL_MAXIMUM,
+             'PMIN:'g.0PHYSICAL_MINIMUM,
+             'PMAX:'g.0PHYSICAL_MAXIMUM,
+             'UEXP:'g.0UNIT_EXPONENT,
+             'UNIT:'g.0UNIT,
+             'RSIZ:'g.0REPORT_SIZE,
+             'RID:'g.0REPORT_ID,
+             'RCNT:'g.0REPORT_COUNT
 return sGlobals
 
 getGlobals: procedure expose g.
-  sGlobals = g.!USAGE_PAGE,
-             g.!LOGICAL_MINIMUM,
-             g.!LOGICAL_MAXIMUM,
-             g.!PHYSICAL_MINIMUM,
-             g.!PHYSICAL_MAXIMUM,
-             g.!UNIT_EXPONENT,
-             g.!UNIT,
-             g.!REPORT_SIZE,
-             g.!REPORT_ID,
-             g.!REPORT_COUNT
+  sGlobals = g.0USAGE_PAGE,
+             g.0LOGICAL_MINIMUM,
+             g.0LOGICAL_MAXIMUM,
+             g.0PHYSICAL_MINIMUM,
+             g.0PHYSICAL_MAXIMUM,
+             g.0UNIT_EXPONENT,
+             g.0UNIT,
+             g.0REPORT_SIZE,
+             g.0REPORT_ID,
+             g.0REPORT_COUNT
 return sGlobals
 
 setGlobals: procedure expose g.
-  parse arg  g.!USAGE_PAGE,
-             g.!LOGICAL_MINIMUM,
-             g.!LOGICAL_MAXIMUM,
-             g.!PHYSICAL_MINIMUM,
-             g.!PHYSICAL_MAXIMUM,
-             g.!UNIT_EXPONENT,
-             g.!UNIT,
-             g.!REPORT_SIZE,
-             g.!REPORT_ID,
-             g.!REPORT_COUNT,
+  parse arg  g.0USAGE_PAGE,
+             g.0LOGICAL_MINIMUM,
+             g.0LOGICAL_MAXIMUM,
+             g.0PHYSICAL_MINIMUM,
+             g.0PHYSICAL_MAXIMUM,
+             g.0UNIT_EXPONENT,
+             g.0UNIT,
+             g.0REPORT_SIZE,
+             g.0REPORT_ID,
+             g.0REPORT_COUNT,
              .
 return
 
 getFormattedLocals: procedure expose g.
-  sLocals  = 'USAG:'g.!USAGE,
-             'UMIN:'g.!USAGE_MINIMUM,
-             'UMAX:'g.!USAGE_MAXIMUM,         
-             'DIDX:'g.!DESIGNATOR_INDEX,      
-             'DMIN:'g.!DESIGNATOR_MINIMUM,    
-             'DMAX:'g.!DESIGNATOR_MAXIMUM,    
-             'SIDX:'g.!STRING_INDEX,          
-             'SMIN:'g.!STRING_MINIMUM,        
-             'SMAX:'g.!STRING_MAXIMUM     
+  sLocals  = 'USAG:'g.0USAGE,
+             'UMIN:'g.0USAGE_MINIMUM,
+             'UMAX:'g.0USAGE_MAXIMUM,         
+             'DIDX:'g.0DESIGNATOR_INDEX,      
+             'DMIN:'g.0DESIGNATOR_MINIMUM,    
+             'DMAX:'g.0DESIGNATOR_MAXIMUM,    
+             'SIDX:'g.0STRING_INDEX,          
+             'SMIN:'g.0STRING_MINIMUM,        
+             'SMAX:'g.0STRING_MAXIMUM     
 return sLocals
 
 getLocals: procedure expose g.
-  sLocals  = g.!USAGE,
-             g.!USAGE_MINIMUM,
-             g.!USAGE_MAXIMUM,         
-             g.!DESIGNATOR_INDEX,      
-             g.!DESIGNATOR_MINIMUM,    
-             g.!DESIGNATOR_MAXIMUM,    
-             g.!STRING_INDEX,          
-             g.!STRING_MINIMUM,        
-             g.!STRING_MAXIMUM     
+  sLocals  = g.0USAGE,
+             g.0USAGE_MINIMUM,
+             g.0USAGE_MAXIMUM,         
+             g.0DESIGNATOR_INDEX,      
+             g.0DESIGNATOR_MINIMUM,    
+             g.0DESIGNATOR_MAXIMUM,    
+             g.0STRING_INDEX,          
+             g.0STRING_MINIMUM,        
+             g.0STRING_MAXIMUM     
 return sLocals
 
 setLocals: procedure expose g.
-  parse arg  g.!USAGE,
-             g.!USAGE_MINIMUM,
-             g.!USAGE_MAXIMUM,         
-             g.!DESIGNATOR_INDEX,      
-             g.!DESIGNATOR_MINIMUM,    
-             g.!DESIGNATOR_MAXIMUM,    
-             g.!STRING_INDEX,          
-             g.!STRING_MINIMUM,        
-             g.!STRING_MAXIMUM,
+  parse arg  g.0USAGE,
+             g.0USAGE_MINIMUM,
+             g.0USAGE_MAXIMUM,         
+             g.0DESIGNATOR_INDEX,      
+             g.0DESIGNATOR_MINIMUM,    
+             g.0DESIGNATOR_MAXIMUM,    
+             g.0STRING_INDEX,          
+             g.0STRING_MINIMUM,        
+             g.0STRING_MAXIMUM,
              .
 return
 
