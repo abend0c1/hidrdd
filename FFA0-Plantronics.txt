@@ -1,0 +1,52 @@
+PAGE FFA0 Plantronics Headset Page,PH
+00 Undefined
+
+// Feature report 05 (Device --> Host)
+09 Feature 1,OOC,
+1E Feature 2,OOC,
+17 Feature 3,OOC,
+18 Feature 4,OOC,
+2A Feature 5,OOC,
+38 Feature 6,OOC,
+39 Feature 7,OOC,
+3A Feature 8,OOC,
+A1 Radio Link,OOC,
+B5 Microphone Mute,OOC,
+CF Feature 9,OOC,
+D8 Feature 10,OOC,
+F8 Feature 11,OOC,
+F9 Feature 12,OOC,
+
+// Input report 04 (Device --> Host)
+8A Button 1,OSC,
+9C Mute State Changed,OSC,
+A1 Radio Link,OOC,
+B1 Volume Up,OSC,
+B2 Volume Down,OSC,
+B3 Flash,OSC,
+B5 Microphone Mute,OSC,
+B6 Button 2,OSC,
+B7 Talk,OSC,
+F8 Button 3,OSC,
+F9 Button 4,OSC,
+
+// Input report 07 (Device --> Host) ... 1 x 16-bits (0..65535)
+8C Value,LC, 
+
+// Input report 50 (Device --> Host) ... 63 x 8-bits
+E6 Button 8,OOC,
+
+// Output report 51 (Device <-- Host) ... 63 x 8-bits
+// E6 as above
+
+// Output report 06 (Device <-- Host)
+8D Host Present,OOC,
+8F Host Exclusive Control,OOC,
+98 Output 1,OOC,
+9E VOIP Ring,OOC,
+A1 Host Requested Radio Link,OOC,
+C1 Output 2,OOC,
+D2 Output 3,OSC,
+D9 Output 4,OSC,
+DC Active Softphone Call,OOC,
+
