@@ -391,7 +391,8 @@ dumpHex: procedure expose g.
 return
 
 getStatement: procedure
-  parse arg sLabel,sComment
+  parse arg sType sName,sComment
+  sLabel = left(sType,8) sName
 return left(sLabel, max(length(sLabel),37)) '//' sComment
 
 emitInputFields: procedure expose inputField. k. o.
