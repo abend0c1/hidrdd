@@ -275,6 +275,8 @@ processGLOBAL:
     end
     when sTag = k.0GLOBAL.REPORT_SIZE then do
       sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue)
+      if nValue <= 0
+      then sMeaning = sMeaning '<-- Error: Report size should be > 0'
     end
     when sTag = k.0GLOBAL.REPORT_ID then do
       c = x2c(xValue)
@@ -284,6 +286,8 @@ processGLOBAL:
     end
     when sTag = k.0GLOBAL.REPORT_COUNT then do
       sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue)
+      if nValue <= 0
+      then sMeaning = sMeaning '<-- Error: Report count should be > 0'
     end
     when sTag = k.0GLOBAL.PUSH then do
       xValue = ''
