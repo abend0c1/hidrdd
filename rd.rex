@@ -168,7 +168,7 @@ trace off
       when sType = k.0TYPE.MAIN   then call processMAIN
       when sType = k.0TYPE.GLOBAL then call processGLOBAL
       when sType = k.0TYPE.LOCAL  then call processLOCAL
-      otherwise call say xItem,xParm,'LOCAL','Invalid Item'
+      otherwise call say xItem,xParm,'LOCAL',,,'<-- Invalid Item'
     end
   end
   call Epilog
@@ -241,7 +241,7 @@ processMAIN:
         say 
       end
     end
-    otherwise call say xItem,xParm,'MAIN','Invalid'
+    otherwise call say xItem,xParm,'MAIN',,,'<-- Invalid: Unknown MAIN tag'
   end
 return
 
@@ -252,48 +252,38 @@ processGLOBAL:
   select
     when sTag = k.0GLOBAL.USAGE_PAGE then do
       xPage = right(xValue,4,'0')
-      g.0USAGE_PAGE = xPage
       xValue = xPage 
-      sMeaning = getPageDesc(xPage)
+      sMeaning = getPageDesc(xPage) updateValue('USAGE_PAGE',xValue)
     end
     when sTag = k.0GLOBAL.LOGICAL_MINIMUM then do
-      g.0LOGICAL_MINIMUM = nValue
-      sMeaning = '('nValue')'
+      sMeaning = '('nValue')' updateValue('LOGICAL_MINIMUM',nValue)
     end
     when sTag = k.0GLOBAL.LOGICAL_MAXIMUM then do
-      g.0LOGICAL_MAXIMUM = nValue
-      sMeaning = '('nValue')'
+      sMeaning = '('nValue')' updateValue('LOGICAL_MAXIMUM',nValue)
     end
     when sTag = k.0GLOBAL.PHYSICAL_MINIMUM then do
-      g.0PHYSICAL_MINIMUM = nValue
-      sMeaning = '('nValue')'
+      sMeaning = '('nValue')' updateValue('PHYSICAL_MINIMUM',nValue)
     end
     when sTag = k.0GLOBAL.PHYSICAL_MAXIMUM then do
-      g.0PHYSICAL_MAXIMUM = nValue
-      sMeaning = '('nValue')'
+      sMeaning = '('nValue')' updateValue('PHYSICAL_MAXIMUM',nValue)
     end
     when sTag = k.0GLOBAL.UNIT_EXPONENT then do
-      g.0UNIT_EXPONENT = nValue
-      sMeaning = '('nValue')'
+      sMeaning = '('nValue')' updateValue('UNIT_EXPONENT',nValue)
     end
     when sTag = k.0GLOBAL.UNIT then do
-      g.0UNIT = nValue
-      sMeaning = '('k.0UNIT.xValue')'
+      sMeaning = '('k.0UNIT.xValue')' updateValue('UNIT',xValue)
     end
     when sTag = k.0GLOBAL.REPORT_SIZE then do
-      g.0REPORT_SIZE = nValue
-      sMeaning = '('nValue') Number of bits per field'
+      sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue)
     end
     when sTag = k.0GLOBAL.REPORT_ID then do
-      g.0REPORT_ID = xValue
       c = x2c(xValue)
       if isAlphanumeric(c)
-      then sMeaning = '('x2d(xValue)')' "'"c"'"
-      else sMeaning = '('x2d(xValue)')'
+      then sMeaning = '('x2d(xValue)')' "'"c"'" updateValue('REPORT_ID',xValue)
+      else sMeaning = '('x2d(xValue)')'         updateValue('REPORT_ID',xValue)
     end
     when sTag = k.0GLOBAL.REPORT_COUNT then do
-      g.0REPORT_COUNT = nValue
-      sMeaning = '('nValue') Number of fields'
+      sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue)
     end
     when sTag = k.0GLOBAL.PUSH then do
       xValue = ''
@@ -303,9 +293,9 @@ processGLOBAL:
       xValue = ''
       call setGlobals popStack()
     end
-    otherwise sMeaning = 'Invalid Item'
+    otherwise sMeaning = '<-- Invalid: Unknown GLOBAL tag'
   end
-  if xValue = ''
+  if xValue = '' /* then this tag has no value to assign a meaning to */
   then call say xItem,xParm,'GLOBAL',k.0GLOBAL.sTag
   else call say xItem,xParm,'GLOBAL',k.0GLOBAL.sTag,xValue,sMeaning
 return
@@ -326,57 +316,58 @@ processLOCAL:
         xValue = xPage || xUsage
       end
       g.0USAGES = g.0USAGES xValue
-      g.0USAGE = xUsage
-      sMeaning = getUsageDesc(xPage,xUsage)
+      sMeaning = getUsageDesc(xPage,xUsage) updateValue('USAGE',xUsage)
     end
     when sTag = k.0LOCAL.USAGE_MINIMUM then do
       xUsage = right(xValue,4,'0')
-      g.0USAGE_MINIMUM = xUsage
       xValue = xPage || xUsage
-      sMeaning = getUsageDesc(xPage,xUsage)
+      sMeaning = getUsageDesc(xPage,xUsage) updateValue('USAGE_MINIMUM',xUsage)
     end
     when sTag = k.0LOCAL.USAGE_MAXIMUM then do
       xUsage = right(xValue,4,'0')
-      g.0USAGE_MAXIMUM = xUsage
       xValue = xPage || xUsage
-      sMeaning = getUsageDesc(xPage,xUsage)
+      sMeaning = getUsageDesc(xPage,xUsage) updateValue('USAGE_MAXIMUM',xUsage)
     end
     when sTag = k.0LOCAL.DESIGNATOR_INDEX then do
-      g.0DESIGNATOR_INDEX = nValue
-      sMeaning = '('nValue')'
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue)
     end
     when sTag = k.0LOCAL.DESIGNATOR_MINIMUM then do
-      g.0DESIGNATOR_MINIMUM = nValue
-      sMeaning = '('nValue')'
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_MINIMUM',nValue)
     end
     when sTag = k.0LOCAL.DESIGNATOR_MAXIMUM then do
-      g.0DESIGNATOR_MAXIMUM = nValue
-      sMeaning = '('nValue')'
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_MAXIMUM',nValue)
     end
     when sTag = k.0LOCAL.STRING_INDEX then do
-      g.0STRING_INDEX = nValue
-      sMeaning = '('nValue')'
+      sMeaning = '('nValue')' updateValue('STRING_INDEX',nValue)
     end
     when sTag = k.0LOCAL.STRING_MINIMUM then do
-      g.0STRING_MINIMUM = nValue
-      sMeaning = '('nValue')'
+      sMeaning = '('nValue')' updateValue('STRING_MINIMUM',nValue)
     end
     when sTag = k.0LOCAL.STRING_MAXIMUM then do
-      g.0STRING_MAXIMUM = nValue
-      sMeaning = '('nValue')'
+      sMeaning = '('nValue')' updateValue('STRING_MAXIMUM',nValue)
     end
     when sTag = k.0LOCAL.DELIMITER then do
       select
         when nValue = 1 then sMeaning = '('nValue') Open set'
         when nValue = 0 then sMeaning = '('nValue') Close set'
-        otherwise sMeaning = '('nValue') Invalid'
+        otherwise sMeaning = '('nValue') <-- Invalid: Should be 0 or 1'
       end
     end
-    otherwise sMeaning = 'Invalid Item'
+    otherwise sMeaning = '<-- Invalid: Unknown LOCAL tag'
   end
   call say xItem,xParm,'LOCAL',k.0LOCAL.sTag,xValue,sMeaning
 return
 
+updateValue: procedure expose g.
+  parse arg sName,sValue
+  sKey = '0'sName
+  if g.sKey = sValue
+  then sWarning = '<-- Redundant:' sName 'is already' sValue
+  else do
+    g.sKey = sValue
+    sWarning = ''
+  end
+return sWarning
 
 getDimension: procedure 
   parse arg nCount,nBits
