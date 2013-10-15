@@ -682,7 +682,7 @@ emitField: procedure expose k. o.
           parse var xExtendedUsage xPage +4 xUsage +4
           sUsageDesc = getUsageDesc(xPage,xUsage)
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
-          then say '  'getStatement('', nLogical '=' xPage xUsage sUsageDesc)
+          then say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
         end
       end
@@ -692,7 +692,7 @@ emitField: procedure expose k. o.
           xUsage = d2x(nUsage,4)
           sUsageDesc = getUsageDesc(xPage,xUsage)
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
-          then say '  'getStatement('', nLogical '=' xPage xUsage sUsageDesc)
+          then say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
         end
       end
@@ -711,8 +711,11 @@ emitFieldDecl: procedure expose g. k.
     then say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
     else say '  'getStatement(g.0FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
   end
-  else do i = 1 to nReportCount
+  else do
     say '  'getStatement(g.0FIELD_TYPE sFieldName ':' g.0REPORT_SIZE';', xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+    do i = 1 to nReportCount-1
+      say '  'getStatement(g.0FIELD_TYPE sFieldName||i ':' g.0REPORT_SIZE';', xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+    end
   end
 return
 
