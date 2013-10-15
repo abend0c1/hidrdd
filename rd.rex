@@ -227,7 +227,6 @@ processMAIN:
       then do
         if o.0STRUCT 
         then do
-          say
           if featureField.0 > 0 then call emitFeatureFields
           if inputField.0 > 0   then call emitInputFields
           if outputField.0 > 0  then call emitOutputFields
@@ -236,9 +235,6 @@ processMAIN:
         inputField.0 = 0
         outputField.0 = 0
         g.0USAGES = ''
-      end
-      else do
-        say 
       end
     end
     otherwise call say xItem,xParm,'MAIN',,,'<-- Invalid: Unknown MAIN tag'
@@ -253,7 +249,7 @@ processGLOBAL:
     when sTag = k.0GLOBAL.USAGE_PAGE then do
       xPage = right(xValue,4,'0')
       xValue = xPage 
-      sMeaning = getPageDesc(xPage) updateValue('USAGE_PAGE',xValue)
+      sMeaning = getPageDesc(xPage) updateHexValue('USAGE_PAGE',xValue)
     end
     when sTag = k.0GLOBAL.LOGICAL_MINIMUM then do
       sMeaning = '('nValue')' updateValue('LOGICAL_MINIMUM',nValue)
@@ -271,7 +267,7 @@ processGLOBAL:
       sMeaning = '('nValue')' updateValue('UNIT_EXPONENT',nValue)
     end
     when sTag = k.0GLOBAL.UNIT then do
-      sMeaning = '('k.0UNIT.xValue')' updateValue('UNIT',xValue)
+      sMeaning = '('k.0UNIT.xValue')' updateHexValue('UNIT',xValue)
     end
     when sTag = k.0GLOBAL.REPORT_SIZE then do
       sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue)
@@ -281,8 +277,8 @@ processGLOBAL:
     when sTag = k.0GLOBAL.REPORT_ID then do
       c = x2c(xValue)
       if isAlphanumeric(c)
-      then sMeaning = '('x2d(xValue)')' "'"c"'" updateValue('REPORT_ID',xValue)
-      else sMeaning = '('x2d(xValue)')'         updateValue('REPORT_ID',xValue)
+      then sMeaning = '('x2d(xValue)')' "'"c"'" updateHexValue('REPORT_ID',xValue)
+      else sMeaning = '('x2d(xValue)')'         updateHexValue('REPORT_ID',xValue)
     end
     when sTag = k.0GLOBAL.REPORT_COUNT then do
       sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue)
@@ -320,17 +316,17 @@ processLOCAL:
         xValue = xPage || xUsage
       end
       g.0USAGES = g.0USAGES xValue
-      sMeaning = getUsageDesc(xPage,xUsage) updateValue('USAGE',xUsage)
+      sMeaning = getUsageDesc(xPage,xUsage) updateHexValue('USAGE',xUsage)
     end
     when sTag = k.0LOCAL.USAGE_MINIMUM then do
       xUsage = right(xValue,4,'0')
       xValue = xPage || xUsage
-      sMeaning = getUsageDesc(xPage,xUsage) updateValue('USAGE_MINIMUM',xUsage)
+      sMeaning = getUsageDesc(xPage,xUsage) updateHexValue('USAGE_MINIMUM',xUsage)
     end
     when sTag = k.0LOCAL.USAGE_MAXIMUM then do
       xUsage = right(xValue,4,'0')
       xValue = xPage || xUsage
-      sMeaning = getUsageDesc(xPage,xUsage) updateValue('USAGE_MAXIMUM',xUsage)
+      sMeaning = getUsageDesc(xPage,xUsage) updateHexValue('USAGE_MAXIMUM',xUsage)
     end
     when sTag = k.0LOCAL.DESIGNATOR_INDEX then do
       sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue)
@@ -363,12 +359,27 @@ processLOCAL:
 return
 
 updateValue: procedure expose g.
-  parse arg sName,sValue
+  parse arg sName,nValue
   sKey = '0'sName
-  if g.sKey = sValue
-  then sWarning = '<-- Redundant:' sName 'is already' sValue
+  if g.sKey = nValue
+  then do
+    sWarning = '<-- Redundant:' sName 'is already' nValue
+  end
   else do
-    g.sKey = sValue
+    g.sKey = nValue
+    sWarning = ''
+  end
+return sWarning
+
+updateHexValue: procedure expose g.
+  parse arg sName,xValue
+  sKey = '0'sName
+  if x2d(g.sKey) = x2d(xValue)
+  then do
+    sWarning = '<-- Redundant:' sName 'is already 0x'xValue
+  end
+  else do
+    g.sKey = xValue
     sWarning = ''
   end
 return sWarning
@@ -1338,6 +1349,7 @@ parseUsageDefinition: procedure expose k. g.
   parse arg sLine
   parse upper arg s1 s2 .
   select
+    when s1 = '' then nop /* null is valid hex so nip it in the bud here */
     when s1 = 'PAGE' then do
       parse var sLine . xPage sPage
       xPage = right(xPage,4,'0')
