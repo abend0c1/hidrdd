@@ -550,15 +550,15 @@ emitField: procedure expose k. o.
 
     You can assign a usage to each field by either:
 
-    1. Specifying a list of usages. 
+    1. Specifying an explicit list of usages. 
        If REPORT_COUNT is greater than the number of usages specified
        then the last specified usage is applied to the remaining fields. 
        E.g. REPORT_COUNT 5, USAGE A, USAGE B, USAGE C:
             field   usage 
-              1      A
-              2      B
-              3      C
-              4      C
+              1      A    <-- Explicit
+              2      B    <-- Explicit
+              3      C    <-- Explicit
+              4      C    <-- Repeated to fill the report count
               5      C
 
        or,
@@ -568,11 +568,24 @@ emitField: procedure expose k. o.
        then the last usage in the range is applied to the remaining fields. 
        E.g. REPORT_COUNT 5, USAGE_MINIMUM A, USAGE_MAXIMUM C:
             field   usage
-              1      A
+              1      A    <-- First in range
               2      B
-              3      C
-              4      C
+              3      C    <-- Last in range
+              4      C    <-- Repeated to fill the report count
               5      C
+
+       or,
+
+    3. Both of the above, in which case the explicit usages are assigned
+       first, and then the range of usages is assigned, and then  the
+       last assigned usage is applied to the remaining fields if any.
+       E.g. REPORT_COUNT 5, USAGE A, USAGE_MINIMUM B, USAGE_MAXIMUM D:
+            field   usage
+              1      A    <-- Explicit
+              2      B    <-- First in range
+              3      C 
+              4      D    <-- Last in range
+              5      D    <-- Repeated to fill the report count
 
     */
     if o.0VERBOSITY > 0
@@ -582,30 +595,32 @@ emitField: procedure expose k. o.
     end
     if isData(sFlags)
     then do /* data */
-      select
-        when nExplicitUsages > 0 then do /* Emit a list of usages */
-          do i = 1 to nExplicitUsages-1 while i <= g.0REPORT_COUNT
-            xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
-            call emitFieldDecl 1,xExtendedUsage
-          end
-          xExtendedUsage = word(xExplicitUsages,nExplicitUsages) /* ppppuuuu */
-          nRemainingReportCount = g.0REPORT_COUNT - nExplicitUsages + 1
-          call emitFieldDecl nRemainingReportCount,xExtendedUsage
+      nRemainingReportCount = g.0REPORT_COUNT
+      /* Emit any explicitly listed usages */
+      if nExplicitUsages > 0    
+      then do
+        do i = 1 to nExplicitUsages while nRemainingReportCount > 0
+          xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
+          call emitFieldDecl 1,xExtendedUsage
+          nRemainingReportCount = nRemainingReportCount - 1
         end
-        when nUsageMin < nUsageMax then do /* Emit a range of usages */
-          nUsage = nUsageMin
-          nUsages = nUsageMax - nUsageMin + 1
-          do i = 1 to nUsages-1 while i <= g.0REPORT_COUNT
-            xExtendedUsage = g.0USAGE_PAGE || d2x(nUsage,4)
-            call emitFieldDecl 1,xExtendedUsage
-            nUsage = nUsage + 1
-          end
-          xExtendedUsage = g.0USAGE_PAGE || d2x(nUsageMax,4)
-          nRemainingReportCount = g.0REPORT_COUNT - nUsages + 1
-          call emitFieldDecl nRemainingReportCount,xExtendedUsage
-        end
-        otherwise nop /* should not happen */
       end
+      /* Emit a range of usages if present */
+      if nUsageMin < nUsageMax  
+      then do
+        nUsage = nUsageMin
+        nUsages = nUsageMax - nUsageMin + 1
+        do i = 1 to nUsages while nRemainingReportCount > 0
+          xExtendedUsage = g.0USAGE_PAGE || d2x(nUsage,4)
+          call emitFieldDecl 1,xExtendedUsage
+          nRemainingReportCount = nRemainingReportCount - 1
+          nUsage = nUsage + 1
+        end
+        xExtendedUsage = g.0USAGE_PAGE || d2x(nUsageMax,4)
+        call emitFieldDecl nRemainingReportCount,xExtendedUsage
+      end
+      /* Repeat the last usage if necessary to complete the report count */
+      call emitFieldDecl nRemainingReportCount,xExtendedUsage
     end
     else do /* constant, so emit padding field(s) */
       call emitPaddingFieldDecl g.0REPORT_COUNT,nField
@@ -633,39 +648,52 @@ emitField: procedure expose k. o.
        LOGICAL_MAXIMUM indexes the last explicit usage. 
        Any index outside the LOGICAL_MINIMUM and LOGICAL_MAXIMUM range is
        considered to be a "no value" usage.
-       E.g. LOGICAL_MININUM 7, LOGICAL_MAXIMUM 9, USAGE C, USAGE B, USAGE A:
+       E.g. LOGICAL_MININUM 7, LOGICAL_MAXIMUM 9, 
+            USAGE C, USAGE B, USAGE A:
             index usage
-              7     C 
-              8     B 
-              9     A 
+              7     C     <-- Explicit 
+              8     B     <-- Explicit
+              9     A     <-- Explicit
             other  novalue
        If a report contained 7 and 9, it means that both usage 'C' and 'A' are
        currently asserted, but does not say which was asserted first.
 
        or,
 
-    2. Specifying a range of usages from LOGICAL_MINIMUM to LOGICAL_MAXIMUM 
-       that indexes a corresponding usage between USAGE_MINIMUM and 
-       USAGE_MAXIMUM respectively.
-       E.g. LOGICAL_MINIMUM 7, LOGICAL_MAXIMUM 9, USAGE_MININUM A, 
-            USAGE_MAXIMUM C:
+    2. Specifying a range of usages from USAGE_MINIMUM to USAGE_MAXIMUM 
+       indexed by a corresponding index between LOGICAL_MINIMUM and 
+       LOGICAL_MAXIMUM.
+       E.g. LOGICAL_MINIMUM 7, LOGICAL_MAXIMUM 9, 
+            USAGE_MININUM A, USAGE_MAXIMUM C:
             index usage
-              7     A
+              7     A     <-- First in range
               8     B
-              9     C
+              9     C     <-- Last in range
             other  novalue
        If a report contained 7 and 9, it means that both usage 'A' and 'C' are
        currently asserted, but does not say which was asserted first.
 
+       or,
+
+    3. Both of the above, in which case the explicit usages are assigned
+       first, and then the range of usages is assigned.
+       E.g. LOGICAL_MINIMUM 7, LOGICAL_MAXIMUM 9, 
+            USAGE_MININUM B, USAGE_MAXIMUM C
+            USAGE A:
+            index usage
+              7     A     <-- Explicit
+              8     B     <-- First in range
+              9     C     <-- Last in range
+            other  novalue
 
     Note: An array is not like a string of characters in a buffer, each array 
-    element can contain an INDEX to a usage, so if, in a keyboard example, 
-    three keys on a keyboard are pressed simultaneously, then three elements 
-    of the array will contain an index to the corresponding usage (a key in 
-    this case) - and not necessarily in the order they were pressed. The
-    maximum number of keys that can be asserted at once is limited by the
-    REPORT_COUNT. The maximum number of keys that can be represented is:
-    LOGICAL_MAXIMUM - LOGICAL_MINIMUM + 1.
+    element can contain an INDEX (from LOGICAL_MINIMUM to LOGICAL_MAXIMUM) 
+    to a usage, so if, in a keyboard example, three keys on a keyboard are 
+    pressed simultaneously, then three elements of the array will contain an 
+    index to the corresponding usage (a key in this case) - and not necessarily 
+    in the order they were pressed. The maximum number of keys that can be 
+    asserted at once is limited by the REPORT_COUNT. The maximum number of keys
+    that can be represented is:  LOGICAL_MAXIMUM - LOGICAL_MINIMUM + 1.
     */
     if o.0VERBOSITY > 0
     then do
@@ -685,9 +713,10 @@ emitField: procedure expose k. o.
     end
     nLogical = x2d(g.0LOGICAL_MINIMUM)
     if o.0VERBOSITY > 1
-    then do
+    then do /* Document the valid indexes in the array */
+      /* Emit any explicitly listed usages */
       if nExplicitUsages > 0 
-      then do /* list of usages */
+      then do
         do i = 1 to nExplicitUsages 
           xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
           parse var xExtendedUsage xPage +4 xUsage +4
@@ -697,7 +726,9 @@ emitField: procedure expose k. o.
           nLogical = nLogical + 1
         end
       end
-      else do /* range of usages */
+      /* Emit a range of usages if present */
+      if nUsageMin < nUsageMax 
+      then do
         do nUsage = nUsageMin to nUsageMax
           xPage = g.0USAGE_PAGE
           xUsage = d2x(nUsage,4)
@@ -1371,10 +1402,10 @@ return
 getCamelCase: procedure expose k.
   parse arg sUsage,sLabel
   if sLabel <> '' then return sLabel
+  sUsage = translate(sUsage,'','/-')
   sCamelCase = ''
   do i = 1 to words(sUsage)
-    sWord = translate(word(sUsage,i),'','/-')
-    sWord = translate(sWord,k.0LOWER,k.0UPPER)
+    sWord = translate(word(sUsage,i),k.0LOWER,k.0UPPER)
     parse var sWord sFirst +1 sRest
     sWord = translate(sFirst)sRest
     sCamelCase = sCamelCase sWord
