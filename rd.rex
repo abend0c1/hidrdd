@@ -775,35 +775,14 @@ emitPaddingFieldDecl: procedure expose g. k.
   end
 return
 
-
 getFieldType: procedure expose g. k.
   select
-    when g.0REPORT_SIZE < 8 then do
-      nBits = g.0REPORT_SIZE * g.0REPORT_COUNT
-      select
-        when nBits <=  8 then do
-          if g.0LOGICAL_MINIMUM < 0 
-          then sFieldType = k.0I8
-          else sFieldType = k.0U8
-        end
-        when nBits <= 16 then do
-          if g.0LOGICAL_MINIMUM < 0 
-          then sFieldType = k.0I16
-          else sFieldType = k.0U16
-        end
-        otherwise do
-          if g.0LOGICAL_MINIMUM < 0 
-          then sFieldType = k.0I32
-          else sFieldType = k.0U32
-        end
-      end
-    end
-    when g.0REPORT_SIZE = 8 then do
+    when g.0REPORT_SIZE <= 8 then do
       if g.0LOGICAL_MINIMUM < 0 
       then sFieldType = k.0I8
       else sFieldType = k.0U8
     end
-    when g.0REPORT_SIZE = 16 then do
+    when g.0REPORT_SIZE <= 16 then do
       if g.0LOGICAL_MINIMUM < 0 
       then sFieldType = k.0I16
       else sFieldType = k.0U16
