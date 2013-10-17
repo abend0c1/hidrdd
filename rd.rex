@@ -178,7 +178,7 @@ processMAIN:
   select
     when sTag = k.0MAIN.INPUT then do
       sDesc = getInputDesc()
-      call say xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc
+      call say xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc getSanity()
       n = inputField.0 + 1
       inputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sDesc
       inputField.0 = n
@@ -186,7 +186,7 @@ processMAIN:
     end
     when sTag = k.0MAIN.OUTPUT then do
       sDesc = getOutputDesc()
-      call say xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc
+      call say xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc getSanity()
       n = outputField.0 + 1
       outputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sDesc
       outputField.0 = n
@@ -194,7 +194,7 @@ processMAIN:
     end
     when sTag = k.0MAIN.FEATURE then do
       sDesc = getFeatureDesc()
-      call say xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc
+      call say xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc getSanity()
       n = featureField.0 + 1
       featureField.n = xValue getGlobals()','getLocals()','g.0USAGES','sDesc
       featureField.0 = n
@@ -357,6 +357,14 @@ processLOCAL:
   end
   call say xItem,xParm,'LOCAL',k.0LOCAL.sTag,xValue,sMeaning
 return
+
+getSanity: procedure expose g.
+  sError = ''
+  if g.0REPORT_SIZE = 0
+  then sError = sError '<-- Error: REPORT_SIZE = 0'
+  if g.0REPORT_COUNT = 0
+  then sError = sError '<-- Error: REPORT_COUNT = 0'
+return sError
 
 updateValue: procedure expose g.
   parse arg sName,nValue
