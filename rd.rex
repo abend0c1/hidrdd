@@ -595,32 +595,44 @@ emitField: procedure expose k. o.
     end
     if isData(sFlags)
     then do /* data */
-      nRemainingReportCount = g.0REPORT_COUNT
-      /* Emit any explicitly listed usages */
-      if nExplicitUsages > 0    
-      then do
-        do i = 1 to nExplicitUsages while nRemainingReportCount > 0
+      /* Calculate the total number of usages (explicit + range) */
+      bRangeOfUsagesIsSpecified = nUsageMin <> 0 | nUsageMax <> 0
+      if bRangeOfUsagesIsSpecified 
+      then nTotalUsages = nExplicitUsages + nUsageMax - nUsageMin + 1
+      else nTotalUsages = nExplicitUsages
+      if nTotalUsages = 1
+      then do /* a single usage of size REPORT_COUNT */
+        if nExplicitUsages > 0 /* if the single usage is explicitly listed */
+        then xExtendedUsage = word(xExplicitUsages,1) /* ppppuuuu */
+        else xExtendedUsage = g.0USAGE_PAGE || d2x(nUsageMin,4) 
+        call emitFieldDecl g.0REPORT_COUNT,xExtendedUsage
+      end
+      else do /* 2 or more usages */
+        nRemainingReportCount = g.0REPORT_COUNT
+        /* Emit any explicitly listed usages first */
+        if nExplicitUsages > 0 
+        then do i = 1 to nExplicitUsages while nRemainingReportCount > 0
           xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
           call emitFieldDecl 1,xExtendedUsage
           nRemainingReportCount = nRemainingReportCount - 1
         end
-      end
-      /* Emit a range of usages if present */
-      if nUsageMin < nUsageMax  
-      then do
-        nUsage = nUsageMin
-        nUsages = nUsageMax - nUsageMin + 1
-        do i = 1 to nUsages while nRemainingReportCount > 0
-          xExtendedUsage = g.0USAGE_PAGE || d2x(nUsage,4)
-          call emitFieldDecl 1,xExtendedUsage
-          nRemainingReportCount = nRemainingReportCount - 1
-          nUsage = nUsage + 1
+        /* Emit a range of usages if present */
+        if bRangeOfUsagesIsSpecified  
+        then do
+          nUsage = nUsageMin
+          nUsages = nUsageMax - nUsageMin + 1
+          do i = 1 to nUsages while nRemainingReportCount > 0
+            xExtendedUsage = g.0USAGE_PAGE || d2x(nUsage,4)
+            call emitFieldDecl 1,xExtendedUsage
+            nRemainingReportCount = nRemainingReportCount - 1
+            nUsage = nUsage + 1
+          end
+          xExtendedUsage = g.0USAGE_PAGE || d2x(nUsageMax,4)
+          call emitFieldDecl nRemainingReportCount,xExtendedUsage
         end
-        xExtendedUsage = g.0USAGE_PAGE || d2x(nUsageMax,4)
+        /* Repeat the last usage if necessary to complete the report count */
         call emitFieldDecl nRemainingReportCount,xExtendedUsage
       end
-      /* Repeat the last usage if necessary to complete the report count */
-      call emitFieldDecl nRemainingReportCount,xExtendedUsage
     end
     else do /* constant, so emit padding field(s) */
       call emitPaddingFieldDecl g.0REPORT_COUNT,nField
