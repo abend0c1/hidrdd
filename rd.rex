@@ -1,4 +1,5 @@
-/*REXX 1.0.0 USB Report Descriptor decoder
+/*REXX*/
+/* RDD! HID Report Descriptor Decoder v1.0.3
 
 Copyright (c) 2011-2013, Andrew J. Armstrong
 All rights reserved.
@@ -31,8 +32,7 @@ trace off
 
   if getOption('--version')
   then do
-    parse value sourceline(1) with . sVersion sDesc
-    say sDesc 'v'sVersion
+    say getVersion()
     return
   end
 
@@ -48,7 +48,7 @@ trace off
   if o.0HELP | sCommandLine = ''
   then do
     parse source . . sThis .
-    say 'HID Report Descriptor decoder v1.00'
+    say getVersion()
     say
     say 'This will extract anything that looks like a USB Human'
     say 'Interface Device (HID) report descriptor from the specified'
@@ -81,13 +81,68 @@ trace off
   if \(o.0DECODE | o.0STRUCT | o.0DUMP) /* If neither --decode nor --struct nor --dump was specified */
   then o.0STRUCT = 1          /* then assume --struct was specified */
 
+  featureField.0 = 0
+  inputField.0 = 0
+  outputField.0 = 0
+  sCollectionStack = ''
+  g.0INDENT = 0
 
+  xData = readDescriptor(sFile,sData)
+  if o.0DUMP
+  then do
+    call emitHeading 'Report descriptor data in hex (length' length(xData)/2 'bytes)'
+    say
+    call dumpHex xData
+    say
+  end
+  if o.0DECODE
+  then do
+    call emitHeading 'Decoded report descriptor'
+    say 
+  end
+
+  sData = x2c(xData)
+  nIndent = 0
+  nByte = 1
+  do while nByte <= length(sData)
+    sItem = getNext(1)
+    sTag  = bitand(sItem,'11110000'b)
+    sType = bitand(sItem,'00001100'b)
+    sSize = bitand(sItem,'00000011'b)
+    select
+      when sSize = '00000000'b then sParm = ''
+      when sSize = '00000001'b then sParm = getNext(1)
+      when sSize = '00000010'b then sParm = getNext(2)
+      otherwise                     sParm = getNext(4)
+    end
+    xItem = c2x(sItem)
+    xParm = c2x(sParm)
+    sValue = getLittleEndian(sParm) /* llhh --> hhll */
+    xValue = right(c2x(sValue),8,'0')
+    select
+      when sType = k.0TYPE.MAIN   then call processMAIN
+      when sType = k.0TYPE.GLOBAL then call processGLOBAL
+      when sType = k.0TYPE.LOCAL  then call processLOCAL
+      otherwise call say xItem,xParm,'LOCAL',,,'<-- Invalid Item'
+    end
+  end
+  if sCollectionStack <> ''
+  then say 'RDD003E Missing END_COLLECTION MAIN tag (0xC0)'
+  call Epilog
+return
+
+getVersion: procedure
+  parse value sourceline(2) with . sVersion
+return sVersion
+
+readDescriptor: procedure expose g. k. o.
+  parse arg sFile,sData
   if sData <> ''
   then do
     xData = space(sData,0)
     if \datatype(xData,'XADECIMAL')
     then do
-      say 'HRD0002E Expecting printable hexadecimal data. Found:' sData
+      say 'RDD002E Expecting printable hexadecimal data. Found:' sData
       xData = ''
     end
   end
@@ -122,57 +177,7 @@ trace off
     end
     rc = stream(sFile,'COMMAND','CLOSE')  
   end
-  k.0I8 = 'int8_t'
-  k.0U8 = 'uint8_t'
-  k.0I16 = 'int16_t'
-  k.0U16 = 'uint16_t'
-  k.0I32 = 'int32_t'
-  k.0U32 = 'uint32_t'
-  if o.0DUMP
-  then do
-    call emitHeading 'Report descriptor data in hex (length' length(xData)/2 'bytes)'
-    say
-    call dumpHex translate(xData)
-    say
-  end
-  if o.0DECODE
-  then do
-    call emitHeading 'Decoded report descriptor'
-    say 
-  end
-  featureField.0 = 0
-  inputField.0 = 0
-  outputField.0 = 0
-  sCollectionStack = ''
-  g.0INDENT = 0
-
-  sData = x2c(xData)
-  nIndent = 0
-  nByte = 1
-  do while nByte <= length(sData)
-    sItem = getNext(1)
-    sTag  = bitand(sItem,'11110000'b)
-    sType = bitand(sItem,'00001100'b)
-    sSize = bitand(sItem,'00000011'b)
-    select
-      when sSize = '00000000'b then sParm = ''
-      when sSize = '00000001'b then sParm = getNext(1)
-      when sSize = '00000010'b then sParm = getNext(2)
-      otherwise                     sParm = getNext(4)
-    end
-    xItem = c2x(sItem)
-    xParm = c2x(sParm)
-    sValue = getLittleEndian(sParm) /* llhh --> hhll */
-    xValue = right(c2x(sValue),8,'0')
-    select
-      when sType = k.0TYPE.MAIN   then call processMAIN
-      when sType = k.0TYPE.GLOBAL then call processGLOBAL
-      when sType = k.0TYPE.LOCAL  then call processLOCAL
-      otherwise call say xItem,xParm,'LOCAL',,,'<-- Invalid Item'
-    end
-  end
-  call Epilog
-return
+return xData
 
 processMAIN:
   select
@@ -397,7 +402,7 @@ getDimension: procedure
 return '('getQuantity(nCount,'field','fields') 'x' getQuantity(nBits, 'bit', 'bits')')'
 
 dumpHex: procedure expose g.
-  parse arg xData
+  parse upper arg xData
   do while xData <> ''
     parse var xData x1 +8 x2 +8 x3 +8 x4 +8 x5 +8 x6 +8 x7 +8 x8 +8 xData
     say '//' x1 x2 x3 x4 x5 x6 x7 x8
@@ -603,44 +608,24 @@ emitField: procedure expose k. o.
     end
     if isData(sFlags)
     then do /* data */
-      /* Calculate the total number of usages (explicit + range) */
-      bRangeOfUsagesIsSpecified = nUsageMin <> 0 | nUsageMax <> 0
-      if bRangeOfUsagesIsSpecified 
-      then nTotalUsages = nExplicitUsages + nUsageMax - nUsageMin + 1
-      else nTotalUsages = nExplicitUsages
-      if nTotalUsages = 1
-      then do /* a single usage of size REPORT_COUNT */
-        if nExplicitUsages > 0 /* if the single usage is explicitly listed */
-        then xExtendedUsage = word(xExplicitUsages,1) /* ppppuuuu */
-        else xExtendedUsage = g.0USAGE_PAGE || d2x(nUsageMin,4) 
-        call emitFieldDecl g.0REPORT_COUNT,xExtendedUsage
+      nRemainingReportCount = g.0REPORT_COUNT
+      /* Build the combined list of usages - explicit (if any) + range (if any) */
+      sUsages = xExplicitUsages
+      if nUsageMin <> 0 | nUsageMax <> 0 /* if a range is present */
+      then do nUsage = nUsageMin to nUsageMax
+        xExtendedUsage = g.0USAGE_PAGE || d2x(nUsage,4)
+        sUsages = sUsages xExtendedUsage
       end
-      else do /* 2 or more usages */
-        nRemainingReportCount = g.0REPORT_COUNT
-        /* Emit any explicitly listed usages first */
-        if nExplicitUsages > 0 
-        then do i = 1 to nExplicitUsages while nRemainingReportCount > 0
-          xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
-          call emitFieldDecl 1,xExtendedUsage
-          nRemainingReportCount = nRemainingReportCount - 1
-        end
-        /* Emit a range of usages if present */
-        if bRangeOfUsagesIsSpecified  
-        then do
-          nUsage = nUsageMin
-          nUsages = nUsageMax - nUsageMin + 1
-          do i = 1 to nUsages while nRemainingReportCount > 0
-            xExtendedUsage = g.0USAGE_PAGE || d2x(nUsage,4)
-            call emitFieldDecl 1,xExtendedUsage
-            nRemainingReportCount = nRemainingReportCount - 1
-            nUsage = nUsage + 1
-          end
-          xExtendedUsage = g.0USAGE_PAGE || d2x(nUsageMax,4)
-          call emitFieldDecl nRemainingReportCount,xExtendedUsage
-        end
-        /* Repeat the last usage if necessary to complete the report count */
-        call emitFieldDecl nRemainingReportCount,xExtendedUsage
+      /* Now emit all but the last usage */
+      nUsages = words(sUsages)
+      do i = 1 to nUsages-1 while nRemainingReportCount > 0
+        xExtendedUsage = word(sUsages,i)
+        call emitFieldDecl 1,xExtendedUsage
+        nRemainingReportCount = nRemainingReportCount - 1
       end
+      xExtendedUsage = word(sUsages,i)
+      /* Now replicate the last usage to fill the report count */
+      call emitFieldDecl nRemainingReportCount,xExtendedUsage
     end
     else do /* constant, so emit padding field(s) */
       call emitPaddingFieldDecl g.0REPORT_COUNT,nField
@@ -1086,7 +1071,7 @@ setOption: procedure expose g. k.
   parse arg sOption,sValue
   nOption = getOptionIndex(sOption)
   if nOption = 0
-  then say 'HRD0001W Invalid option ignored:' sToken
+  then say 'RDD001W Invalid option ignored:' sToken
   else do
     nOptionType = getOptionType(sOption)
     select
@@ -1152,7 +1137,7 @@ handleOption: procedure expose g. k.
   bGetNextToken = 1
   if getOptionIndex(sOption) = 0
   then do
-    say 'HRD0001W Invalid option ignored:' sOption
+    say 'RDD001W Invalid option ignored:' sOption
   end
   else do
     nOptionType = getOptionType(sOption)
@@ -1221,6 +1206,13 @@ addBoundedListOption: procedure expose g. k.
 return
 
 Prolog:
+  k.0I8 = 'int8_t'
+  k.0U8 = 'uint8_t'
+  k.0I16 = 'int16_t'
+  k.0U16 = 'uint16_t'
+  k.0I32 = 'int32_t'
+  k.0U32 = 'uint32_t'
+
   g.0OPTION_INDEX.0 = 0 /* Number of valid options */
   k.0OPTION_COUNT   = -2
   k.0OPTION_LIST    = -1
