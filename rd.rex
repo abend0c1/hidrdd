@@ -466,7 +466,7 @@ emitFeatureFields: procedure expose featureField. k. o.
     then do /* The report id has changed */
       if i > 1 
       then call emitEndStructure 'featureReport',xLastReportId
-      call emitBeginStructure 'featureReport',g.0REPORT_ID,'Device --> Host'
+      call emitBeginStructure 'featureReport',g.0REPORT_ID,'Device <-> Host'
       xLastReportId = g.0REPORT_ID
     end
     call emitField i,featureField.i
@@ -2062,6 +2062,14 @@ PAGE 09 Button Page,BTN
 06 Button 6,RTFM
 07 Button 7,RTFM
 08 Button 8,RTFM
+09 Button 9,RTFM
+0A Button 10,RTFM
+0B Button 11,RTFM
+0C Button 12,RTFM
+0D Button 13,RTFM
+0E Button 14,RTFM
+0F Button 15,RTFM
+10 Button 16,RTFM
 
 PAGE 0A Ordinal Page,ORD
 00 Reserved 

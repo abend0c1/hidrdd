@@ -72,8 +72,7 @@ The --include file contains the following comma-separated lines...
 * One line, identified by "PAGE", describing the the vendor-specific usage page:
     * pppp - The vendor-specific Usage Page in hex (FF00 to FFFF)
     * vendordesc - A short description of the vendor and product
-    * vendorprefix - A very short (few letters) abbreviation of the vendor and product which is used as a prefix on any generated C language variable 
-    names
+    * vendorprefix - A very short (few letters) abbreviation of the vendor and product which is used as a prefix on any generated C language variable names
 
 * One line for each usuage within the vendor-specific page:
     * uuuu - The Usage number in hex (0 to FFFF). Leading zeros are optional.
