@@ -270,7 +270,7 @@ processGLOBAL:
       sMeaning = '('nValue')' updateValue('PHYSICAL_MAXIMUM',nValue)
     end
     when sTag = k.0GLOBAL.UNIT_EXPONENT then do
-      sMeaning = '('nValue')' updateValue('UNIT_EXPONENT',nValue)
+      sMeaning = '('getUnitExponent(nValue)')' updateValue('UNIT_EXPONENT',nValue)
     end
     when sTag = k.0GLOBAL.UNIT then do
       sMeaning = '('k.0UNIT.xValue')' updateHexValue('UNIT',xValue)
@@ -982,6 +982,15 @@ isOn: procedure
   sBit  = right(sBit, 4,'00'x)
 return bitand(sByte,sBit) = sBit
 
+getUnitExponent: procedure expose k.
+  parse arg nValue
+  /*
+     In: 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15
+    Out: 0  1  2  3  4  5  6  7 -8 -7 -6 -5 -4 -3 -2 -1
+  */
+  if nValue > 7
+  then nValue = nValue - 16
+return nValue
 
 say: procedure expose g. o.
   if o.0DECODE
