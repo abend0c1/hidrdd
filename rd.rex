@@ -270,10 +270,10 @@ processGLOBAL:
       sMeaning = '('nValue')' updateValue('PHYSICAL_MAXIMUM',nValue)
     end
     when sTag = k.0GLOBAL.UNIT_EXPONENT then do
-      sMeaning = '('getUnitExponent(nValue)')' updateValue('UNIT_EXPONENT',nValue)
+      sMeaning = '(Unit Value x 10^'getUnitExponent(nValue)')' updateValue('UNIT_EXPONENT',nValue)
     end
     when sTag = k.0GLOBAL.UNIT then do
-      sMeaning = '('k.0UNIT.xValue')' updateHexValue('UNIT',xValue)
+      sMeaning = '('getUnit(xValue)')' updateHexValue('UNIT',xValue)
     end
     when sTag = k.0GLOBAL.REPORT_SIZE then do
       sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue)
@@ -992,6 +992,30 @@ getUnitExponent: procedure expose k.
   then nValue = nValue - 16
 return nValue
 
+getPower: procedure expose k.
+  parse arg xValue
+return getUnitExponent(x2d(xValue))
+
+getUnit: procedure expose k.
+  parse arg xValue
+  xValue = right(xValue,8,'0')
+  parse var xValue xReserved +1 xLight +1 xCurrent +1 xTemperature +1,
+                   xTime     +1 xMass  +1 xLength  +1 xSystem      +1
+  select                   
+    when xSystem = '0' then sUnit = 'None'
+    when xSystem = 'F' then sUnit = 'Vendor-defined'
+    otherwise do
+      sUnit = xSystem'='k.0UNIT.0.xSystem
+      if xLength      <> '0' then sUnit = sUnit','      xLength'='k.0UNIT.1.xSystem'^'getPower(xLength)
+      if xMass        <> '0' then sUnit = sUnit','        xMass'='k.0UNIT.2.xSystem'^'getPower(xMass)
+      if xTime        <> '0' then sUnit = sUnit','        xTime'='k.0UNIT.3.xSystem'^'getPower(xTime)
+      if xTemperature <> '0' then sUnit = sUnit',' xTemperature'='k.0UNIT.4.xSystem'^'getPower(xTemperature)
+      if xCurrent     <> '0' then sUnit = sUnit','     xCurrent'='k.0UNIT.5.xSystem'^'getPower(xCurrent)
+      if xLight       <> '0' then sUnit = sUnit','       xLight'='k.0UNIT.6.xSystem'^'getPower(xLight)
+    end
+  end
+return strip(sUnit) k.0UNIT.xValue /* Show the commonly known unit if any */
+
 say: procedure expose g. o.
   if o.0DECODE
   then do
@@ -1325,54 +1349,56 @@ Prolog:
   call addType 'UM','Usage Modifier'
   call addType 'US','Usage Switch'
 
-  k.0UNIT.00 = 'System: None'
-  k.0UNIT.01 = 'System: SI Linear'
-  k.0UNIT.02 = 'System: SI Rotation'
-  k.0UNIT.03 = 'System: English Linear'
-  k.0UNIT.04 = 'System: English Rotation'
-  k.0UNIT.0F = 'System: Vendor-defined'
+  /* Pre-defined common units */
+  k.0UNIT.00000011 = 'Distance in cm'
+  k.0UNIT.00000101 = 'Mass in grams'
+  k.0UNIT.00001001 = 'Time in seconds'
+  k.0UNIT.0000F011 = 'Velocity in cm/sec'
+  k.0UNIT.0000F111 = 'Momentum in gram cm/sec'
+  k.0UNIT.0000E011 = 'Acceleration in cm/sec^2'
+  k.0UNIT.0000E111 = 'Force in gram cm/sec^2 (Dynes)'
+  k.0UNIT.0000E121 = 'Energy in gram cm^2/sec^2'
+  k.0UNIT.0000E012 = 'Angular acceleration in radians/sec^2'
+  k.0UNIT.00F0D121 = 'Voltage in 0.1 μV units'
 
-  k.0UNIT.10 = 'Length: None'
-  k.0UNIT.11 = 'Length: Centimetre'
-  k.0UNIT.12 = 'Rotation: Radians'
-  k.0UNIT.13 = 'Length: Inch'
-  k.0UNIT.14 = 'Rotation: Degrees'
-  k.0UNIT.1F = 'Length: Vendor-defined'
+  /*      .--Nibble number
+          | .--Measurement system
+          | |
+          V V                  */
+  k.0UNIT.0.1 = 'System: SI Linear'
+  k.0UNIT.0.2 = 'System: SI Rotation'
+  k.0UNIT.0.3 = 'System: English Linear'
+  k.0UNIT.0.4 = 'System: English Rotation'
 
-  k.0UNIT.20 = 'Mass: None'
-  k.0UNIT.21 = 'Mass: Gram'
-  k.0UNIT.22 = 'Mass: Gram'
-  k.0UNIT.23 = 'Mass: Slug'
-  k.0UNIT.24 = 'Mass: Slug'
-  k.0UNIT.2F = 'Mass: Vendor-defined'
+  k.0UNIT.1.1 = 'Length: Centimetre'
+  k.0UNIT.1.2 = 'Rotation: Radians'
+  k.0UNIT.1.3 = 'Length: Inch'
+  k.0UNIT.1.4 = 'Rotation: Degrees'
 
-  k.0UNIT.30 = 'Time: None'
-  k.0UNIT.31 = 'Time: Seconds'
-  k.0UNIT.32 = 'Time: Seconds'
-  k.0UNIT.33 = 'Time: Seconds'
-  k.0UNIT.34 = 'Time: Seconds'
-  k.0UNIT.3F = 'Time: Vendor-defined'
+  k.0UNIT.2.1 = 'Mass: Gram'
+  k.0UNIT.2.2 = 'Mass: Gram'
+  k.0UNIT.2.3 = 'Mass: Slug'
+  k.0UNIT.2.4 = 'Mass: Slug'
 
-  k.0UNIT.40 = 'Temperature: None'
-  k.0UNIT.41 = 'Temperature: Kelvin'
-  k.0UNIT.42 = 'Temperature: Kelvin'
-  k.0UNIT.43 = 'Temperature: Fahrenheit'
-  k.0UNIT.44 = 'Temperature: Fahrenheit'
-  k.0UNIT.4F = 'Temperature: Vendor-defined'
+  k.0UNIT.3.1 = 'Time: Seconds'
+  k.0UNIT.3.2 = 'Time: Seconds'
+  k.0UNIT.3.3 = 'Time: Seconds'
+  k.0UNIT.3.4 = 'Time: Seconds'
+  
+  k.0UNIT.4.1 = 'Temperature: Kelvin'
+  k.0UNIT.4.2 = 'Temperature: Kelvin'
+  k.0UNIT.4.3 = 'Temperature: Fahrenheit'
+  k.0UNIT.4.4 = 'Temperature: Fahrenheit'
 
-  k.0UNIT.50 = 'Current: None'
-  k.0UNIT.51 = 'Current: Ampere'
-  k.0UNIT.52 = 'Current: Ampere'
-  k.0UNIT.53 = 'Current: Ampere'
-  k.0UNIT.54 = 'Current: Ampere'
-  k.0UNIT.5F = 'Current: Vendor-defined'
+  k.0UNIT.5.1 = 'Current: Ampere'
+  k.0UNIT.5.2 = 'Current: Ampere'
+  k.0UNIT.5.3 = 'Current: Ampere'
+  k.0UNIT.5.4 = 'Current: Ampere'
 
-  k.0UNIT.60 = 'Luminous Intensity: None'
-  k.0UNIT.61 = 'Luminous Intensity: Candela'
-  k.0UNIT.62 = 'Luminous Intensity: Candela'
-  k.0UNIT.63 = 'Luminous Intensity: Candela'
-  k.0UNIT.64 = 'Luminous Intensity: Candela'
-  k.0UNIT.6F = 'Luminous Intensity: Vendor-defined'
+  k.0UNIT.6.1 = 'Luminous Intensity: Candela'
+  k.0UNIT.6.2 = 'Luminous Intensity: Candela'
+  k.0UNIT.6.3 = 'Luminous Intensity: Candela'
+  k.0UNIT.6.4 = 'Luminous Intensity: Candela'
 
   do i = 1 until sourceline(i) = '/*DATA'
   end
