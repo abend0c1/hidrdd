@@ -27,6 +27,7 @@ trace off
   g. = '' /* global variables */
   k. = '' /* global constants */
   o. = '' /* global options   */
+  f. = '' /* global field names */
 
   call Prolog sCommandLine
 
@@ -414,7 +415,7 @@ getStatement: procedure
   sLabel = left(sType,8) sName
 return left(sLabel, max(length(sLabel),37)) '//' sComment
 
-emitInputFields: procedure expose inputField. k. o.
+emitInputFields: procedure expose inputField. k. o. f.
   /* Cycle through all the input fields accumulated and when the report_id
      changes, then emit a new structure */
   xLastReportId = ''
@@ -434,7 +435,7 @@ emitInputFields: procedure expose inputField. k. o.
   call emitEndStructure 'inputReport',xLastReportId
 return            
 
-emitOutputFields: procedure expose outputField. k. o.
+emitOutputFields: procedure expose outputField. k. o. f.
   /* Cycle through all the output fields accumulated and when the report_id
      changes, then emit a new structure */
   xLastReportId = ''
@@ -454,7 +455,7 @@ emitOutputFields: procedure expose outputField. k. o.
   call emitEndStructure 'outputReport',xLastReportId
 return            
 
-emitFeatureFields: procedure expose featureField. k. o.
+emitFeatureFields: procedure expose featureField. k. o. f.
   /* Cycle through all the feature fields accumulated and when the report_id
      changes, then emit a new structure */
   xLastReportId = ''
@@ -474,7 +475,7 @@ emitFeatureFields: procedure expose featureField. k. o.
   call emitEndStructure 'featureReport',xLastReportId
 return            
 
-emitBeginStructure: procedure expose g. k.
+emitBeginStructure: procedure expose g. k. f.
   parse arg sStructureName,xReportId,sDirection
   call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName xReportId '('sDirection')'
   if xReportId <> 0
@@ -492,6 +493,8 @@ emitBeginStructure: procedure expose g. k.
     say '{'
     say '  'getStatement(,'No REPORT ID byte')
   end
+  drop f.
+  f. = ''
 return
 
 emitEndStructure: procedure expose g.
@@ -515,7 +518,7 @@ emitHeading: procedure
   say 
 return  
 
-emitField: procedure expose k. o.
+emitField: procedure expose k. o. f.
   parse arg nField,xFlags sGlobals','sLocals','xExplicitUsages','sFlags
   call setGlobals sGlobals
   call setLocals sLocals
@@ -747,7 +750,7 @@ emitField: procedure expose k. o.
   end
 return
 
-emitFieldDecl: procedure expose g. k.
+emitFieldDecl: procedure expose g. k. f.
   parse arg nReportCount,xExtendedUsage,sPad
   if nReportCount < 1 then return
   sFieldName = getFieldName(xExtendedUsage)sPad
@@ -806,13 +809,23 @@ return 'Value =' g.0LOGICAL_MINIMUM 'to' g.0LOGICAL_MAXIMUM
 getPadding: procedure expose g.
 return 'Padding' getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE)
 
-getFieldName: procedure expose k.
+getFieldName: procedure expose k. f.
   parse arg xPage +4 xUsage +4
   sLabel = k.0LABEL.xPage.xUsage
   if sLabel = '' then parse value getUsageDesc(xPage,xUsage) with sLabel'('
   if sLabel = '' then sLabel = xUsage
   if sLabel = '' then sLabel = k.0COLLECTION_NAME
-return space(getShortPageName(xPage)'_'sLabel,0)
+  sFieldName = space(getShortPageName(xPage)'_'sLabel,0)
+  if f.0FIELDNAME.sFieldName = ''
+  then do
+    f.0FIELDNAME.sFieldName = 0
+  end
+  else do
+    nFieldName = f.0FIELDNAME.sFieldName + 1
+    f.0FIELDNAME.sFieldName = nFieldName
+    sFieldName = sFieldName'_'nFieldName
+  end
+return sFieldName
 
 getShortPageName: procedure expose k.
   parse arg xPage +4
@@ -1297,7 +1310,9 @@ Prolog:
   call addType 'RTFM','RTFM'
   call addType 'Sel','Selector'
   call addType 'SF','Static Flag'
+  call addType 'SFDF','Static Flag or Dynamic Flag'
   call addType 'SV','Static Value'
+  call addType 'SVDV','Static Value or Dynamic Value'
   call addType 'UM','Usage Modifier'
   call addType 'US','Usage Switch'
 
@@ -2522,9 +2537,11 @@ PAGE 0D Digitizers,DIG
 0B Armature,CA,
 0C Multiple Point Digitizer,CA,
 0D Free Space Wand,CA,
+0E Configuration,CA,
 20 Stylus,CL,
 21 Puck,CL,
 22 Finger,CL,
+23 Device Settings,CL,
 30 Tip Pressure,DV,
 31 Barrel Pressure,DV,
 32 In Range,MC,
@@ -2548,6 +2565,11 @@ PAGE 0D Digitizers,DIG
 44 Barrel Switch,MC,
 45 Eraser,MC,
 46 Tablet Pick,MC,
+51 Contact Identifier,DV,
+52 Device Mode,DV,
+53 Device Identifier,SVDV,
+54 Contact Count,DV,
+55 Contact Count Maximum,DV,
 
 PAGE 0E Reserved,RES
 
@@ -2570,10 +2592,10 @@ PAGE 14 Alphanumeric Display Page,AD
 24 Display Control Report,CL,
 25 Clear Display,DF,
 26 Display Enable,DF,
-27 Screen Saver Delay,SV,or,DV,
+27 Screen Saver Delay,SVDV,
 28 Screen Saver Enable,DF,
-29 Vertical Scroll,SF,or,DF,
-2A Horizontal Scroll,SF,or,DF,
+29 Vertical Scroll,SFDF,
+2A Horizontal Scroll,SFDF,
 2B Character Report,CL,
 2C Display Data,DV,
 2D Display Status,CL,
