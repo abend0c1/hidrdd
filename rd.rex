@@ -1352,7 +1352,7 @@ Prolog:
   call addType 'US','Usage Switch'
 
   /* Some pre-defined common SI units:
-          .---------- Reserved
+          .---------- Reserved (perhaps should be "amount of substance" in moles, to conform with SI)
           |.--------- Luminous intensity
           ||.-------- Current
           |||.------- Temperature
@@ -1364,20 +1364,60 @@ Prolog:
           VVVVVVVV
   Nibble: 76543210    Description of unit
           --------    ------------------------------------- */
-  k.0UNIT.00000011 = 'Distance in cm'
-  k.0UNIT.00000101 = 'Mass in grams'
-  k.0UNIT.00001001 = 'Time in seconds'
-  k.0UNIT.00010001 = 'Temperature in degrees Kelvin'
-  k.0UNIT.00100001 = 'Current in Amperes'      
-  k.0UNIT.01000001 = 'Luminous intensity in Candela'
-  k.0UNIT.0000F011 = 'Velocity in cm/sec'
-  k.0UNIT.0000F111 = 'Momentum in gram cm/sec'
-  k.0UNIT.0000E011 = 'Acceleration in cm/sec^2'
-  k.0UNIT.0000E111 = 'Force in gram cm/sec^2'
-  k.0UNIT.0000E121 = 'Energy in gram cm^2/sec^2'
-  k.0UNIT.0000E012 = 'Angular acceleration in radians/sec^2'
-  k.0UNIT.00F0D121 = 'Voltage in 0.1 μV units'
+  /* SI base units (with the exception of "amount of substance" in moles) */
+  k.0UNIT.00000011 = 'Distance in metres [1 cm units]'
+  k.0UNIT.00000101 = 'Mass in grams [1 g units]'
+  k.0UNIT.00001001 = 'Time in seconds [1 s units]'
+  k.0UNIT.00010001 = 'Temperature in kelvin [1 K units]'
+  k.0UNIT.00100001 = 'Current in amperes [1 A units]'
+  k.0UNIT.01000001 = 'Luminous intensity in candellas [1 cd units]'
 
+  /* Coherent derived units in the SI expressed in terms of base units */
+  k.0UNIT.00000021 = 'Area [1 cm² units]'
+  k.0UNIT.00000031 = 'Volume [1 cm³ units]'
+  k.0UNIT.0000F011 = 'Velocity [1 cm/s units]'
+  k.0UNIT.0000E011 = 'Acceleration [1 cm/s² units]'
+  k.0UNIT.000001D1 = 'Mass density [1 g/cm³ units]'
+  k.0UNIT.000001E1 = 'Surface density [1 g/cm² units]'
+  k.0UNIT.00000F31 = 'Specific volume [1 cm³/g units]'
+  k.0UNIT.001000E1 = 'Current density [1 A/cm² units]'
+  k.0UNIT.001000F1 = 'Magnetic field strength [1 A/cm units]'
+  k.0UNIT.010000E1 = 'Luminance [1 cd/cm² units]'
+
+  /* Coherent derived units in the SI with special names and symbols */
+  k.0UNIT.0000F001 = 'Frequency in hertz [1 Hz units]'
+  k.0UNIT.0000E111 = 'Force in newtons [10 μN units]'
+  k.0UNIT.0000E1F1 = 'Pressure in pascals [0.1 Pa units]'
+  k.0UNIT.0000E121 = 'Energy in joules [0.1 μJ units]'
+  k.0UNIT.0000D121 = 'Power in watts [0.1 μW units]'
+  k.0UNIT.00101001 = 'Electric charge in coulombs [1 C units]'
+  k.0UNIT.00F0D121 = 'Voltage [0.1 μV units]'
+  k.0UNIT.00204FE1 = 'Capacitance in farads [10 MF units]' /* sheesh! */
+  k.0UNIT.00E0D121 = 'Resistance in ohms [0.1 μΩ units]'
+  k.0UNIT.00203FE1 = 'Conductance in siemens [10 MS units]'
+  k.0UNIT.00F0E121 = 'Magnetic flux in webers [0.1 μWb units]'
+  k.0UNIT.00F0E101 = 'Magnetic flux density in teslas [1 mT units]'
+  k.0UNIT.00E0E121 = 'Inductance in henries [0.1 μH units]'
+  k.0UNIT.010000E1 = 'Luminance [1 cd/cm² units]'
+
+  /* Coherent derived units whose names and symbols include SI coherent derived units with special names and symbols */
+  k.0UNIT.0000F1F1 = 'Dynamic viscosity in pascal seconds [0.1 Pa s units]'
+  k.0UNIT.0000E121 = 'Moment of force in newton metres [0.1 μN m units]'
+  k.0UNIT.0000E121 = 'Surface tension in newton per metre [1 g/s² units]'
+  k.0UNIT.0000F002 = 'Angular velocity [1 rad/s units]'
+  k.0UNIT.0000E002 = 'Angular acceleration [1 rad/s² units]'
+  k.0UNIT.0000D101 = 'Heat flux density in watt per square metre [1 mW/m² units]'
+  k.0UNIT.000FE121 = 'Heat capacity in joule per kelvin [0.1 μJ/K units]'
+  k.0UNIT.000FE021 = 'Specific heat capacity in joule per kilogram kelvin [100 μJ/(kg K) units]'
+  k.0UNIT.0000E021 = 'Specific energy in joule per kilogram [100 μJ/kg units]'
+  k.0UNIT.000FD111 = 'Thermal conductivity in watts per metre per kelvin [10 μW/(m K) units]'
+  k.0UNIT.00F0D111 = 'Electric field strength in volt per metre [10 μV/m units]'
+  k.0UNIT.001010D1 = 'Electric charge density in coulomb per m³ [1 MC/m³ units]'
+  k.0UNIT.001010E1 = 'Surface charge density in coulomb per m² [10 kC/m² units]'
+  k.0UNIT.00204FD1 = 'Permittivity in farad per metre [1 GF/m units]' /* WTF! */
+  k.0UNIT.00E0E111 = 'Permeability in henry per metre [0.01 H/m units]'
+  k.0UNIT.0000F111 = 'Momentum [1 gram cm/s units]'
+  
   /*      .--Nibble number
           | .--Measurement system
           | |
