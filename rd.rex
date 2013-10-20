@@ -1163,6 +1163,7 @@ setOptions: procedure expose g. k.
   */
   g.0REST = sCommandLine
   g.0TOKEN = getNextToken()
+  bGetNextToken = 1
   do while g.0TOKEN <> ''
     if isOptionLike(g.0TOKEN)
     then do
