@@ -627,9 +627,17 @@ emitField: procedure expose k. o. f.
         call emitFieldDecl 1,xExtendedUsage
         nRemainingReportCount = nRemainingReportCount - 1
       end
-      xExtendedUsage = word(sUsages,i)
+      xExtendedUsage = word(sUsages,i) /* usage to be replicated if room */
+      if nUsages > g.0REPORT_COUNT
+      then do
+        do nIgnored = i to nUsages
+          xIgnoredUsage = word(sUsages,nIgnored)
+          parse var xIgnoredUsage xPage +4 xUsage +4
+          say '  'getStatement('',xPage xUsage getUsageDesc(xPage,xUsage) getRange() '<-- Ignored: REPORT_COUNT is too small')
+        end
+      end
       /* Now replicate the last usage to fill the report count */
-      call emitFieldDecl nRemainingReportCount,xExtendedUsage
+      else call emitFieldDecl nRemainingReportCount,xExtendedUsage
     end
     else do /* constant, so emit padding field(s) */
       call emitPaddingFieldDecl g.0REPORT_COUNT,nField
