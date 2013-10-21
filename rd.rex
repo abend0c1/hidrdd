@@ -208,10 +208,11 @@ processMAIN:
       call clearLocals
     end
     when sTag = k.0MAIN.COLLECTION then do
-      xPage = g.0USAGE_PAGE
-      xUsage = g.0USAGE
-      parse value getUsageDesc(xPage,xUsage) with sCollectionName '('
-      k.0COLLECTION_NAME = space(sCollectionName,0)
+      xPage = right(g.0USAGE_PAGE,4,'0')
+      xUsage = right(g.0USAGE,4,'0')
+      xExtendedUsage = xPage || xUsage
+      parse value getUsageDescAndType(xPage,xUsage) with sCollectionName '('
+      f.0COLLECTION_NAME = space(sCollectionName,0)
       sValue = getLittleEndian(sParm)
       nValue = c2d(sValue)
       xValue = c2x(sValue)
@@ -219,7 +220,17 @@ processMAIN:
       select 
         when nValue > 127 then sMeaning = 'Vendor Defined'
         when nValue > 6   then sMeaning = 'Reserved'
-        otherwise sMeaning = g.0COLLECTION.xParm
+        otherwise do
+          sMeaning = g.0COLLECTION.xParm '(Usage=0x'xExtendedUsage,
+                                           'Page='getPageDesc(xPage),
+                                           'Usage='getUsageDesc(xPage,xUsage),
+                                           'Type='getUsageType(xPage,xUsage)')'
+          if getCollectionType(xValue) <> getUsageType(xPage,xUsage)
+          then do
+            sMeaning = sMeaning '<-- Error: USAGE type should be' getCollectionType(xValue),
+                                '('getCollectionDesc(xValue)')'
+          end
+        end
       end
       call say xItem,xParm,'MAIN','COLLECTION',xValue,sMeaning
       g.0INDENT = g.0INDENT + 2
@@ -275,7 +286,8 @@ processGLOBAL:
       sMeaning = '('nValue')' updateValue('PHYSICAL_MAXIMUM',nValue)
     end
     when sTag = k.0GLOBAL.UNIT_EXPONENT then do
-      sMeaning = '(Unit Value x 10^'getUnitExponent(nValue)')' updateValue('UNIT_EXPONENT',nValue)
+      nUnitExponent = getUnitExponent(nValue) 
+      sMeaning = '(Unit Value x 10^'nUnitExponent')' updateValue('UNIT_EXPONENT',nUnitExponent)
     end
     when sTag = k.0GLOBAL.UNIT then do
       xValue = right(xValue,8,'0')
@@ -328,17 +340,17 @@ processLOCAL:
         xValue = xPage || xUsage
       end
       g.0USAGES = g.0USAGES xValue
-      sMeaning = getUsageDesc(xPage,xUsage) updateHexValue('USAGE',xUsage)
+      sMeaning = getUsageDescAndType(xPage,xUsage) updateHexValue('USAGE',xUsage)
     end
     when sTag = k.0LOCAL.USAGE_MINIMUM then do
       xUsage = right(xValue,4,'0')
       xValue = xPage || xUsage
-      sMeaning = getUsageDesc(xPage,xUsage) updateHexValue('USAGE_MINIMUM',xUsage)
+      sMeaning = getUsageDescAndType(xPage,xUsage) updateHexValue('USAGE_MINIMUM',xUsage)
     end
     when sTag = k.0LOCAL.USAGE_MAXIMUM then do
       xUsage = right(xValue,4,'0')
       xValue = xPage || xUsage
-      sMeaning = getUsageDesc(xPage,xUsage) updateHexValue('USAGE_MAXIMUM',xUsage)
+      sMeaning = getUsageDescAndType(xPage,xUsage) updateHexValue('USAGE_MAXIMUM',xUsage)
     end
     when sTag = k.0LOCAL.DESIGNATOR_INDEX then do
       sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue)
@@ -636,7 +648,7 @@ emitField: procedure expose k. o. f.
         do nIgnored = i to nUsages
           xIgnoredUsage = word(sUsages,nIgnored)
           parse var xIgnoredUsage xPage +4 xUsage +4
-          say '  'getStatement('',xPage xUsage getUsageDesc(xPage,xUsage) getRange() '<-- Ignored: REPORT_COUNT is too small')
+          say '  'getStatement('',xPage xUsage getUsageDescAndType(xPage,xUsage) getRange() '<-- Ignored: REPORT_COUNT is too small')
         end
       end
       /* Now replicate the last usage to fill the report count */
@@ -740,7 +752,7 @@ emitField: procedure expose k. o. f.
         do i = 1 to nExplicitUsages 
           xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
           parse var xExtendedUsage xPage +4 xUsage +4
-          sUsageDesc = getUsageDesc(xPage,xUsage)
+          sUsageDesc = getUsageDescAndType(xPage,xUsage)
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
           then say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
@@ -752,7 +764,7 @@ emitField: procedure expose k. o. f.
         do nUsage = nUsageMin to nUsageMax
           xPage = g.0USAGE_PAGE
           xUsage = d2x(nUsage,4)
-          sUsageDesc = getUsageDesc(xPage,xUsage)
+          sUsageDesc = getUsageDescAndType(xPage,xUsage)
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
           then say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
@@ -770,13 +782,13 @@ emitFieldDecl: procedure expose g. k. f.
   if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
-    then say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
-    else say '  'getStatement(g.0FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+    then say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
+    else say '  'getStatement(g.0FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
   end
   else do
-    say '  'getStatement(g.0FIELD_TYPE sFieldName ':' g.0REPORT_SIZE';', xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+    say '  'getStatement(g.0FIELD_TYPE sFieldName ':' g.0REPORT_SIZE';', xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
     do i = 1 to nReportCount-1
-      say '  'getStatement(g.0FIELD_TYPE sFieldName||i ':' g.0REPORT_SIZE';', xPage xUsage getUsageDesc(xPage,xUsage) getRange())
+      say '  'getStatement(g.0FIELD_TYPE sFieldName||i ':' g.0REPORT_SIZE';', xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
     end
   end
 return
@@ -824,9 +836,9 @@ return 'Padding' getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE)
 getFieldName: procedure expose k. f.
   parse arg xPage +4 xUsage +4
   sLabel = k.0LABEL.xPage.xUsage
-  if sLabel = '' then parse value getUsageDesc(xPage,xUsage) with sLabel'('
+  if sLabel = '' then parse value getUsageDescAndType(xPage,xUsage) with sLabel'('
   if sLabel = '' then sLabel = xUsage
-  if sLabel = '' then sLabel = k.0COLLECTION_NAME
+  if sLabel = '' then sLabel = f.0COLLECTION_NAME
   sFieldName = getUniqueName(space(getShortPageName(xPage)'_'sLabel,0))
 return sFieldName
 
@@ -867,10 +879,29 @@ getPageName: procedure expose k.
   end
 return sPageDesc
 
+getUsageDescAndType: procedure expose k.
+  parse arg xPage,xUsage
+  sUsageDescAndType = k.0USAGE.xPage.xUsage
+return sUsageDescAndType
+
 getUsageDesc: procedure expose k.
   parse arg xPage,xUsage
-  sUsageDesc = k.0USAGE.xPage.xUsage
+  /* sUsageDesc = k.0USAGE.xPage.xUsage  */
+  parse var k.0USAGE.xPage.xUsage sUsageDesc '('
 return sUsageDesc
+
+getUsageType: procedure expose k.
+  parse arg xPage,xUsage
+  parse var k.0USAGE.xPage.xUsage '('sUsageType'='
+return sUsageType
+
+getCollectionType: procedure expose g.
+  parse arg xType
+return g.0COLLECTION_TYPE.xType
+
+getCollectionDesc: procedure expose g.
+  parse arg xType
+return g.0COLLECTION.xType
 
 getInputDesc:
   if isVariable(sValue)
@@ -1407,13 +1438,13 @@ Prolog:
   call addLocal '10010000'b,'STRING_MAXIMUM'        
   call addLocal '10100000'b,'DELIMITER'             
 
-  g.0COLLECTION.00 = 'Physical'
-  g.0COLLECTION.01 = 'Application'
-  g.0COLLECTION.02 = 'Logical'
-  g.0COLLECTION.03 = 'Report'
-  g.0COLLECTION.04 = 'Named Array'
-  g.0COLLECTION.05 = 'Usage Switch'
-  g.0COLLECTION.06 = 'Usage Modifier'
+  call addCollection 00,'CP','Physical'
+  call addCollection 01,'CA','Application'
+  call addCollection 02,'CL','Logical'
+  call addCollection 03,'CR','Report'
+  call addCollection 04,'NA','Named Array'
+  call addCollection 05,'US','Usage Switch'
+  call addCollection 06,'UM','Usage Modifier'
 
   call addType 'BB','Buffered Bytes'
   call addType 'CA','Application Collection'
@@ -1427,9 +1458,9 @@ Prolog:
   call addType 'NAry','Named Array'
   call addType 'OOC','On/Off Control'
   call addType 'OSC','One Shot Control'
-  call addType 'OSC-NAry','One Shot Contro/Named Array'
+  call addType 'OSC-NAry','One Shot Control/Named Array'
   call addType 'RTC','Re-trigger Control'
-  call addType 'RTFM','RTFM'
+  call addType 'RTFM','Read The Manual'
   call addType 'Sel','Selector'
   call addType 'SF','Static Flag'
   call addType 'SFDF','Static Flag or Dynamic Flag'
@@ -1440,24 +1471,24 @@ Prolog:
 
   /* Some pre-defined common SI units:
           .---------- Reserved (perhaps should be "amount of substance" in moles, to conform with SI)
-          |.--------- Luminous intensity
-          ||.-------- Current
+          |.--------- Luminous intensity (in candelas)
+          ||.-------- Current (in amperes)
           |||.------- Temperature
-          ||||.------ Time
-          |||||.----- Mass
-          ||||||.---- Length
+          ||||.------ Time (in seconds)
+          |||||.----- Mass (in grams)
+          ||||||.---- Length (in centimetres)
           |||||||.--- System of measurement
           ||||||||
           VVVVVVVV
   Nibble: 76543210    Description of unit
           --------    ------------------------------------- */
-  /* SI base units (with the exception of "amount of substance" in moles) */
+  /* SI base units (excluding "amount of substance" in moles) */
   k.0UNIT.00000011 = 'Distance in metres [1 cm units]'
   k.0UNIT.00000101 = 'Mass in grams [1 g units]'
   k.0UNIT.00001001 = 'Time in seconds [1 s units]'
   k.0UNIT.00010001 = 'Temperature in kelvin [1 K units]'
   k.0UNIT.00100001 = 'Current in amperes [1 A units]'
-  k.0UNIT.01000001 = 'Luminous intensity in candellas [1 cd units]'
+  k.0UNIT.01000001 = 'Luminous intensity in candelas [1 cd units]'
 
   /* Coherent derived units in the SI expressed in terms of base units */
   k.0UNIT.00000021 = 'Area [1 cm² units]'
@@ -1577,7 +1608,9 @@ parseUsageDefinition: procedure expose k. g.
       xUsage = right(xUsage,4,'0')
       sDesc = k.0TYPE.sType
       xPage = g.0PAGE
-      k.0USAGE.xPage.xUsage = sUsage '('sDesc')'
+      if sDesc <> ''
+      then k.0USAGE.xPage.xUsage = sUsage '('sType'='sDesc')'
+      else k.0USAGE.xPage.xUsage = sUsage 
       k.0LABEL.xPage.xUsage = getCamelCase(sUsage, sLabel)
     end
     otherwise nop
@@ -1604,6 +1637,14 @@ getCamelCase: procedure expose k.
     sCamelCase = sCamelCase sWord
   end
 return space(sCamelCase,0)  
+
+addCollection: procedure expose g.
+  parse arg xType,sName,sDesc
+  xType = right(xType,2,'0')
+  g.0COLLECTION_TYPE.xType = sName
+  g.0COLLECTION_TYPE.sName = xType
+  g.0COLLECTION.xType = sDesc
+return
 
 addType: procedure expose k.
   parse arg sType,sMeaning
