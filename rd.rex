@@ -43,6 +43,7 @@ trace off
   o.0VERBOSITY = getOption('--verbose')
   o.0STRUCT    = getOption('--struct')
   o.0DECODE    = getOption('--decode')
+  o.0FORMAT    = toUpper(getOption('--format'))
   o.0DUMP      = getOption('--dump')
   o.0HELP      = getOption('--help')
 
@@ -61,11 +62,16 @@ trace off
     say 'Descriptor.'
     say 'As such, it is not perfect...merely useful.'
     say 
-    say 'Syntax: rexx' sThis '[-bvdsx] filein'
-    say '    or: rexx' sThis '-h[vdsx] hex'        
+    say 'Syntax: rexx' sThis '[-f format] [-dsvxb] filein'
+    say '    or: rexx' sThis '[-f format] [-dsvx] -h hex'
     say
-    say 'Where:'    
+    say 'Where:'
     say '      filein           = Input file path to be decoded'
+    say '      hex              = Printable hex to be decoded'
+    say '      format           = Output C header file format:'
+    say '                         AVR    - AVR style'
+    say '                         MIKROC - MikroElektronika mikroC Pro for PIC style'
+    say '                         MCHIP  - Microchip C18 style'
     do i = 1 to g.0OPTION_INDEX.0
       say '      'left(strip(g.0OPTION_SHORT.i g.0OPTION_LONG.i),16) '=' g.0OPTION_DESC.i
     end
@@ -95,11 +101,6 @@ trace off
     say
     call dumpHex xData
     say
-  end
-  if o.0DECODE
-  then do
-    call emitHeading 'Decoded report descriptor'
-    say 
   end
 
   sData = x2c(xData)
@@ -231,6 +232,10 @@ processMAIN:
       sCollectionStack = subword(sCollectionStack,2)
       if nCollectionType = 1
       then do
+        if o.0DECODE
+        then do
+          call emitCloseDecode
+        end
         if o.0STRUCT 
         then do
           if featureField.0 > 0 then call emitFeatureFields
@@ -494,18 +499,16 @@ emitBeginStructure: procedure expose g. k. f.
     say '{'
     say '  'getStatement(,'No REPORT ID byte')
   end
-  drop f.
-  f. = ''
 return
 
-emitEndStructure: procedure expose g.
+emitEndStructure: procedure expose g. f.
   parse arg sStructureName,xReportId
   if xReportId <> 0
   then do
-    say '}' sStructureName || xReportId';'
+    say '}' getUniqueName(sStructureName || xReportId)';'
   end
   else do
-    say '}' sStructureName';'
+    say '}' getUniqueName(sStructureName)';'
   end
   say
 return
@@ -824,7 +827,11 @@ getFieldName: procedure expose k. f.
   if sLabel = '' then parse value getUsageDesc(xPage,xUsage) with sLabel'('
   if sLabel = '' then sLabel = xUsage
   if sLabel = '' then sLabel = k.0COLLECTION_NAME
-  sFieldName = space(getShortPageName(xPage)'_'sLabel,0)
+  sFieldName = getUniqueName(space(getShortPageName(xPage)'_'sLabel,0))
+return sFieldName
+
+getUniqueName: procedure expose f.
+  parse arg sFieldName
   if f.0FIELDNAME.sFieldName = ''
   then do
     f.0FIELDNAME.sFieldName = 0
@@ -1011,9 +1018,9 @@ getUnit: procedure expose k.
   parse var xValue xReserved +1 xLight +1 xCurrent +1 xTemperature +1,
                    xTime     +1 xMass  +1 xLength  +1 xSystem      +1
   select                   
-    when xSystem = '0' then sUnit = 'None'
-    when xSystem = 'F' then sUnit = 'Vendor-defined'
-    when pos(xSystem,'56789ABCDE') > 0 then sUnit = '<-- Error: Measurement system type' xSystem 'is reserved'
+    when xSystem = '0' then sUnit = '0=None'
+    when xSystem = 'F' then sUnit = 'F=Vendor-defined'
+    when pos(xSystem,'56789ABCDE') > 0 then sUnit = 'E=Reserved <-- Error: Measurement system type' xSystem 'is reserved'
     otherwise do
       sUnit = xSystem'='k.0UNIT.0.xSystem
       if xLength      <> '0' then sUnit = sUnit','      xLength'='k.0UNIT.1.xSystem'^'getPower(xLength)
@@ -1026,13 +1033,77 @@ getUnit: procedure expose k.
   end
 return sUnit
 
-say: procedure expose g. o.
-  if o.0DECODE
+emitOpenDecode: procedure expose g. o. f.
+  if \o.0DECODE then return
+  call emitHeading 'Decoded report descriptor'
+  say 
+  select
+    when o.0FORMAT = 'AVR' then do
+      say 'PROGMEM char' getUniqueName('usbHidReportDescriptor')'[] ='
+      say '{'
+    end
+    when o.0FORMAT = 'MIKROC' then do
+      say 'const struct'
+      say '{'
+      say '  char report[USB_HID_RPT_SIZE];'
+      say '} hid_rpt_desc ='
+      say '{'
+      say '  {'
+    end
+    otherwise do
+      say '/*'
+    end
+  end
+  g.0DECODE_OPEN = 1
+return
+
+emitCloseDecode: procedure expose g. o.
+  if \o.0DECODE then return
+  if g.0DECODE_OPEN = 1
+  then do  
+    select
+      when o.0FORMAT = 'AVR' then do
+        say '};'
+      end
+      when o.0FORMAT = 'MIKROC' then do
+        say '  }'
+        say '};'
+      end
+      otherwise do
+        say '*/'
+      end
+    end
+  end
+  g.0DECODE_OPEN = 0
+return
+
+say: procedure expose g. o. f.
+  if \o.0DECODE then return
+  parse arg sCode,sParm,sType,sTag,xValue,sDescription
+  if g.0DECODE_OPEN <> 1
   then do
-    parse arg sCode,sParm,sType,sTag,xValue,sDescription
-    if xValue = '' 
-    then say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
-    else say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
+    call emitOpenDecode
+  end
+  select
+    when o.0FORMAT = 'AVR' | o.0FORMAT = 'MIKROC' then do
+      sChunk = ' '
+      xChunk = sCode || sParm
+      do i = 1 to length(xChunk) by 2
+        xByte = substr(xChunk,i,2)
+        sChunk = sChunk '0x'xByte','
+      end
+      if xValue = '' 
+      then say left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
+      else say left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
+    end
+    when o.0FORMAT = 'MICROCHIP' then do
+      say o.0FORMAT sCode sParm sType sTag xValue sDescription
+    end
+    otherwise do
+      if xValue = '' 
+      then say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
+      else say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
+    end
   end
 return
 
@@ -1123,12 +1194,18 @@ getOptionType: procedure expose g. k.
   nOption = getOptionIndex(sOption)
 return g.0OPTION_TYPE.nOption
 
+isOptionPresent: procedure expose g. k.
+  parse arg sOption
+  nOption = getOptionIndex(sOption)
+return g.0OPTION_PRESENT.nOption = 1
+
 setOption: procedure expose g. k.
   parse arg sOption,sValue
   nOption = getOptionIndex(sOption)
   if nOption = 0
   then say 'RDD001W Invalid option ignored:' sToken
   else do
+    g.0OPTION_PRESENT.nOption = 1
     nOptionType = getOptionType(sOption)
     select
       when nOptionType = k.0OPTION_COUNT then do
@@ -1159,7 +1236,7 @@ setOptions: procedure expose g. k.
 
      For example:
      --debug -v -v -t on --coord 3 4 --list one two three -f filename
-     1       2  2  3     3           4                     4
+       1      2  2  3      3           4                   4
   */
   g.0REST = sCommandLine
   g.0TOKEN = getNextToken()
@@ -1279,6 +1356,7 @@ Prolog:
   call addBooleanOption   '-b','--binary'  ,'Input file is binary (not text)'
   call addBooleanOption   '-s','--struct'  ,'Output C structure declarations (default)'
   call addBooleanOption   '-d','--decode'  ,'Output decoded report descriptor'
+  call addListOption      '-f','--format'  ,'Output C header in AVR, MIKROC or MICROCHIP format'
   call addBooleanOption   '-x','--dump'    ,'Output hex dump of report descriptor'
   call addListOption      '-i','--include' ,'Read vendor-specific definition file'
   call addCountableOption '-v','--verbose' ,'Output more detail'
@@ -1506,15 +1584,23 @@ parseUsageDefinition: procedure expose k. g.
   end
 return
 
+toUpper: procedure
+  parse arg sText
+return translate(sText)
+
+toLower: procedure expose k.
+  parse arg sText
+return translate(sText, k.0LOWER, k.0UPPER)
+  
 getCamelCase: procedure expose k.
   parse arg sUsage,sLabel
   if sLabel <> '' then return sLabel
   sUsage = translate(sUsage,'','/-')
   sCamelCase = ''
   do i = 1 to words(sUsage)
-    sWord = translate(word(sUsage,i),k.0LOWER,k.0UPPER)
+    sWord = toLower(word(sUsage,i))
     parse var sWord sFirst +1 sRest
-    sWord = translate(sFirst)sRest
+    sWord = toUpper(sFirst)sRest
     sCamelCase = sCamelCase sWord
   end
 return space(sCamelCase,0)  
