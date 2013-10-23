@@ -225,9 +225,9 @@ processMAIN:
                                            'Page='getPageDesc(xPage)',',
                                            'Usage='getUsageDesc(xPage,xUsage)',',
                                            'Type='getUsageType(xPage,xUsage)')'
-          if getCollectionType(xValue) <> getUsageType(xPage,xUsage)
+          if left(xExtendedUsage,2) <> 'FF' & getCollectionType(xValue) <> getUsageType(xPage,xUsage)
           then do
-            sMeaning = sMeaning '<-- Error: USAGE type should be' getCollectionType(xValue),
+            sMeaning = sMeaning '<-- Warning: USAGE type should be' getCollectionType(xValue),
                                 '('getCollectionDesc(xValue)')'
           end
         end
@@ -1073,11 +1073,19 @@ emitOpenDecode: procedure expose g. o. f.
       say 'PROGMEM char' getUniqueName('usbHidReportDescriptor')'[] ='
       say '{'
     end
+    when o.0FORMAT = 'MCHIP' then do
+      say 'ROM struct'
+      say '{'
+      say '  BYTE report[USB_HID_REPORT_DESCRIPTOR_SIZE];'
+      say '}' getUniqueName('hid_report_descriptor') '='
+      say '{'
+      say '  {'
+    end
     when o.0FORMAT = 'MIKROC' then do
       say 'const struct'
       say '{'
-      say '  char report[USB_HID_RPT_SIZE];'
-      say '} hid_rpt_desc ='
+      say '  char report[USB_HID_REPORT_DESCRIPTOR_SIZE];'
+      say '}' getUniqueName('hid_report_descriptor') '='
       say '{'
       say '  {'
     end
@@ -1094,6 +1102,10 @@ emitCloseDecode: procedure expose g. o.
   then do  
     select
       when o.0FORMAT = 'AVR' then do
+        say '};'
+      end
+      when o.0FORMAT = 'MCHIP' then do
+        say '  }'
         say '};'
       end
       when o.0FORMAT = 'MIKROC' then do
@@ -1116,7 +1128,7 @@ say: procedure expose g. o. f.
     call emitOpenDecode
   end
   select
-    when o.0FORMAT = 'AVR' | o.0FORMAT = 'MIKROC' then do
+    when o.0FORMAT = 'AVR' | o.0FORMAT = 'MIKROC' | o.0FORMAT = 'MCHIP' then do
       sChunk = ' '
       xChunk = sCode || sParm
       do i = 1 to length(xChunk) by 2
@@ -1138,7 +1150,7 @@ say: procedure expose g. o. f.
   end
 return
 
-getLittleEndian: procedure expose g.
+getLittleEndian: procedure
   parse arg sBytes
 return reverse(sBytes)  
 
