@@ -336,8 +336,7 @@ processLOCAL:
     when sTag = k.0LOCAL.USAGE then do
       if length(sValue) = 4
       then do /* Both page and usage are specified: ppppuuuu */
-        parse var xValue xPage +4 xUsage +4
-        sMeaning = getUsageDescAndType(xPage,xUsage)
+        sMeaning = getExtendedUsageDescAndType(xValue)
       end
       else do /* Only usage is specified: uuuu */
         xUsage = right(xValue,4,'0')
@@ -523,10 +522,13 @@ return
 
 emitBeginStructure: procedure expose g. k. f.
   parse arg sStructureName,xReportId,sDirection
+  if xReportId <> 0
+  then f.0TYPEDEFNAME = getUniqueName(sStructureName || xReportId'_'getCollectionName())'_t'
+  else f.0TYPEDEFNAME = getUniqueName(sStructureName'_'getCollectionName())'_t'
   call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName xReportId getCollectionName() '('sDirection')'
   if xReportId <> 0
   then do
-    say 'typedef struct' 
+    say 'typedef struct'
     say '{'
     c = x2c(xReportId)
     if isAlphanumeric(c)
@@ -543,13 +545,7 @@ return
 
 emitEndStructure: procedure expose g. f.
   parse arg sStructureName,xReportId
-  if xReportId <> 0
-  then do
-    say '}' getUniqueName(sStructureName || xReportId'_'getCollectionName())'_t;'
-  end
-  else do
-    say '}' getUniqueName(sStructureName'_'getCollectionName())'_t;'
-  end
+  say '}' f.0TYPEDEFNAME';'
   say
 return
 
@@ -771,9 +767,9 @@ emitField: procedure expose k. o. f.
     else do /* constant, so emit padding field */
       call emitPaddingFieldDecl g.0REPORT_COUNT,nField
     end
-    nLogical = x2d(g.0LOGICAL_MINIMUM)
     if o.0VERBOSITY > 1
     then do /* Document the valid indexes in the array */
+      nLogical = g.0LOGICAL_MINIMUM
       /* Emit any explicitly listed usages */
       if nExplicitUsages > 0 
       then do
@@ -805,7 +801,7 @@ return
 emitFieldDecl: procedure expose g. k. f.
   parse arg nReportCount,xExtendedUsage,sPad
   if nReportCount < 1 then return
-  sFieldName = getFieldName(xExtendedUsage)sPad
+  sFieldName = getFieldName(xExtendedUsage,f.0TYPEDEFNAME)sPad
   parse var xExtendedUsage xPage +4 xUsage +4
   if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
   then do
@@ -862,12 +858,12 @@ getPadding: procedure expose g.
 return 'Padding' getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE)
 
 getFieldName: procedure expose k. f.
-  parse arg xPage +4 xUsage +4
+  parse arg xPage +4 xUsage +4,sStructureName
   sLabel = k.0LABEL.xPage.xUsage
   if sLabel = '' then parse value getUsageDescAndType(xPage,xUsage) with sLabel'('
   if sLabel = '' then sLabel = xUsage
   if sLabel = '' then sLabel = getCollectionName()
-  sFieldName = getUniqueName(space(getShortPageName(xPage)'_'sLabel,0))
+  sFieldName = getUniqueName(space(getShortPageName(xPage)'_'sLabel,0),sStructureName)
 return sFieldName
 
 getCollectionName: procedure expose f.
@@ -877,17 +873,18 @@ getCollectionName: procedure expose f.
 return sCollectionName
 
 getUniqueName: procedure expose f.
-  parse arg sFieldName
-  if f.0FIELDNAME.sFieldName = ''
+  parse arg sName,sContext
+  sNameWithinContext = sContext'.'sName
+  if f.0NAME.sNameWithinContext = ''
   then do
-    f.0FIELDNAME.sFieldName = 0
+    f.0NAME.sNameWithinContext = 0
   end
   else do
-    nFieldName = f.0FIELDNAME.sFieldName + 1
-    f.0FIELDNAME.sFieldName = nFieldName
-    sFieldName = sFieldName'_'nFieldName
+    nInstance = f.0NAME.sNameWithinContext + 1
+    f.0NAME.sNameWithinContext = nInstance
+    sName = sName'_'nInstance
   end
-return sFieldName
+return sName
 
 getShortPageName: procedure expose k.
   parse arg xPage +4
@@ -914,9 +911,12 @@ getPageName: procedure expose k.
 return sPageDesc
 
 getUsageDescAndType: procedure expose k.
-  parse arg xPage,xUsage
-  sUsageDescAndType = k.0USAGE.xPage.xUsage
-return sUsageDescAndType
+  parse arg xPage,xUsage /* pppp, uuuu */
+return k.0USAGE.xPage.xUsage
+
+getExtendedUsageDescAndType: procedure expose k.
+  parse arg xPage +4 xUsage +4 /* ppppuuuu */
+return getPageDesc(xPage)':' k.0USAGE.xPage.xUsage
 
 getUsageDesc: procedure expose k.
   parse arg xPage,xUsage
@@ -1644,21 +1644,47 @@ parseUsageDefinition: procedure expose k. g.
     when s1 = '' then nop /* null is valid hex so nip it in the bud here */
     when s1 = 'PAGE' then do
       parse var sLine . xPage sPage
-      xPage = right(xPage,4,'0')
-      k.0PAGE.xPage = sPage
-      g.0PAGE = xPage
+      if pos('-',xPage) = 0
+      then do
+        xPage = right(xPage,4,'0')
+        k.0PAGE.xPage = sPage
+        g.0PAGE = xPage
+      end
+      else do
+        parse var xPage xPageFrom'-'xPageTo
+        do i = x2d(xPageFrom) to x2d(xPageTo)
+          xPage = d2x(i,4)
+          k.0PAGE.xPage = sPage
+          g.0PAGE = xPage
+        end
+      end
     end
-    when datatype(s1,'X') then do
+    when datatype(s1,'X') | pos('-',s1) > 0 then do
       parse var sLine xUsage sUsage','sType','sLabel
-      xUsage = right(xUsage,4,'0')
       sDesc = k.0TYPE.sType
       xPage = g.0PAGE
       if sDesc <> ''
-      then k.0USAGE.xPage.xUsage = sUsage '('sType'='sDesc')'
-      else k.0USAGE.xPage.xUsage = sUsage 
-      k.0LABEL.xPage.xUsage = getCamelCase(sUsage, sLabel)
+      then sUsageDesc = sUsage '('sType'='sDesc')'
+      else sUsageDesc = sUsage 
+      sUsageLabel = getCamelCase(sUsage, sLabel)
+      if pos('-',xUsage) = 0
+      then do
+        xUsage = right(xUsage,4,'0')
+        sDesc = k.0TYPE.sType
+        xPage = g.0PAGE
+        k.0USAGE.xPage.xUsage = sUsageDesc
+        k.0LABEL.xPage.xUsage = sUsageLabel
+      end
+      else do
+        parse var xUsage xUsageFrom'-'xUsageTo
+        do i = x2d(xUsageFrom) to x2d(xUsageTo)
+          xUsage = d2x(i,4)
+          k.0USAGE.xPage.xUsage = sUsageDesc
+          k.0LABEL.xPage.xUsage = sUsageLabel
+        end
+      end
     end
-    otherwise nop
+    otherwise say '['sLine']'
   end
 return
 
@@ -2825,7 +2851,7 @@ F5 Slow,OSC,
 298 AC Rename,Sel,
 299 AC Merge,Sel,
 29A AC Split,Sel,
-29B AC Disribute Horizontally,Sel,
+29B AC Distribute Horizontally,Sel,
 29C AC Distribute Vertically,Sel,
 
 PAGE 0D Digitizers,DIG
@@ -2882,18 +2908,122 @@ PAGE 0D Digitizers,DIG
 
 PAGE 0E Reserved,RES
 
-PAGE 0F Physical Interfacd Device Page,PID
+PAGE 0F Physical Interface Device Page,PID
+00 Undefined
+01 Physical Interface Device,CA,
+20 Normal,DV,
+21 Set Effect Report,CL,
+22 Effect Block Index,DV,
+23 Parameter Block Offset,DV,
+24 ROM Flag,DF,
+25 Effect Type,NAry,
+26 ET Constant Force,Sel,
+27 ET Ramp,Sel,
+28 ET Custom Force Data,Sel,
+30 ET Square,Sel,
+31 ET Sine,Sel,
+32 ET Triangle,Sel,
+33 ET Sawtooth Up,Sel,
+34 ET Sawtooth Down,Sel,
+40 ET Spring,Sel,
+41 ET Damper,Sel,
+42 ET Inertia,Sel,
+43 ET Friction,Sel,
+50 Duration,DV,
+51 Sample Period,DV,
+52 Gain,DV,
+53 Trigger Button,DV,
+54 Trigger Repeat Interval,DV,
+55 Axes Enable,US,
+56 Direction Enable,DF,
+57 Direction,CL,
+58 Type Specific Block Offset,CL,
+59 Block Type,NAry,
+5A Set Envelope Report,CL,
+5B Attack Level,DV,
+5C Attack Time,DV,
+5D Fade Level,DV,
+5E Fade Time,DV,
+5F Set Condition Report,CL,
+60 CP Offset,DV,
+61 Positive Coefficient,DV,
+62 Negative Coefficient,DV,
+63 Positive Saturation,DV,
+64 Negative Saturation,DV,
+65 Dead Band,DV,
+66 Download Force Sample,CL,
+67 Isoch Custom Force Enable,DF,
+68 Custom Force Data Report,CL,
+69 Custom Force Data,DV,
+6A Custom Force Vendor Defined Data,DV,
+6B Set Custom Force Report,CL,
+6C Custom Force Data Offset,DV,
+6D Sample Count,DV,
+6E Set Periodic Report,CL,
+6F Offset,DV,
+70 Magnitude,DV,
+71 Phase,DV,
+72 Period,DV,
+73 Set Constant Force Report,CL,
+74 Set Ramp Force Report,CL,
+75 Ramp Start,DV,
+76 Ramp End,DV,
+77 Effect Operation Report,CL,
+78 Effect Operation,NAry,
+79 Op Effect Start,Sel,
+7A Op Effect Start Solo,Sel,
+7B Op Effect Stop,Sel,
+7C Loop Count,DV,
+7D Device Gain Report,CL,
+7E Device Gain,DV,
+7F PID Pool Report,CL,
+80 RAM Pool Size,DV,
+81 ROM Pool Size,SV,
+82 ROM Effect Block Count,SV,
+83 Simultaneous Effects Max,SV,
+84 Pool Alignment,SV,
+85 PID Pool Move Report,CL,
+86 Move Source,DV,
+87 Move Destination,DV,
+88 Move Length,DV,
+89 PID Block Load Report,CL,
+8B Block Load Status,NAry,
+8C Block Load Success,Sel,
+8D Block Load Full,Sel,
+8E Block Load Error,Sel,
+8F Block Handle
+90 PID Block Free Report,CL,
+91 Type Specific Block Handle,CL,
+92 PID State Report,CL,
+94 Effect Playing,DF,
+95 PID Device Control Report,CL,
+96 PID Device Control,NAry,
+97 DC Enable Actuators,Sel,
+98 DC Disable Actuators,Sel,
+99 DC Stop All Effects,Sel,
+9A DC Device Reset,Sel,
+9B DC Device Pause,Sel,
+9C DC Device Continue,Sel,
+9F Device Paused,DF,
+A0 Actuators Enabled,DF,
+A4 Safety Switch,DF,
+A5 Actuator Override Switch,DF,
+A6 Actuator Power,DF,
+A7 Start Delay,DV,
+A8 Parameter Block Size,CL,
+A9 Device Managed Pool,SF,
+AA Shared Parameter Blocks,SF,
+AB Create New Effect Report,CL,
+AC RAM Pool Available,DV,
 
 PAGE 10 Unicode Page,UNI
 
-PAGE 11 Reserved,RES
-PAGE 12 Reserved,RES
-PAGE 13 Reserved,RES
+PAGE 11-13 Reserved,RES
 
 PAGE 14 Alphanumeric Display Page,AD
 00 Undefined 
 01 Alphanumeric Display,CA,
-02 Bitmapped Display,CA,
+02 Bit-mapped Display,CA,
 20 Display Attributes Report,CL,
 21 ASCII Character Set,SF,
 22 Data Read Back,SF,
@@ -2961,51 +3091,7 @@ PAGE 14 Alphanumeric Display Page,AD
 94 Soft Button Offset 2,SV,
 95 Soft Button Report,SV,
 
-PAGE 15 Reserved,RES
-PAGE 16 Reserved,RES
-PAGE 17 Reserved,RES
-PAGE 18 Reserved,RES
-PAGE 19 Reserved,RES
-PAGE 1A Reserved,RES
-PAGE 1B Reserved,RES
-PAGE 1C Reserved,RES
-PAGE 1D Reserved,RES
-PAGE 1E Reserved,RES
-PAGE 1F Reserved,RES
-
-PAGE 20 Reserved,RES
-PAGE 21 Reserved,RES
-PAGE 22 Reserved,RES
-PAGE 23 Reserved,RES
-PAGE 24 Reserved,RES
-PAGE 25 Reserved,RES
-PAGE 26 Reserved,RES
-PAGE 17 Reserved,RES
-PAGE 28 Reserved,RES
-PAGE 29 Reserved,RES
-PAGE 2A Reserved,RES
-PAGE 2B Reserved,RES
-PAGE 2C Reserved,RES
-PAGE 2D Reserved,RES
-PAGE 2E Reserved,RES
-PAGE 2F Reserved,RES
-
-PAGE 30 Reserved,RES
-PAGE 31 Reserved,RES
-PAGE 32 Reserved,RES
-PAGE 33 Reserved,RES
-PAGE 34 Reserved,RES
-PAGE 35 Reserved,RES
-PAGE 36 Reserved,RES
-PAGE 37 Reserved,RES
-PAGE 38 Reserved,RES
-PAGE 39 Reserved,RES
-PAGE 3A Reserved,RES
-PAGE 3B Reserved,RES
-PAGE 3C Reserved,RES
-PAGE 3D Reserved,RES
-PAGE 3E Reserved,RES
-PAGE 3F Reserved,RES
+PAGE 15-3F Reserved,RES
 
 PAGE 40 Medical Instrument Page,MED
 00 Undefined
@@ -3039,82 +3125,11 @@ PAGE 40 Medical Instrument Page,MED
 A0 Soft Control Select,OSC,
 A1 Soft Control Adjust,LC,
 
-PAGE 41 Reserved,RES
-PAGE 42 Reserved,RES
-PAGE 43 Reserved,RES
-PAGE 44 Reserved,RES
-PAGE 45 Reserved,RES
-PAGE 46 Reserved,RES
-PAGE 47 Reserved,RES
-PAGE 48 Reserved,RES
-PAGE 49 Reserved,RES
-PAGE 4A Reserved,RES
-PAGE 4B Reserved,RES
-PAGE 4C Reserved,RES
-PAGE 4D Reserved,RES
-PAGE 4E Reserved,RES
-PAGE 4F Reserved,RES
+PAGE 41-7F Reserved,RES
 
-PAGE 50 Reserved,RES
-PAGE 51 Reserved,RES
-PAGE 52 Reserved,RES
-PAGE 53 Reserved,RES
-PAGE 54 Reserved,RES
-PAGE 55 Reserved,RES
-PAGE 56 Reserved,RES
-PAGE 57 Reserved,RES
-PAGE 58 Reserved,RES
-PAGE 59 Reserved,RES
-PAGE 5A Reserved,RES
-PAGE 5B Reserved,RES
-PAGE 5C Reserved,RES
-PAGE 5D Reserved,RES
-PAGE 5E Reserved,RES
-PAGE 5F Reserved,RES
+PAGE 80-83 Monitor Page,MON
 
-PAGE 60 Reserved,RES
-PAGE 61 Reserved,RES
-PAGE 62 Reserved,RES
-PAGE 63 Reserved,RES
-PAGE 64 Reserved,RES
-PAGE 65 Reserved,RES
-PAGE 66 Reserved,RES
-PAGE 67 Reserved,RES
-PAGE 68 Reserved,RES
-PAGE 69 Reserved,RES
-PAGE 6A Reserved,RES
-PAGE 6B Reserved,RES
-PAGE 6C Reserved,RES
-PAGE 6D Reserved,RES
-PAGE 6E Reserved,RES
-PAGE 6F Reserved,RES
-
-PAGE 70 Reserved,RES
-PAGE 71 Reserved,RES
-PAGE 72 Reserved,RES
-PAGE 73 Reserved,RES
-PAGE 74 Reserved,RES
-PAGE 75 Reserved,RES
-PAGE 76 Reserved,RES
-PAGE 77 Reserved,RES
-PAGE 78 Reserved,RES
-PAGE 79 Reserved,RES
-PAGE 7A Reserved,RES
-PAGE 7B Reserved,RES
-PAGE 7C Reserved,RES
-PAGE 7D Reserved,RES
-PAGE 7E Reserved,RES
-PAGE 7F Reserved,RES
-
-PAGE 80 Monitor Page,MON
-PAGE 81 Monitor Page,MON
-PAGE 82 Monitor Page,MON
-PAGE 83 Monitor Page,MON
-
-PAGE 84 Power Page,POW
-PAGE 85 Power Page,POW
-PAGE 86 Power Page,POW
-PAGE 87 Power Page,POW
+PAGE 84-87 Power Page,POW
 
 PAGE 8C Bar Code Scanner Page,BAR
 
