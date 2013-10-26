@@ -119,7 +119,7 @@ trace off
     end
     xItem = c2x(sItem)
     xParm = c2x(sParm)
-    sValue = getLittleEndian(sParm) /* llhh --> hhll */
+    sValue = reverse(sParm) /* 0xllhh --> 0xhhll */
     xValue = right(c2x(sValue),8,'0')
     select
       when sType = k.0TYPE.MAIN   then call processMAIN
@@ -213,7 +213,7 @@ processMAIN:
       xExtendedUsage = xPage || xUsage
       parse value getUsageDescAndType(xPage,xUsage) with sCollectionName '('
       f.0COLLECTION_NAME = space(sCollectionName,0)
-      sValue = getLittleEndian(sParm)
+      sValue = reverse(sParm)
       nValue = c2d(sValue)
       xValue = c2x(sValue)
       sCollectionStack = nValue sCollectionStack /* push onto collection stack */
@@ -330,19 +330,27 @@ processLOCAL:
   xValue = c2x(sValue)
   nValue = x2d(xValue,2*length(sValue))
   xPage = g.0USAGE_PAGE
+  bIndent = 0
   sMeaning = ''
   select
     when sTag = k.0LOCAL.USAGE then do
       if length(sValue) = 4
       then do /* Both page and usage are specified: ppppuuuu */
-        parse var xValue xUsage +4 xPage +4
+        parse var xValue xPage +4 xUsage +4
+        sMeaning = getUsageDescAndType(xPage,xUsage)
       end
       else do /* Only usage is specified: uuuu */
         xUsage = right(xValue,4,'0')
         xValue = xPage || xUsage
+        sMeaning = getUsageDescAndType(xPage,xUsage) updateHexValue('USAGE',xUsage)
       end
-      g.0USAGES = g.0USAGES xValue
-      sMeaning = getUsageDescAndType(xPage,xUsage) updateHexValue('USAGE',xUsage)
+      if g.0IN_DELIMITER
+      then do /* only use the first usage in the delimited set */
+        if g.0FIRST_USAGE
+        then g.0USAGES = g.0USAGES xValue
+        g.0FIRST_USAGE = 0 
+      end
+      else g.0USAGES = g.0USAGES xValue
     end
     when sTag = k.0LOCAL.USAGE_MINIMUM then do
       xUsage = right(xValue,4,'0')
@@ -374,14 +382,32 @@ processLOCAL:
     end
     when sTag = k.0LOCAL.DELIMITER then do
       select
-        when nValue = 1 then sMeaning = '('nValue') Open set'
-        when nValue = 0 then sMeaning = '('nValue') Close set'
+        when nValue = 1 then do
+          if g.0IN_DELIMITER
+          then sMeaning = '('nValue') <-- Error: Already in a DELIMITER set'
+          g.0IN_DELIMITER = 1
+          g.0FIRST_USAGE = 1
+          bIndent = 1
+          sMeaning = '('nValue') Open set'
+        end
+        when nValue = 0 then do
+          if \g.0IN_DELIMITER
+          then sMeaning = '('nValue') <-- Error: Not already in a DELIMITER set'
+          g.0IN_DELIMITER = 0
+          g.0INDENT = g.0INDENT - 2
+          sMeaning = '('nValue') Close set'
+        end
         otherwise sMeaning = '('nValue') <-- Invalid: Should be 0 or 1'
       end
     end
     otherwise sMeaning = '<-- Invalid: Unknown LOCAL tag'
   end
   call say xItem,xParm,'LOCAL',k.0LOCAL.sTag,xValue,sMeaning
+  if bIndent
+  then do
+    g.0INDENT = g.0INDENT + 2
+    bIndent = 0
+  end
 return
 
 getSanity: procedure expose g.
@@ -1158,10 +1184,6 @@ say: procedure expose g. o. f.
   end
 return
 
-getLittleEndian: procedure
-  parse arg sBytes
-return reverse(sBytes)  
-
 getNext:
   parse arg nLength
   sChunk = substr(sData,nByte,nLength)
@@ -1391,6 +1413,9 @@ addBoundedListOption: procedure expose g. k.
 return
 
 Prolog:
+  g.0IN_DELIMITER = 0 /* Inside a delimited set of usages */
+  g.0FIRST_USAGE  = 0 /* First delimited usage has been processed */
+
   k.0I8 = 'int8_t'
   k.0U8 = 'uint8_t'
   k.0I16 = 'int16_t'

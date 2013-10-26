@@ -92,7 +92,7 @@ The --include file contains the following comma-separated lines...
         * OSC - One Shot Control
         * OSC-NAry - One Shot Contro/Named Array
         * RTC - Re-trigger Control
-        * RTFM - Read The Manual
+        * MULTI - Selector, On/Off, Momentary or One Shot
         * Sel - Selector
         * SF - Static Flag
         * SV - Static Value
