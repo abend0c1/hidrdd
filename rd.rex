@@ -517,10 +517,10 @@ emitEndStructure: procedure expose g. f.
   parse arg sStructureName,xReportId
   if xReportId <> 0
   then do
-    say '}' getUniqueName(sStructureName || xReportId)';'
+    say '}' getUniqueName(sStructureName || xReportId)'_t;'
   end
   else do
-    say '}' getUniqueName(sStructureName)';'
+    say '}' getUniqueName(sStructureName)'_t;'
   end
   say
 return
@@ -1482,13 +1482,13 @@ Prolog:
   call addType 'US','Usage Switch'
 
   /* Some pre-defined common SI units:
-          .---------- Reserved (perhaps should be "amount of substance" in moles, to conform with SI)
+          .---------- Reserved                 |-- Perhaps should be "amount of substance" in moles, to conform with SI
           |.--------- Luminous intensity (in candelas)
           ||.-------- Current (in amperes)
-          |||.------- Temperature
-          ||||.------ Time (in seconds)
-          |||||.----- Mass (in grams)
-          ||||||.---- Length (in centimetres)
+          |||.------- Temperature (in kelvin for SI)
+          ||||.------ Time (in seconds)        |
+          |||||.----- Mass (in grams)          |-- Odd, since CGS units were deprecated in favour of MKS units (+ the above + moles for SI units)
+          ||||||.---- Length (in centimetres)  |
           |||||||.--- System of measurement
           ||||||||
           VVVVVVVV
