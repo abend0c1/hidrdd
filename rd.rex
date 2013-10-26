@@ -238,8 +238,9 @@ processMAIN:
     end
     when sTag = k.0MAIN.END_COLLECTION then do
       g.0INDENT = g.0INDENT - 2
-      call say xItem,xParm,'MAIN','END_COLLECTION'
       parse var sCollectionStack nCollectionType sCollectionStack /* pop the collection stack */
+      xCollectionType = d2x(nCollectionType,2)
+      call say xItem,xParm,'MAIN','END_COLLECTION',,getCollectionDesc(xCollectionType)
       if nCollectionType = 1
       then do
         if o.0DECODE
@@ -303,6 +304,7 @@ processGLOBAL:
       then sMeaning = '('nValue')' "'"c"'" updateHexValue('REPORT_ID',xValue)
       else sMeaning = '('nValue')'         updateHexValue('REPORT_ID',xValue)
       if nValue = 0 then sMeaning = sMeaning '<-- Error: REPORT_ID 0 is reserved'
+      if nValue > 255 then sMeaning = sMeaning '<-- Error: REPORT_ID must be in the range 0x01 to 0xFF'
     end
     when sTag = k.0GLOBAL.REPORT_COUNT then do
       sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue)
@@ -312,16 +314,16 @@ processGLOBAL:
     when sTag = k.0GLOBAL.PUSH then do
       xValue = ''
       call pushStack getGlobals()
+      sMeaning = getFormattedGlobalsLong()
     end
     when sTag = k.0GLOBAL.POP then do
       xValue = ''
       call setGlobals popStack()
+      sMeaning = getFormattedGlobalsLong()
     end
     otherwise sMeaning = '<-- Invalid: Unknown GLOBAL tag'
   end
-  if xValue = '' /* then this tag has no value to assign a meaning to */
-  then call say xItem,xParm,'GLOBAL',k.0GLOBAL.sTag
-  else call say xItem,xParm,'GLOBAL',k.0GLOBAL.sTag,xValue,sMeaning
+  call say xItem,xParm,'GLOBAL',k.0GLOBAL.sTag,xValue,sMeaning
 return
 
 processLOCAL:
@@ -1695,6 +1697,14 @@ clearLocals: procedure expose g.
   call setLocals 0 0 0 0 0 0 0 0 0
   g.0USAGES = ''             
 return
+
+getFormattedGlobalsLong: procedure expose g.
+  sGlobals = 'USAGE_PAGE=0x'g.0USAGE_PAGE,
+             'LOGICAL(MIN='g.0LOGICAL_MINIMUM',MAX='g.0LOGICAL_MAXIMUM')',
+             'PHYSICAL(MIN='g.0PHYSICAL_MINIMUM',MAX='g.0PHYSICAL_MAXIMUM')',
+             'UNIT(0x'g.0UNIT',EXP='g.0UNIT_EXPONENT')',
+             'REPORT(ID=0x'g.0REPORT_ID',SIZE='g.0REPORT_SIZE',COUNT='g.0REPORT_COUNT')'
+return sGlobals
 
 getFormattedGlobals: procedure expose g.
   sGlobals = 'PAGE:'g.0USAGE_PAGE,
