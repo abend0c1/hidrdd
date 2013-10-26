@@ -2326,6 +2326,30 @@ PAGE 09 Button Page,BTN
 0E Button 14,RTFM
 0F Button 15,RTFM
 10 Button 16,RTFM
+11 Button 17,RTFM
+12 Button 18,RTFM
+13 Button 19,RTFM
+14 Button 20,RTFM
+15 Button 21,RTFM
+16 Button 22,RTFM
+17 Button 23,RTFM
+18 Button 24,RTFM
+19 Button 25,RTFM
+1A Button 26,RTFM
+1B Button 27,RTFM
+1C Button 28,RTFM
+1D Button 29,RTFM
+1E Button 30,RTFM
+1F Button 31,RTFM
+20 Button 32,RTFM
+21 Button 33,RTFM
+22 Button 34,RTFM
+23 Button 35,RTFM
+24 Button 36,RTFM
+25 Button 37,RTFM
+26 Button 38,RTFM
+27 Button 39,RTFM
+28 Button 40,RTFM
 
 PAGE 0A Ordinal Page,ORD
 00 Reserved 
