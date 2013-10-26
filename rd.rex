@@ -1480,7 +1480,7 @@ Prolog:
   call addType 'OSC','One Shot Control'
   call addType 'OSC-NAry','One Shot Control/Named Array'
   call addType 'RTC','Re-trigger Control'
-  call addType 'RTFM','Read The Manual'
+  call addType 'MULTI','Selector, On/Off, Momentary, or One Shot'
   call addType 'Sel','Selector'
   call addType 'SF','Static Flag'
   call addType 'SFDF','Static Flag or Dynamic Flag'
@@ -2326,46 +2326,46 @@ PAGE 08 LED Indicator Page,LED
 
 PAGE 09 Button Page,BTN
 00 No button pressed,
-01 Button 1 Primary/trigger,RTFM,Button1
-02 Button 2 Secondary,RTFM,Button2
-03 Button 3 Tertiary,RTFM,Button3
-04 Button 4,RTFM
-05 Button 5,RTFM
-06 Button 6,RTFM
-07 Button 7,RTFM
-08 Button 8,RTFM
-09 Button 9,RTFM
-0A Button 10,RTFM
-0B Button 11,RTFM
-0C Button 12,RTFM
-0D Button 13,RTFM
-0E Button 14,RTFM
-0F Button 15,RTFM
-10 Button 16,RTFM
-11 Button 17,RTFM
-12 Button 18,RTFM
-13 Button 19,RTFM
-14 Button 20,RTFM
-15 Button 21,RTFM
-16 Button 22,RTFM
-17 Button 23,RTFM
-18 Button 24,RTFM
-19 Button 25,RTFM
-1A Button 26,RTFM
-1B Button 27,RTFM
-1C Button 28,RTFM
-1D Button 29,RTFM
-1E Button 30,RTFM
-1F Button 31,RTFM
-20 Button 32,RTFM
-21 Button 33,RTFM
-22 Button 34,RTFM
-23 Button 35,RTFM
-24 Button 36,RTFM
-25 Button 37,RTFM
-26 Button 38,RTFM
-27 Button 39,RTFM
-28 Button 40,RTFM
+01 Button 1 Primary/trigger,MULTI,Button1
+02 Button 2 Secondary,MULTI,Button2
+03 Button 3 Tertiary,MULTI,Button3
+04 Button 4,MULTI
+05 Button 5,MULTI
+06 Button 6,MULTI
+07 Button 7,MULTI
+08 Button 8,MULTI
+09 Button 9,MULTI
+0A Button 10,MULTI
+0B Button 11,MULTI
+0C Button 12,MULTI
+0D Button 13,MULTI
+0E Button 14,MULTI
+0F Button 15,MULTI
+10 Button 16,MULTI
+11 Button 17,MULTI
+12 Button 18,MULTI
+13 Button 19,MULTI
+14 Button 20,MULTI
+15 Button 21,MULTI
+16 Button 22,MULTI
+17 Button 23,MULTI
+18 Button 24,MULTI
+19 Button 25,MULTI
+1A Button 26,MULTI
+1B Button 27,MULTI
+1C Button 28,MULTI
+1D Button 29,MULTI
+1E Button 30,MULTI
+1F Button 31,MULTI
+20 Button 32,MULTI
+21 Button 33,MULTI
+22 Button 34,MULTI
+23 Button 35,MULTI
+24 Button 36,MULTI
+25 Button 37,MULTI
+26 Button 38,MULTI
+27 Button 39,MULTI
+28 Button 40,MULTI
 
 PAGE 0A Ordinal Page,ORD
 00 Reserved 
