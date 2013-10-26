@@ -216,7 +216,7 @@ processMAIN:
       sValue = getLittleEndian(sParm)
       nValue = c2d(sValue)
       xValue = c2x(sValue)
-      sCollectionStack = nValue sCollectionStack
+      sCollectionStack = nValue sCollectionStack /* push onto collection stack */
       select 
         when nValue > 127 then sMeaning = 'Vendor Defined'
         when nValue > 6   then sMeaning = 'Reserved'
@@ -239,8 +239,7 @@ processMAIN:
     when sTag = k.0MAIN.END_COLLECTION then do
       g.0INDENT = g.0INDENT - 2
       call say xItem,xParm,'MAIN','END_COLLECTION'
-      nCollectionType = word(sCollectionStack,1)
-      sCollectionStack = subword(sCollectionStack,2)
+      parse var sCollectionStack nCollectionType sCollectionStack /* pop the collection stack */
       if nCollectionType = 1
       then do
         if o.0DECODE
@@ -301,8 +300,9 @@ processGLOBAL:
     when sTag = k.0GLOBAL.REPORT_ID then do
       c = x2c(xValue)
       if isAlphanumeric(c)
-      then sMeaning = '('x2d(xValue)')' "'"c"'" updateHexValue('REPORT_ID',xValue)
-      else sMeaning = '('x2d(xValue)')'         updateHexValue('REPORT_ID',xValue)
+      then sMeaning = '('nValue')' "'"c"'" updateHexValue('REPORT_ID',xValue)
+      else sMeaning = '('nValue')'         updateHexValue('REPORT_ID',xValue)
+      if nValue = 0 then sMeaning = sMeaning '<-- Error: REPORT_ID 0 is reserved'
     end
     when sTag = k.0GLOBAL.REPORT_COUNT then do
       sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue)
@@ -495,7 +495,7 @@ return
 
 emitBeginStructure: procedure expose g. k. f.
   parse arg sStructureName,xReportId,sDirection
-  call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName xReportId '('sDirection')'
+  call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName xReportId getCollectionName() '('sDirection')'
   if xReportId <> 0
   then do
     say 'typedef struct' 
@@ -517,10 +517,10 @@ emitEndStructure: procedure expose g. f.
   parse arg sStructureName,xReportId
   if xReportId <> 0
   then do
-    say '}' getUniqueName(sStructureName || xReportId)'_t;'
+    say '}' getUniqueName(sStructureName || xReportId'_'getCollectionName())'_t;'
   end
   else do
-    say '}' getUniqueName(sStructureName)'_t;'
+    say '}' getUniqueName(sStructureName'_'getCollectionName())'_t;'
   end
   say
 return
@@ -528,9 +528,9 @@ return
 emitHeading: procedure
   parse arg sHeading
   say 
-  say '//------------------------------------------------------------------------'
+  say '//--------------------------------------------------------------------------------'
   say '//' sHeading
-  say '//------------------------------------------------------------------------'
+  say '//--------------------------------------------------------------------------------'
   say 
 return  
 
@@ -838,9 +838,15 @@ getFieldName: procedure expose k. f.
   sLabel = k.0LABEL.xPage.xUsage
   if sLabel = '' then parse value getUsageDescAndType(xPage,xUsage) with sLabel'('
   if sLabel = '' then sLabel = xUsage
-  if sLabel = '' then sLabel = f.0COLLECTION_NAME
+  if sLabel = '' then sLabel = getCollectionName()
   sFieldName = getUniqueName(space(getShortPageName(xPage)'_'sLabel,0))
 return sFieldName
+
+getCollectionName: procedure expose f.
+  if f.0COLLECTION_NAME = ''
+  then sCollectionName = 'VendorDefined'
+  else sCollectionName = f.0COLLECTION_NAME
+return sCollectionName
 
 getUniqueName: procedure expose f.
   parse arg sFieldName
