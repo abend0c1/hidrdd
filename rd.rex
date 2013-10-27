@@ -415,7 +415,20 @@ getSanity: procedure expose g.
   then sError = sError '<-- Error: REPORT_SIZE = 0'
   if g.0REPORT_COUNT = 0
   then sError = sError '<-- Error: REPORT_COUNT = 0'
+  nMinBits = getMinBits(g.0LOGICAL_MINIMUM)
+  if g.0REPORT_SIZE < nMinBits
+  then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') too small for LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM') which needs' nMinBits 'bits.'
+  nMinBits = getMinBits(g.0LOGICAL_MAXIMUM)
+  if g.0REPORT_SIZE < nMinBits
+  then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') too small for LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') which needs' nMinBits 'bits.'
 return sError
+
+getMinBits: procedure 
+  parse arg n
+  if n < 0
+  then nMinBits = length(strip(x2b(d2x(n,16)),'LEADING','1')) + 1
+  else nMinBits = length(strip(x2b(d2x(n,16)),'LEADING','0'))
+return nMinBits
 
 updateValue: procedure expose g.
   parse arg sName,nValue
