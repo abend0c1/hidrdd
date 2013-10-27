@@ -593,12 +593,6 @@ emitField: procedure expose k. o. f.
     end
   end
   xPage = g.0USAGE_PAGE
-  if sCollectionName <> f.0LASTCOLLECTION
-  then do
-    say '  'getStatement(,sCollectionName 'collection')
-
-    f.0LASTCOLLECTION = sCollectionName
-  end
   /*
    *-----------------------------------------------------------
    * VARIABLE
@@ -657,6 +651,12 @@ emitField: procedure expose k. o. f.
     then do
       say '  // Type:    Variable'
       say '  'getStatement('', xPage getPageDesc(xPage))
+    end
+    if sCollectionName <> f.0LASTCOLLECTION
+    then do
+      say '  'getStatement(,sCollectionName 'collection')
+
+      f.0LASTCOLLECTION = sCollectionName
     end
     sUsages = getUsages(xExplicitUsages,nUsageMin,nUsageMax)
     nUsages = words(sUsages)
@@ -761,12 +761,18 @@ emitField: procedure expose k. o. f.
              index many usages, so a particular usage name can't be
              used.
     */
-    if isData(sFlags)
-    then do /* data */
-      call emitFieldDecl g.0REPORT_COUNT,xPage
+    if sCollectionName <> f.0LASTCOLLECTION
+    then do
+      say '  'getStatement(,sCollectionName 'collection')
+
+      f.0LASTCOLLECTION = sCollectionName
     end
-    else do /* constant, so emit padding field */
-      call emitPaddingFieldDecl g.0REPORT_COUNT,nField
+    sUsages = getUsages(xExplicitUsages,nUsageMin,nUsageMax)
+    nUsages = words(sUsages)
+    if nUsages = 0 & isConstant(sFlags) 
+    then call emitPaddingFieldDecl g.0REPORT_COUNT,nField
+    else do /* data */
+      call emitFieldDecl g.0REPORT_COUNT,xPage
     end
     if o.0VERBOSITY > 1
     then do /* Document the valid indexes in the array */

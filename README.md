@@ -74,7 +74,7 @@ The --include file contains the following comma-separated lines...
     * vendordesc - A short description of the vendor and product
     * vendorprefix - A very short (few letters) abbreviation of the vendor and product which is used as a prefix on any generated C language variable names
 
-* One line for each usuage within the vendor-specific page:
+* One line for each usage within the vendor-specific page:
     * uuuu - The Usage number in hex (0 to FFFF). Leading zeros are optional.
     * usagedesc - A short description of the usage
     * usagetype - Optional: An abbreviation of the type of the usage. This is largely for future use and has no impact on the decoding. The following usage types are at least known about:
