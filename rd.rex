@@ -184,26 +184,26 @@ return xData
 processMAIN:
   select
     when sTag = k.0MAIN.INPUT then do
-      sDesc = getInputDesc()
-      call say xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc getSanity()
+      sFlags = getInputFlags()
+      call say xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
       n = inputField.0 + 1
-      inputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sDesc
+      inputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       inputField.0 = n
       call clearLocals
     end
     when sTag = k.0MAIN.OUTPUT then do
-      sDesc = getOutputDesc()
-      call say xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc getSanity()
+      sFlags = getOutputFlags()
+      call say xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
       n = outputField.0 + 1
-      outputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sDesc
+      outputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       outputField.0 = n
       call clearLocals
     end
     when sTag = k.0MAIN.FEATURE then do
-      sDesc = getFeatureDesc()
-      call say xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sDesc getSanity()
+      sFlags = getFeatureFlags()
+      call say xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
       n = featureField.0 + 1
-      featureField.n = xValue getGlobals()','getLocals()','g.0USAGES','sDesc
+      featureField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       featureField.0 = n
       call clearLocals
     end
@@ -241,7 +241,7 @@ processMAIN:
       parse var sCollectionStack nCollectionType sCollectionStack /* pop the collection stack */
       xCollectionType = d2x(nCollectionType,2)
       call say xItem,xParm,'MAIN','END_COLLECTION',,getCollectionDesc(xCollectionType)
-      if nCollectionType = 1
+      if nCollectionType = 1 /* Application Collection */
       then do
         if o.0DECODE
         then do
@@ -463,9 +463,10 @@ return left(sLabel, max(length(sLabel),37)) '//' sComment
 emitInputFields: procedure expose inputField. k. o. f.
   /* Cycle through all the input fields accumulated and when the report_id
      changes, then emit a new structure */
+  f.0LASTCOLLECTION = ''
   xLastReportId = ''
   do i = 1 to inputField.0
-    parse var inputField.i xFlags sGlobals','sLocals','xExplicitUsages','sDesc
+    parse var inputField.i xFlags sGlobals','sLocals','
     call setGlobals sGlobals
     call setLocals sLocals
     if xLastReportId <> g.0REPORT_ID
@@ -483,9 +484,10 @@ return
 emitOutputFields: procedure expose outputField. k. o. f.
   /* Cycle through all the output fields accumulated and when the report_id
      changes, then emit a new structure */
+  f.0LASTCOLLECTION = ''
   xLastReportId = ''
   do i = 1 to outputField.0
-    parse var outputField.i xFlags sGlobals','sLocals','xExplicitUsages','sDesc
+    parse var outputField.i xFlags sGlobals','sLocals','
     call setGlobals sGlobals
     call setLocals sLocals
     if xLastReportId <> g.0REPORT_ID
@@ -503,9 +505,10 @@ return
 emitFeatureFields: procedure expose featureField. k. o. f.
   /* Cycle through all the feature fields accumulated and when the report_id
      changes, then emit a new structure */
+  f.0LASTCOLLECTION = ''
   xLastReportId = ''
   do i = 1 to featureField.0
-    parse var featureField.i xFlags sGlobals','sLocals','xExplicitUsages','sDesc
+    parse var featureField.i xFlags sGlobals','sLocals','
     call setGlobals sGlobals
     call setLocals sLocals
     if xLastReportId <> g.0REPORT_ID
@@ -523,9 +526,9 @@ return
 emitBeginStructure: procedure expose g. k. f.
   parse arg sStructureName,xReportId,sDirection
   if xReportId <> 0
-  then f.0TYPEDEFNAME = getUniqueName(sStructureName || xReportId'_'getCollectionName())'_t'
-  else f.0TYPEDEFNAME = getUniqueName(sStructureName'_'getCollectionName())'_t'
-  call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName xReportId getCollectionName() '('sDirection')'
+  then f.0TYPEDEFNAME = getUniqueName(sStructureName || xReportId)'_t'
+  else f.0TYPEDEFNAME = getUniqueName(sStructureName)'_t'
+  call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName xReportId '('sDirection')'
   if xReportId <> 0
   then do
     say 'typedef struct'
@@ -559,7 +562,7 @@ emitHeading: procedure
 return  
 
 emitField: procedure expose k. o. f.
-  parse arg nField,xFlags sGlobals','sLocals','xExplicitUsages','sFlags
+  parse arg nField,xFlags sGlobals','sLocals','xExplicitUsages','sFlags','sCollectionName
   call setGlobals sGlobals
   call setLocals sLocals
   if o.0VERBOSITY > 0
@@ -590,6 +593,12 @@ emitField: procedure expose k. o. f.
     end
   end
   xPage = g.0USAGE_PAGE
+  if sCollectionName <> f.0LASTCOLLECTION
+  then do
+    say '  'getStatement(,sCollectionName 'collection')
+
+    f.0LASTCOLLECTION = sCollectionName
+  end
   /*
    *-----------------------------------------------------------
    * VARIABLE
@@ -939,16 +948,16 @@ getCollectionDesc: procedure expose g.
   parse arg xType
 return g.0COLLECTION.xType
 
-getInputDesc:
+getInputFlags:
   if isVariable(sValue)
   then sFlags = getFlags()            /* variable */
   else sFlags = getInputArrayFlags()  /* array    */
 return sFlags
 
-getOutputDesc:
+getOutputFlags:
 return getFlags()
 
-getFeatureDesc:
+getFeatureFlags:
 return getFlags()
 
 getInputArrayFlags:
