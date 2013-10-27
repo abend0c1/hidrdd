@@ -90,7 +90,7 @@ The --include file contains the following comma-separated lines...
         * NAry - Named Array
         * OOC - On/Off Control
         * OSC - One Shot Control
-        * OSC-NAry - One Shot Contro/Named Array
+        * OSC-NAry - One Shot Control/Named Array
         * RTC - Re-trigger Control
         * MULTI - Selector, On/Off, Momentary or One Shot
         * Sel - Selector
