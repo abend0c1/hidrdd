@@ -649,18 +649,13 @@ emitField: procedure expose k. o. f.
       say '  // Type:    Variable'
       say '  'getStatement('', xPage getPageDesc(xPage))
     end
-    if isData(sFlags)
-    then do /* data */
+    sUsages = getUsages(xExplicitUsages,nUsageMin,nUsageMax)
+    nUsages = words(sUsages)
+    if nUsages = 0 & isConstant(sFlags) 
+    then call emitPaddingFieldDecl g.0REPORT_COUNT,nField
+    else do /* data or constant, with usage(s) specified */
       nRemainingReportCount = g.0REPORT_COUNT
-      /* Build the combined list of usages - explicit (if any) + range (if any) */
-      sUsages = xExplicitUsages
-      if nUsageMin <> 0 | nUsageMax <> 0 /* if a range is present */
-      then do nUsage = nUsageMin to nUsageMax
-        xExtendedUsage = g.0USAGE_PAGE || d2x(nUsage,4)
-        sUsages = sUsages xExtendedUsage
-      end
-      /* Now emit all but the last usage */
-      nUsages = words(sUsages)
+      /* Emit all but the last usage */
       do i = 1 to nUsages-1 while nRemainingReportCount > 0
         xExtendedUsage = word(sUsages,i)
         call emitFieldDecl 1,xExtendedUsage
@@ -672,14 +667,11 @@ emitField: procedure expose k. o. f.
         do nIgnored = i to nUsages
           xIgnoredUsage = word(sUsages,nIgnored)
           parse var xIgnoredUsage xPage +4 xUsage +4
-          say '  'getStatement('',xPage xUsage getUsageDescAndType(xPage,xUsage) getRange() '<-- Ignored: REPORT_COUNT is too small')
+          say '  'getStatement('',xPage xUsage getUsageDescAndType(xPage,xUsage) getRange() '<-- Ignored: REPORT_COUNT ('g.0REPORT_COUNT') is too small')
         end
       end
       /* Now replicate the last usage to fill the report count */
       else call emitFieldDecl nRemainingReportCount,xExtendedUsage
-    end
-    else do /* constant, so emit padding field(s) */
-      call emitPaddingFieldDecl g.0REPORT_COUNT,nField
     end
   end
   /*
@@ -797,6 +789,16 @@ emitField: procedure expose k. o. f.
     end
   end
 return
+
+getUsages: procedure expose g.
+  parse arg sUsages,nUsageMin,nUsageMax
+  /* Build the combined list of usages - explicit (if any) + range (if any) */
+  if nUsageMin <> 0 | nUsageMax <> 0 /* if a range is present */
+  then do nUsage = nUsageMin to nUsageMax
+    xExtendedUsage = g.0USAGE_PAGE || d2x(nUsage,4)
+    sUsages = sUsages xExtendedUsage
+  end
+return sUsages
 
 emitFieldDecl: procedure expose g. k. f.
   parse arg nReportCount,xExtendedUsage,sPad
