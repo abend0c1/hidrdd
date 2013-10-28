@@ -417,10 +417,14 @@ getSanity: procedure expose g.
   then sError = sError '<-- Error: REPORT_COUNT = 0'
   nMinBits = getMinBits(g.0LOGICAL_MINIMUM)
   if g.0REPORT_SIZE < nMinBits
-  then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') too small for LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM') which needs' nMinBits 'bits.'
+  then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM') which needs' nMinBits 'bits.'
   nMinBits = getMinBits(g.0LOGICAL_MAXIMUM)
   if g.0REPORT_SIZE < nMinBits
-  then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') too small for LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') which needs' nMinBits 'bits.'
+  then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') which needs' nMinBits 'bits.'
+  if g.0LOGICAL_MAXIMUM < g.0LOGICAL_MINIMUM
+  then sError = sError '<-- Error: LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') is less than LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM')'
+  if g.0PHYSICAL_MAXIMUM < g.0PHYSICAL_MINIMUM
+  then sError = sError '<-- Error: PHYSICAL_MAXIMUM ('g.0PHYSICAL_MAXIMUM') is less than PHYSICAL_MINIMUM ('g.0PHYSICAL_MINIMUM')'
 return sError
 
 getMinBits: procedure 
