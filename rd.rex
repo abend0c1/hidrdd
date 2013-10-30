@@ -1461,8 +1461,8 @@ Prolog:
   g.0IN_DELIMITER = 0 /* Inside a delimited set of usages */
   g.0FIRST_USAGE  = 0 /* First delimited usage has been processed */
 
-  k.0I8 = 'int8_t'
-  k.0U8 = 'uint8_t'
+  k.0I8  = 'int8_t'
+  k.0U8  = 'uint8_t'
   k.0I16 = 'int16_t'
   k.0U16 = 'uint16_t'
   k.0I32 = 'int32_t'
