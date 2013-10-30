@@ -142,7 +142,7 @@ readDescriptor: procedure expose g. k. o.
   if sData <> ''
   then do
     xData = space(sData,0)
-    if \datatype(xData,'XADECIMAL')
+    if \isHex(xData)
     then do
       say 'RDD002E Expecting printable hexadecimal data. Found:' sData
       xData = ''
@@ -150,34 +150,37 @@ readDescriptor: procedure expose g. k. o.
   end
   else do
     xData = ''
-    rc = stream(sFile,'COMMAND','OPEN READ')
-    if o.0BINARY
+    if openFile(sFile)
     then do
-      sData = charin(sFile, 1, chars(sFile))
-      xData = c2x(sData)
-    end
-    else do
-      do while chars(sFile) > 0
-        sLine = linein(sFile)
-        sLine = translate(sLine,'',',;${}') /* Ignore some special chars */
-        do i = 1 to words(sLine)
-          sWord = word(sLine,i)
-          select
-            when left(sWord,2) = '0x' then sWord = substr(sWord,3)
-            when left(sWord,1) = "'" then do
-              sWord = strip(sWord,'BOTH',"'")
-              if datatype(sWord,'X')
-              then sWord = c2x(sWord)
+      if o.0BINARY
+      then do
+        sData = charin(sFile, 1, chars(sFile))
+        xData = c2x(sData)
+      end
+      else do
+        do while chars(sFile) > 0
+          sLine = linein(sFile)
+          sLine = translate(sLine,'',',;${}') /* Ignore some special chars */
+          do i = 1 to words(sLine)
+            sWord = word(sLine,i)
+            select
+              when left(sWord,2) = '0x' then sWord = substr(sWord,3)
+              when left(sWord,1) = "'" then do
+                sWord = strip(sWord,'BOTH',"'")
+                if isHex(sWord)
+                then sWord = c2x(sWord)
+              end
+              otherwise nop
             end
-            otherwise nop
+            if isHex(sWord)
+            then xData = xData || sWord
+            else leave /* stop when the first non-hexadecimal value is found */
           end
-          if datatype(sWord,'X')
-          then xData = xData || sWord
-          else leave /* stop when the first non-hexadecimal value is found */
         end
       end
+      rc = closeFile(sFile)  
     end
-    rc = stream(sFile,'COMMAND','CLOSE')  
+    else say 'Could not open file' sFile
   end
 return xData
 
@@ -270,6 +273,7 @@ processGLOBAL:
   select
     when sTag = k.0GLOBAL.USAGE_PAGE then do
       xPage = right(xValue,4,'0')
+      call loadPage xPage
       xValue = xPage 
       sMeaning = getPageDesc(xPage) updateHexValue('USAGE_PAGE',xValue)
     end
@@ -407,6 +411,13 @@ processLOCAL:
     g.0INDENT = g.0INDENT + 2
     bIndent = 0
   end
+return
+
+loadPage: procedure expose g. k.
+  parse arg xPage
+  if g.0CACHED.xPage = 1 then return
+  call loadUsageFile xPage'.conf'
+  g.0CACHED.xPage = 1
 return
 
 getSanity: procedure expose g.
@@ -1654,22 +1665,31 @@ Prolog:
   k.0UNIT.6.3 = 'Luminous Intensity=Candela'
   k.0UNIT.6.4 = 'Luminous Intensity=Candela'
 
-  do i = 1 until sourceline(i) = '/*DATA'
-  end
-  do i = i + 1 while sourceline(i) <> 'END*/'
-    call parseUsageDefinition sourceline(i)
-  end
+  call loadUsageFile 'rd.conf'
+  call loadUsageFile getOption('--include')
+return
 
-  sFile = getOption('--include')
-  if sFile <> ''
+openFile: procedure expose g.
+  parse arg sFile,sOptions
+  if sFile = '' then return 0
+  if sOptions = '' then sOptions = 'READ'
+return stream(sFile,'COMMAND','OPEN' sOptions) = 'READY:'
+
+closeFile: procedure expose g.
+  parse arg sFile
+return stream(sFile,'COMMAND','CLOSE') = 'READY:'
+
+loadUsageFile: procedure expose k. g.
+  parse arg sFile
+  if sFile = '' then return
+  if openFile(sFile)
   then do
-    sState = stream(sFile,'COMMAND','OPEN READ')
     do while chars(sFile) > 0
       call parseUsageDefinition linein(sFile)
     end
-    sState = stream(sFile,'COMMAND','CLOSE')  
+    rc = closeFile(sFile)  
   end
-return
+return 
 
 parseUsageDefinition: procedure expose k. g.
   parse arg sLine
@@ -1680,20 +1700,26 @@ parseUsageDefinition: procedure expose k. g.
       parse var sLine . xPage sPage
       if pos('-',xPage) = 0
       then do
-        xPage = right(xPage,4,'0')
-        k.0PAGE.xPage = sPage
-        g.0PAGE = xPage
-      end
-      else do
-        parse var xPage xPageFrom'-'xPageTo
-        do i = x2d(xPageFrom) to x2d(xPageTo)
-          xPage = d2x(i,4)
+        if isHex(xPage)
+        then do
+          xPage = right(xPage,4,'0')
           k.0PAGE.xPage = sPage
           g.0PAGE = xPage
         end
       end
+      else do
+        parse var xPage xPageFrom'-'xPageTo
+        if isHex(xPageFrom) & isHex(xPageTo)
+        then do
+          do i = x2d(xPageFrom) to x2d(xPageTo)
+            xPage = d2x(i,4)
+            k.0PAGE.xPage = sPage
+            g.0PAGE = xPage
+          end
+        end
+      end
     end
-    when datatype(s1,'X') | pos('-',s1) > 0 then do
+    when isHex(s1) | pos('-',s1) > 0 then do
       parse var sLine xUsage sUsage','sType','sLabel
       sDesc = k.0TYPE.sType
       xPage = g.0PAGE
@@ -1703,24 +1729,34 @@ parseUsageDefinition: procedure expose k. g.
       sUsageLabel = getCamelCase(sUsage, sLabel)
       if pos('-',xUsage) = 0
       then do
-        xUsage = right(xUsage,4,'0')
-        sDesc = k.0TYPE.sType
-        xPage = g.0PAGE
-        k.0USAGE.xPage.xUsage = sUsageDesc
-        k.0LABEL.xPage.xUsage = sUsageLabel
-      end
-      else do
-        parse var xUsage xUsageFrom'-'xUsageTo
-        do i = x2d(xUsageFrom) to x2d(xUsageTo)
-          xUsage = d2x(i,4)
+        if isHex(xUsage)
+        then do
+          xUsage = right(xUsage,4,'0')
+          sDesc = k.0TYPE.sType
+          xPage = g.0PAGE
           k.0USAGE.xPage.xUsage = sUsageDesc
           k.0LABEL.xPage.xUsage = sUsageLabel
         end
       end
+      else do
+        parse var xUsage xUsageFrom'-'xUsageTo
+        if isHex(xUsageFrom) & isHex(xUsageTo)
+        then do
+          do i = x2d(xUsageFrom) to x2d(xUsageTo)
+            xUsage = d2x(i,4)
+            k.0USAGE.xPage.xUsage = sUsageDesc
+            k.0LABEL.xPage.xUsage = sUsageLabel
+          end
+        end
+      end
     end
-    otherwise say '['sLine']'
+    otherwise nop
   end
 return
+
+isHex: procedure
+  parse arg xString
+return xString <> '' & datatype(xString,'X')
 
 toUpper: procedure
   parse arg sText
@@ -1870,1311 +1906,3 @@ return
 
 Epilog:
 return
-
-
-/*
-The following is a list of the known usage codes.
-
-The format of PAGE entries is:
-PAGE xx longname,variableprefix
-
-The format of USAGE entries under each PAGE entry is:
-xx longname[,datatype[,shortname]]
-Normally, "shortname" is derived from "longname" by removing spaces,
-but occasionally the "longname" contains special characters that
-can't easily be converted to a short name (which is used name 
-variables in C structure definitions) so "shortname", if 
-present, is used instead. 
-*/
-
-/*DATA
-
-PAGE 01 Generic Desktop Page,GD
-00 Undefined
-01 Pointer,CP,
-02 Mouse,CA,
-04 Joystick,CA,
-05 Game Pad,CA,
-06 Keyboard,CA,
-07 Keypad,CA,
-08 Multi-axis Controller,CA,
-09 Tablet PC System Controls,CA,
-30 X,DV,
-31 Y,DV,
-32 Z,DV,
-33 Rx,DV,
-34 Ry,DV,
-35 Rz,DV,
-36 Slider,DV,
-37 Dial,DV,
-38 Wheel,DV,
-39 Hat switch,DV,
-3A Counted Buffer,CL,
-3B Byte Count,DV,
-3C Motion Wakeup,OSC,
-3D Start,OOC,
-3E Select,OOC,
-40 Vx,DV,
-41 Vy,DV,
-42 Vz,DV,
-43 Vbrx,DV,
-44 Vbry,DV,
-45 Vbrz,DV,
-46 Vno,DV,
-47 Feature Notification,DV-DF,
-48 Resolution Multiplier,DV,
-80 System Control,CA,
-81 System Power Down,OSC,
-82 System Sleep,OSC,
-83 System Wake Up,OSC,
-84 System Context Menu,OSC,
-85 System Main Menu,OSC,
-86 System App Menu,OSC,
-87 System Menu Help,OSC,
-88 System Menu Exit,OSC,
-89 System Menu Select,OSC,
-8A System Menu Right,RTC,
-8B System Menu Left,RTC,
-8C System Menu Up,RTC,
-8D System Menu Down,RTC,
-8E System Cold Restart,OSC,
-8F System Warm Restart,OSC,
-90 D-pad Up,OOC,
-91 D-pad Down,OOC,
-92 D-pad Right,OOC,
-93 D-pad Left,OOC,
-A0 System Dock,OSC,
-A1 System Undock,OSC,
-A2 System Setup,OSC,
-A3 System Break,OSC,
-A4 System Debugger Break,OSC,
-A5 Application Break,OSC,
-A6 Application Debugger Break,OSC,
-A7 System Speaker Mute,OSC,
-A8 System Hibernate,OSC,
-B0 System Display Invert,OSC,
-B1 System Display Internal,OSC,
-B2 System Display External,OSC,
-B3 System Display Both,OSC,
-B4 System Display Dual,OSC,
-B5 System Display Toggle Int/Ext,OSC,
-B6 System Display Swap Primary/Secondary,OSC,
-B7 System Display LCD Autoscale,OSC,
-
-PAGE 02 Simulation Controls Page,SC
-00 Undefined
-01 Flight Simulation Device,CA,
-02 Automobile Simulation Device,CA,
-03 Tank Simulation Device,CA,
-04 Spaceship Simulation Device,CA,
-05 Submarine Simulation Device,CA,
-06 Sailing Simulation Device,CA,
-07 Motorcycle Simulation Device,CA,
-08 Sports Simulation Device,CA,
-09 Airplane Simulation Device,CA,
-0A Helicopter Simulation Device,CA,
-0B Magic Carpet Simulation Device,CA,
-0C Bicycle Simulation Device,CA,
-20 Flight Control Stick,CA,
-21 Flight Stick,CA,
-22 Cyclic Control,CP,
-23 Cyclic Trim,CP,
-24 Flight Yoke,CA,
-25 Track Control,CP,
-B0 Aileron,DV,
-B1 Aileron Trim,DV,
-B2 Anti-Torque Control,DV,AntiTorqueControl
-B3 Autopilot Enable,OOC,
-B4 Chaff Release,OSC,
-B5 Collective Control,DV,
-B6 Dive Brake,DV,
-B7 Electronic Countermeasures,OOC,
-B8 Elevator,DV,
-B9 Elevator Trim,DV,
-BA Rudder,DV,
-BB Throttle,DV,
-BC Flight Communications,OOC,
-BD Flare Release,OSC,
-BE Landing Gear,OOC,
-BF Toe Brake,DV,
-C0 Trigger,MC,
-C1 Weapons Arm,OOC,
-C2 Weapons Select,OSC,
-C3 Wing Flaps,DV,
-C4 Accelerator,DV,
-C5 Brake,DV,
-C6 Clutch,DV,
-C7 Shifter,DV,
-C8 Steering,DV,
-C9 Turret Direction,DV,
-CA Barrel Elevation,DV,
-CB Dive Plane,DV,
-CC Ballast,DV,
-CD Bicycle Crank,DV,
-CE Handle Bars,DV,
-CF Front Brake,DV,
-D0 Rear Brake,DV,
-
-PAGE 03 Virtual Reality Controls Page,VR
-00 Unidentified 
-01 Belt,CA,
-02 Body Suit,CA,
-03 Flexor,CP,
-04 Glove,CA,
-05 Head Tracker,CP,
-06 Head Mounted Display,CA,
-07 Hand Tracker,CA,
-08 Oculometer,CA,
-09 Vest,CA,
-0A Animatronic Device,CA,
-20 Stereo Enable,OOC
-21 Display Enable,OOC
-
-PAGE 04 Sport Controls Page,SC
-00 Unidentified
-01 Baseball Bat,CA,
-02 Golf Club,CA,
-03 Rowing Machine,CA,
-04 Treadmill,CA,
-30 Oar,DV,
-31 Slope,DV,
-32 Rate,DV,
-33 Stick Speed,DV,
-34 Stick Face Angle,DV,
-35 Stick Heel/Toe,DV,
-36 Stick Follow Through,DV,
-37 Stick Tempo,DV,
-38 Stick Type,NAry,
-39 Stick Height,DV,
-50 Putter,Sel,
-51 1 Iron,Sel,Number1Iron
-52 2 Iron,Sel,Number2Iron
-53 3 Iron,Sel,Number3Iron
-54 4 Iron,Sel,Number4Iron
-55 5 Iron,Sel,Number5Iron
-56 6 Iron,Sel,Number6Iron
-57 7 Iron,Sel,Number7Iron
-58 8 Iron,Sel,Number8Iron
-59 9 Iron,Sel,Number9Iron
-5A 10 Iron,Sel,Number10Iron
-5B 11 Iron,Sel,Number11Iron
-5C Sand Wedge,Sel,
-5D Loft Wedge,Sel,
-5E Power Wedge,Sel,
-5F 1 Wood,Sel,Number1Wood
-60 3 Wood,Sel,Number3Wood
-61 5 Wood,Sel,Number5Wood
-62 7 Wood,Sel,Number7Wood
-63 9 Wood,Sel,Number9Wood
-
-PAGE 05 Game Controls Page,GC
-00 Undefined
-01 3D Game Controller,CA,
-02 Pinball Device,CA,
-03 Gun Device,CA,
-20 Point of View,CP,
-21 Turn Right/Left,DV,
-22 Pitch Forward/Backward,DV,
-23 Roll Right/Left,DV,
-24 Move Right/Left,DV,
-25 Move Forward/Backward,DV,
-26 Move Up/Down,DV,
-27 Lean Right/Left,DV,
-28 Lean Forward/Backward,DV,
-29 Height of POV,DV,
-2A Flipper,MC,
-2B Secondary Flipper,MC,
-2C Bump,MC,
-2D New Game,OSC,
-2E Shoot Ball,OSC,
-2F Player,OSC,
-30 Gun Bolt,OOC,
-31 Gun Clip,OOC,
-32 Gun Selector,NAry,
-33 Gun Single Shot,Sel,
-34 Gun Burst,Sel,
-35 Gun Automatic,Sel,
-36 Gun Safety,OOC,
-37 Gamepad Fire/Jump,CL,
-39 Gamepad Trigger,CL,
-
-PAGE 06 Generic Device Controls Page,GD
-00 Unidentified 
-20 Battery Strength,DV
-21 Wireless Channel,DV
-22 Wireless ID,DV
-23 Discover Wireless Control,OSC
-24 Security Code Character Entered,OSC
-25 Security Code Character Erased,OSC
-26 Security Code Cleared,OSC
-
-PAGE 07 Keyboard/Keypad Page,KB
-00 Keyboard No event indicated,Sel
-01 Keyboard ErrorRollOver,Sel
-02 Keyboard POSTFail,Sel
-03 Keyboard ErrorUndefined,Sel
-04 Keyboard a and A,Sel,A
-05 Keyboard b and B,Sel,B
-06 Keyboard c and C,Sel,C
-07 Keyboard d and D,Sel,D
-08 Keyboard e and E,Sel,E
-09 Keyboard f and F,Sel,F
-0A Keyboard g and G,Sel,G
-0B Keyboard h and H,Sel,H
-0C Keyboard i and I,Sel,I
-0D Keyboard j and J,Sel,J
-0E Keyboard k and K,Sel,K
-0F Keyboard l and L,Sel,L
-10 Keyboard m and M,Sel,M
-11 Keyboard n and N,Sel,N
-12 Keyboard o and O,Sel,O
-13 Keyboard p and P,Sel,P
-14 Keyboard q and Q,Sel,Q
-15 Keyboard r and R,Sel,R
-16 Keyboard s and S,Sel,S
-17 Keyboard t and T,Sel,T
-18 Keyboard u and U,Sel,U
-19 Keyboard v and V,Sel,V
-1A Keyboard w and W,Sel,W
-1B Keyboard x and X,Sel,X
-1C Keyboard y and Y,Sel,Y
-1D Keyboard z and Z,Sel,Z
-1E Keyboard 1 and !,Sel,Digit1AndExclamationMark
-1F Keyboard 2 and @,Sel,Digit2AndAtSign
-20 Keyboard 3 and #,Sel,Digit3AndHash
-21 Keyboard 4 and $,Sel,Digit4AndDollar
-22 Keyboard 5 and %,Sel,Digit5AndPercent
-23 Keyboard 6 and ^,Sel,Digit6AndCaret
-24 Keyboard 7 and &,Sel,Digit7AndAmpersand
-25 Keyboard 8 and *,Sel,Digit8AndAsterisk
-26 Keyboard 9 and (,Sel,Digit9AndLeftParenthesis
-27 Keyboard 0 and ),Sel,Digit0AndRightParenthesis
-28 Keyboard Return,Sel
-29 Keyboard Escape,Sel
-2A Keyboard Delete,Sel
-2B Keyboard Tab,Sel
-2C Keyboard Spacebar,Sel
-2D Keyboard - and _,Sel,HyphenAndUnderscore
-2E Keyboard = and +,Sel,EqualsAndPlus
-2F Keyboard [ and {,Sel,LeftSquareBracketAndLeftBrace
-30 Keyboard ] and },Sel,RightSquareBracketAndRightBrace
-31 Keyboard \ and |,Sel,BackslashAndVerticalBar
-32 Keyboard Non-US # and ~,Sel,NonUSHashAndTilde
-33 Keyboard ; and :,Sel,SemicolonAndColon
-34 Keyboard ' and ",Sel,ApostropheAndQuotationMark
-35 Keyboard ` and ~,Sel,GraveAndTilde
-36 Keyboard Comma and <,Sel,CommaAndLessThanSign
-37 Keyboard . and >,Sel,PeriodAndGreaterThanSign
-38 Keyboard / and ?,Sel,SlashAndQuestionMark
-39 Keyboard Caps Lock,Sel
-3A Keyboard F1,Sel
-3B Keyboard F2,Sel
-3C Keyboard F3,Sel
-3D Keyboard F4,Sel
-3E Keyboard F5,Sel
-3F Keyboard F6,Sel
-40 Keyboard F7,Sel
-41 Keyboard F8,Sel
-42 Keyboard F9,Sel
-43 Keyboard F10,Sel
-44 Keyboard F11,Sel
-45 Keyboard F12,Sel
-46 Keyboard Print Screen,Sel
-47 Keyboard Scroll Lock,Sel
-48 Keyboard Pause,Sel
-49 Keyboard Insert,Sel
-4A Keyboard Home,Sel
-4B Keyboard Page Up,Sel
-4C Keyboard Delete Forward,Sel
-4D Keyboard End,Sel
-4E Keyboard Page Down,Sel
-4F Keyboard Right Arrow,Sel
-50 Keyboard Left Arrow,Sel
-51 Keyboard Down Arrow,Sel
-52 Keyboard Up Arrow,Sel
-53 Keypad Num Lock and Clear,Sel
-54 Keypad /,Sel,KeypadSlash
-55 Keypad *,Sel,KeypadAsterisk
-56 Keypad Comma,Sel
-57 Keypad +,Sel,KeypadPlus
-58 Keypad Enter,Sel
-59 Keypad 1 and End,Sel,KeypadDigit1AndEnd
-5A Keypad 2 and Down Arrow,Sel,KeypadDigit2AndDownArrow
-5B Keypad 3 and PageDn,Sel,KeypadDigit3AndPageDown
-5C Keypad 4 and Left Arrow,Sel,KeypadDigit4AndLeftArrow
-5D Keypad 5,Sel,KeypadDigit5
-5E Keypad 6 and Right Arrow,Sel,KeypadDigit6AndRightArrow
-5F Keypad 7 and Home,Sel,KeypadDigit7AndHome
-60 Keypad 8 and Up Arrow,Sel,KeypadDigit8AndUpArrow
-61 Keypad 9 and PageUp,Sel,KeypadDigit9AndPageUp
-62 Keypad 0 and Insert,Sel,KeypadDigit0AndInsert
-63 Keypad . and Delete,Sel,KeypadDecimalPointandDelete
-64 Keyboard Non-US \ and |,Sel,NonUSBackslashAndVerticalBar
-65 Keyboard Application,Sel
-66 Keyboard Power,Sel
-67 Keypad =,Sel,KeypadEquals
-68 Keyboard F13,Sel
-69 Keyboard F14,Sel
-6A Keyboard F15,Sel
-6B Keyboard F16,Sel
-6C Keyboard F17,Sel
-6D Keyboard F18,Sel
-6E Keyboard F19,Sel
-6F Keyboard F20,Sel
-70 Keyboard F21,Sel
-71 Keyboard F22,Sel
-72 Keyboard F23,Sel
-73 Keyboard F24,Sel
-74 Keyboard Execute,Sel
-75 Keyboard Help,Sel
-76 Keyboard Menu,Sel
-77 Keyboard Select,Sel
-78 Keyboard Stop,Sel
-79 Keyboard Again,Sel
-7A Keyboard Undo,Sel
-7B Keyboard Cut,Sel
-7C Keyboard Copy,Sel
-7D Keyboard Paste,Sel
-7E Keyboard Find,Sel
-7F Keyboard Mute,Sel
-80 Keyboard Volume Up,Sel
-81 Keyboard Volume Down,Sel
-82 Keyboard Locking Caps Lock,Sel
-83 Keyboard Locking Num Lock,Sel
-84 Keyboard Locking Scroll Lock,Sel
-85 Keypad Comma,Sel
-86 Keypad Equal Sign,Sel
-87 Keyboard International1,Sel
-88 Keyboard International2,Sel
-89 Keyboard International3,Sel
-8A Keyboard International4,Sel
-8B Keyboard International5,Sel
-8C Keyboard International6,Sel
-8D Keyboard International7,Sel
-8E Keyboard International8,Sel
-8F Keyboard International9,Sel
-90 Keyboard LANG1,Sel
-91 Keyboard LANG2,Sel
-92 Keyboard LANG3,Sel
-93 Keyboard LANG4,Sel
-94 Keyboard LANG5,Sel
-95 Keyboard LANG6,Sel
-96 Keyboard LANG7,Sel
-97 Keyboard LANG8,Sel
-98 Keyboard LANG9,Sel
-99 Keyboard Alternate Erase,Sel
-9A Keyboard SysReq/Attention,Sel
-9B Keyboard Cancel,Sel
-9C Keyboard Clear,Sel
-9D Keyboard Prior,Sel
-9E Keyboard Return,Sel
-9F Keyboard Separator,Sel
-A0 Keyboard Out,Sel
-A1 Keyboard Oper,Sel
-A2 Keyboard Clear/Again,Sel
-A3 Keyboard CrSel/Props,Sel
-A4 Keyboard ExSel,Sel
-B0 Keypad 00,Sel
-B1 Keypad 000,Sel
-B2 Thousands Separator,Sel
-B3 Decimal Separator,Sel
-B4 Currency Unit,Sel
-B5 Currency Sub-unit,Sel
-B6 Keypad (,Sel,KeypadLeftParenthesis
-B7 Keypad ),Sel,KeypadRightParenthesis
-B8 Keypad {,Sel,KeypadLeftBrace
-B9 Keypad },Sel,KeypadRightBrace
-BA Keypad Tab,Sel
-BB Keypad Backspace,Sel
-BC Keypad A,Sel,KeypadA
-BD Keypad B,Sel,KeypadB
-BE Keypad C,Sel,KeypadC
-BF Keypad D,Sel,KeypadD
-C0 Keypad E,Sel,KeypadE
-C1 Keypad F,Sel,KeypadF
-C2 Keypad XOR,Sel
-C3 Keypad ^,Sel,KeypadCaret
-C4 Keypad %,Sel,KeypadPercent
-C5 Keypad <,Sel,KeypadLessThanSign
-C6 Keypad >,Sel,KeypadGreaterThanSign
-C7 Keypad &,Sel,KeypadAmpersand
-C8 Keypad &&,Sel,KeypadDoubleAmpersand
-C9 Keypad |,Sel,KeypadVerticalBar
-CA Keypad ||,Sel,KeypadDoubleVerticalBar
-CB Keypad :,Sel,KeypadColor
-CC Keypad #,Sel,KeypadHash
-CD Keypad Space,Sel
-CE Keypad @,Sel,KeypadAtSign
-CF Keypad !,Sel,KeypadExclamationMark
-D0 Keypad Memory Store,Sel
-D1 Keypad Memory Recall,Sel
-D2 Keypad Memory Clear,Sel
-D3 Keypad Memory Add,Sel
-D4 Keypad Memory Subtract,Sel
-D5 Keypad Memory Multiply,Sel
-D6 Keypad Memory Divide,Sel
-D7 Keypad +/-,Sel,KeypadPlusOrMinus
-D8 Keypad Clear,Sel
-D9 Keypad Clear Entry,Sel
-DA Keypad Binary,Sel
-DB Keypad Octal,Sel
-DC Keypad Decimal,Sel
-DD Keypad Hexadecimal,Sel
-E0 Keyboard Left Control,DV
-E1 Keyboard Left Shift,DV
-E2 Keyboard Left Alt,DV
-E3 Keyboard Left GUI,DV
-E4 Keyboard Right Control,DV
-E5 Keyboard Right Shift,DV
-E6 Keyboard Right Alt,DV
-E7 Keyboard Right GUI,DV
-
-PAGE 08 LED Indicator Page,LED
-00 Undefined
-01 Num Lock,OOC,
-02 Caps Lock,OOC,
-03 Scroll Lock,OOC,
-04 Compose,OOC,
-05 Kana,OOC,
-06 Power,OOC,
-07 Shift,OOC,
-08 Do Not Disturb,OOC,
-09 Mute,OOC,
-0A Tone Enable,OOC,
-0B High Cut Filter,OOC,
-0C Low Cut Filter,OOC,
-0D Equalizer Enable,OOC,
-0E Sound Field On,OOC,
-0F Surround On,OOC,
-10 Repeat,OOC,
-11 Stereo,OOC,
-12 Sampling Rate Detect,OOC,
-13 Spinning,OOC,
-14 CAV,OOC,
-15 CLV,OOC,
-16 Recording Format Detect,OOC,
-17 Off-Hook,OOC,
-18 Ring,OOC,
-19 Message Waiting,OOC,
-1A Data Mode,OOC,
-1B Battery Operation,OOC,
-1C Battery OK,OOC,
-1D Battery Low,OOC,
-1E Speaker,OOC,
-1F Head Set,OOC,
-20 Hold,OOC,
-21 Microphone,OOC,
-22 Coverage,OOC,
-23 Night Mode,OOC,
-24 Send Calls,OOC,
-25 Call Pickup,OOC,
-26 Conference,OOC,
-27 Stand-by,OOC,
-28 Camera On,OOC,
-29 Camera Off,OOC,
-2A On-Line,OOC,
-2B Off-Line,OOC,
-2C Busy,OOC,
-2D Ready,OOC,
-2E Paper-Out,OOC,
-2F Paper-Jam,OOC,
-30 Remote,OOC,
-31 Forward,OOC,
-32 Reverse,OOC,
-33 Stop,OOC,
-34 Rewind,OOC,
-35 Fast Forward,OOC,
-36 Play,OOC,
-37 Pause,OOC,
-38 Record,OOC,
-39 Error,OOC,
-3A Usage Selected Indicator,US,
-3B Usage In Use Indicator,US,
-3C Usage Multi Mode Indicator,UM,
-3D Indicator On,Sel,
-3E Indicator Flash,Sel,
-3F Indicator Slow Blink,Sel,
-40 Indicator Fast Blink,Sel,
-41 Indicator Off,Sel,
-42 Flash On Time,DV,
-43 Slow Blink On Time,DV,
-44 Slow Blink Off Time,DV,
-45 Fast Blink On Time,DV,
-46 Fast Blink Off Time,DV,
-47 Usage Indicator Color,UM,
-48 Indicator Red,Sel,
-49 Indicator Green,Sel,
-4A Indicator Amber,Sel,
-4B Generic Indicator,OOC,
-4C System Suspend,OOC,
-4D External Power Connected,OOC,
-
-PAGE 09 Button Page,BTN
-00 No button pressed,
-01 Button 1 Primary/trigger,MULTI,Button1
-02 Button 2 Secondary,MULTI,Button2
-03 Button 3 Tertiary,MULTI,Button3
-04 Button 4,MULTI
-05 Button 5,MULTI
-06 Button 6,MULTI
-07 Button 7,MULTI
-08 Button 8,MULTI
-09 Button 9,MULTI
-0A Button 10,MULTI
-0B Button 11,MULTI
-0C Button 12,MULTI
-0D Button 13,MULTI
-0E Button 14,MULTI
-0F Button 15,MULTI
-10 Button 16,MULTI
-11 Button 17,MULTI
-12 Button 18,MULTI
-13 Button 19,MULTI
-14 Button 20,MULTI
-15 Button 21,MULTI
-16 Button 22,MULTI
-17 Button 23,MULTI
-18 Button 24,MULTI
-19 Button 25,MULTI
-1A Button 26,MULTI
-1B Button 27,MULTI
-1C Button 28,MULTI
-1D Button 29,MULTI
-1E Button 30,MULTI
-1F Button 31,MULTI
-20 Button 32,MULTI
-21 Button 33,MULTI
-22 Button 34,MULTI
-23 Button 35,MULTI
-24 Button 36,MULTI
-25 Button 37,MULTI
-26 Button 38,MULTI
-27 Button 39,MULTI
-28 Button 40,MULTI
-
-PAGE 0A Ordinal Page,ORD
-00 Reserved 
-01 Instance 1,UM
-02 Instance 2,UM
-03 Instance 3,UM
-04 Instance 4,UM
-
-PAGE 0B Telephony Device Page,TEL
-00 Unassigned
-01 Phone,CA,
-02 Answering Machine,CA,
-03 Message Controls,CL,
-04 Handset,CL,
-05 Headset,CL,
-06 Telephony Key Pad,NAry,
-07 Programmable Button,NAry,
-20 Hook Switch,OOC,
-21 Flash,MC,
-22 Feature,OSC,
-23 Hold,OOC,
-24 Redial,OSC,
-25 Transfer,OSC,
-26 Drop,OSC,
-27 Park,OOC,
-28 Forward Calls,OOC,
-29 Alternate Function,MC,
-2A Line,OSC-NAry,
-2B Speaker Phone,OOC,
-2C Conference,OOC,
-2D Ring Enable,OOC,
-2E Ring Select,OSC,
-2F Phone Mute,OOC,
-30 Caller ID,MC,
-31 Send,OOC,
-50 Speed Dial,OSC,
-51 Store Number,OSC,
-52 Recall Number,OSC,
-53 Phone Directory,OOC,
-70 Voice Mail,OOC,
-71 Screen Calls,OOC,
-72 Do Not Disturb,OOC,
-73 Message,OSC,
-74 Answer On/Off,OOC,
-90 Inside Dial Tone,MC,
-91 Outside Dial Tone,MC,
-92 Inside Ring Tone,MC,
-93 Outside Ring Tone,MC,
-94 Priority Ring Tone,MC,
-95 Inside Ringback,MC,
-96 Priority Ringback,MC,
-97 Line Busy Tone,MC,
-98 Reorder Tone,MC,
-99 Call Waiting Tone,MC,
-9A Confirmation Tone 1,MC,
-9B Confirmation Tone 2,MC,
-9C Tones Off,OOC,
-9D Outside Ringback,MC,
-9E Ringer,OOC,
-B0 Phone Key 0,Sel,
-B1 Phone Key 1,Sel,
-B2 Phone Key 2,Sel,
-B3 Phone Key 3,Sel,
-B4 Phone Key 4,Sel,
-B5 Phone Key 5,Sel,
-B6 Phone Key 6,Sel,
-B7 Phone Key 7,Sel,
-B8 Phone Key 8,Sel,
-B9 Phone Key 9,Sel,
-
-PAGE 0C Consumer Device Page,CD
-00 Unassigned
-01 Consumer Control,CA,
-02 Numeric Key Pad,NAry,
-03 Programmable Buttons,NAry,
-04 Microphone,CA,
-05 Headphone,CA,
-06 Graphic Equalizer,CA,
-20 +10,OSC,Plus10
-21 +100,OSC,Plus100
-22 AM/PM,OSC,
-30 Power,OOC,
-31 Reset,OSC,
-32 Sleep,OSC,
-33 Sleep After,OSC,
-34 Sleep Mode,RTC,
-35 Illumination,OOC,
-36 Function Buttons,NAry,
-40 Menu,OOC,
-41 Menu Pick,OSC,
-42 Menu Up,OSC,
-43 Menu Down,OSC,
-44 Menu Left,OSC,
-45 Menu Right,OSC,
-46 Menu Escape,OSC,
-47 Menu Value Increase,OSC,
-48 Menu Value Decrease,OSC,
-60 Data On Screen,OOC,
-61 Closed Caption,OOC,
-62 Closed Caption Select,OSC,
-63 VCR/TV,OOC,
-64 Broadcast Mode,OSC,
-65 Snapshot,OSC,
-66 Still,OSC,
-80 Selection,NAry,
-81 Assign Selection,OSC,
-82 Mode Step,OSC,
-83 Recall Last,OSC,
-84 Enter Channel,OSC,
-85 Order Movie,OSC,
-86 Channel,LC,
-87 Media Selection,NAry,
-88 Media Select Computer,Sel,
-89 Media Select TV,Sel,
-8A Media Select WWW,Sel,
-8B Media Select DVD,Sel,
-8C Media Select Telephone,Sel,
-8D Media Select Program Guide,Sel,
-8E Media Select Video Phone,Sel,
-8F Media Select Games,Sel,
-90 Media Select Messages,Sel,
-91 Media Select CD,Sel,
-92 Media Select VCR,Sel,
-93 Media Select Tuner,Sel,
-94 Quit,OSC,
-95 Help,OOC,
-96 Media Select Tape,Sel,
-97 Media Select Cable,Sel,
-98 Media Select Satellite,Sel,
-99 Media Select Security,Sel,
-9A Media Select Home,Sel,
-9B Media Select Call,Sel,
-9C Channel Increment,OSC,
-9D Channel Decrement,OSC,
-9E Media Select SAP,Sel,
-A0 VCR Plus,OSC,
-A1 Once,OSC,
-A2 Daily,OSC,
-A3 Weekly,OSC,
-A4 Monthly,OSC,
-B0 Play,OOC,
-B1 Pause,OOC,
-B2 Record,OOC,
-B3 Fast Forward,OOC,
-B4 Rewind,OOC,
-B5 Scan Next Track,OSC,
-B6 Scan Previous Track,OSC,
-B7 Stop,OSC,
-B8 Eject,OSC,
-B9 Random Play,OOC,
-BA Select Disc,NAry,
-BB Enter Disc,MC,
-BC Repeat,OSC,
-BD Tracking,LC,
-BE Track Normal,OSC,
-BF Slow Tracking,LC,
-C0 Frame Forward,RTC,
-C1 Frame Back,RTC,
-C2 Mark,OSC,
-C3 Clear Mark,OSC,
-C4 Repeat From Mark,OOC,
-C5 Return To Mark,OSC,
-C6 Search Mark Forward,OSC,
-C7 Search Mark Backwards,OSC,
-C8 Counter Reset,OSC,
-C9 Show Counter,OSC,
-CA Tracking Increment,RTC,
-CB Tracking Decrement,RTC,
-CC Stop/Eject,OSC,
-CD Play/Pause,OSC,
-CE Play/Skip,OSC,
-E0 Volume,LC,
-E1 Balance,LC,
-E2 Mute,OOC,
-E3 Bass,LC,
-E4 Treble,LC,
-E5 Bass Boost,OOC,
-E6 Surround Mode,OSC,
-E7 Loudness,OOC,
-E8 MPX,OOC,MPX
-E9 Volume Increment,RTC,
-EA Volume Decrement,RTC,
-F0 Speed Select,OSC,
-F1 Playback Speed,NAry,
-F2 Standard Play,Sel,
-F3 Long Play,Sel,
-F4 Extended Play,Sel,
-F5 Slow,OSC,
-100 Fan Enable,OOC,
-101 Fan Speed,LC,
-102 Light Enable,OOC,
-103 Light Illumination Level,LC,
-104 Climate Control Enable,OOC,
-105 Room Temperature,LC,
-106 Security Enable,OOC,
-107 Fire Alarm,OSC,
-108 Police Alarm,OSC,
-109 Proximity,LC,
-10A Motion,OSC,
-10B Duress Alarm,OSC,
-10C Holdup Alarm,OSC,
-10D Medical Alarm,OSC,
-150 Balance Right,RTC,
-151 Balance Left,RTC,
-152 Bass Increment,RTC,
-153 Bass Decrement,RTC,
-154 Treble Increment,RTC,
-155 Treble Decrement,RTC,
-160 Speaker System,CL,
-161 Channel Left,CL,
-162 Channel Right,CL,
-163 Channel Center,CL,
-164 Channel Front,CL,
-165 Channel Center Front,CL,
-166 Channel Side,CL,
-167 Channel Surround,CL,
-168 Channel Low Frequency Enhancement,CL,
-169 Channel Top,CL,
-16A Channel Unknown,CL,
-170 Sub-channel,LC,
-171 Sub-channel Increment,OSC,
-172 Sub-channel Decrement,OSC,
-173 Alternate Audio Increment,OSC,
-174 Alternate Audio Decrement,OSC,
-180 Application Launch Buttons,NAry,
-181 AL Launch Button Configuration Tool,Sel,
-182 AL Programmable Button Configuration,Sel,
-183 AL Consumer Control Configuration,Sel,
-184 AL Word Processor,Sel,
-185 AL Text Editor,Sel,
-186 AL Spreadsheet,Sel,
-187 AL Graphics Editor,Sel,
-188 AL Presentation App,Sel,
-189 AL Database App,Sel,
-18A AL Email Reader,Sel,
-18B AL Newsreader,Sel,
-18C AL Voicemail,Sel,
-18D AL Contacts/Address Book,Sel,
-18E AL Calendar/Schedule,Sel,
-18F AL Task/Project Manager,Sel,
-190 AL Log/Journal/Timecard,Sel,
-191 AL Checkbook/Finance,Sel,
-192 AL Calculator,Sel,
-193 AL A/V Capture/Playback,Sel,
-194 AL Local Machine Browser,Sel,
-195 AL LAN/WAN Browser,Sel,
-196 AL Internet Browser,Sel,
-197 AL Remote Networking/ISP Connect,Sel,
-198 AL Network Conference,Sel,
-199 AL Network Chat,Sel,
-19A AL Telephony/Dialer,Sel,
-19B AL Logon,Sel,
-19C AL Logoff,Sel,
-19D AL Logon/Logoff,Sel,
-19E AL Terminal Lock/Screensaver,Sel,
-19F AL Control Panel,Sel,
-1A0 AL Command Line Processor/Run,Sel,
-1A1 AL Process/Task Manager,Sel,
-1A2 AL Select Task/Application,Sel,
-1A3 AL Next Task/Application,Sel,
-1A4 AL Previous Task/Application,Sel,
-1A5 AL Preemptive Halt Task/Application,Sel,
-1A6 AL Integrated Help Center,Sel,
-1A7 AL Documents,Sel,
-1A8 AL Thesaurus,Sel,
-1A9 AL Dictionary,Sel,
-1AA AL Desktop,Sel,
-1AB AL Spell Check,Sel,
-1AC AL Grammar Check,Sel,
-1AD AL Wireless Status,Sel,
-1AE AL Keyboard Layout,Sel,
-1AF AL Virus Protection,Sel,
-1B0 AL Encryption,Sel,
-1B1 AL Screen Saver,Sel,
-1B2 AL Alarms,Sel,
-1B3 AL Clock,Sel,
-1B4 AL File Browser,Sel,
-1B5 AL Power Status,Sel,
-1B6 AL Image Browser,Sel,
-1B7 AL Audio Browser,Sel,
-1B8 AL Movie Browser,Sel,
-1B9 AL Digital Rights Manager,Sel,
-1BA AL Digital Wallet,Sel,
-1BC AL Instant Messaging,Sel,
-1BD AL OEM Features/Tips/Tutorial Browser,Sel,
-1BE AL OEM Help,Sel,
-1BF AL Online Community,Sel,
-1C0 AL Entertainment Content Browser,Sel,
-1C1 AL Online Shopping Browser,Sel,
-1C2 AL SmartCard Information/Help,Sel,
-1C3 AL Market Monitor/Finance Browser,Sel,
-1C4 AL Customized Corporate News Browser,Sel,
-1C5 AL Online Activity Browser,Sel,
-1C6 AL Research/Search Browser,Sel,
-1C7 AL Audio Player,Sel,
-200 Generic GUI Application Controls,NAry,
-201 AC New,Sel,
-202 AC Open,Sel,
-203 AC Close,Sel,
-204 AC Exit,Sel,
-205 AC Maximize,Sel,
-206 AC Minimize,Sel,
-207 AC Save,Sel,
-208 AC Print,Sel,
-209 AC Properties,Sel,
-21A AC Undo,Sel,
-21B AC Copy,Sel,
-21C AC Cut,Sel,
-21D AC Paste,Sel,
-21E AC Select All,Sel,
-21F AC Find,Sel,
-220 AC Find and Replace,Sel,
-221 AC Search,Sel,
-222 AC Go To,Sel,
-223 AC Home,Sel,
-224 AC Back,Sel,
-225 AC Forward,Sel,
-226 AC Stop,Sel,
-227 AC Refresh,Sel,
-228 AC Previous Link,Sel,
-229 AC Next Link,Sel,
-22A AC Bookmarks,Sel,
-22B AC History,Sel,
-22C AC Subscriptions,Sel,
-22D AC Zoom In,Sel,
-22E AC Zoom Out,Sel,
-22F AC Zoom,LC,
-230 AC Full Screen View,Sel,
-231 AC Normal View,Sel,
-232 AC View Toggle,Sel,
-233 AC Scroll Up,Sel,
-234 AC Scroll Down,Sel,
-235 AC Scroll,LC,
-236 AC Pan Left,Sel,
-237 AC Pan Right,Sel,
-238 AC Pan,LC,
-239 AC New Window,Sel,
-23A AC Tile Horizontally,Sel,
-23B AC Tile Vertically,Sel,
-23C AC Format,Sel,
-23D AC Edit,Sel,
-23E AC Bold,Sel,
-23F AC Italics,Sel,
-240 AC Underline,Sel,
-241 AC Strikethrough,Sel,
-242 AC Subscript,Sel,
-243 AC Superscript,Sel,
-244 AC All Caps,Sel,
-245 AC Rotate,Sel,
-246 AC Resize,Sel,
-247 AC Flip horizontal,Sel,
-248 AC Flip Vertical,Sel,
-249 AC Mirror Horizontal,Sel,
-24A AC Mirror Vertical,Sel,
-24B AC Font Select,Sel,
-24C AC Font Color,Sel,
-24D AC Font Size,Sel,
-24E AC Justify Left,Sel,
-24F AC Justify Center H,Sel,
-250 AC Justify Right,Sel,
-251 AC Justify Block H,Sel,
-252 AC Justify Top,Sel,
-253 AC Justify Center V,Sel,
-254 AC Justify Bottom,Sel,
-255 AC Justify Block V,Sel,
-256 AC Indent Decrease,Sel,
-257 AC Indent Increase,Sel,
-258 AC Numbered List,Sel,
-259 AC Restart Numbering,Sel,
-25A AC Bulleted List,Sel,
-25B AC Promote,Sel,
-25C AC Demote,Sel,
-25D AC Yes,Sel,
-25E AC No,Sel,
-25F AC Cancel,Sel,
-260 AC Catalog,Sel,
-261 AC Buy/Checkout,Sel,
-262 AC Add to Cart,Sel,
-263 AC Expand,Sel,
-264 AC Expand All,Sel,
-265 AC Collapse,Sel,
-266 AC Collapse All,Sel,
-267 AC Print Preview,Sel,
-268 AC Paste Special,Sel,
-269 AC Insert Mode,Sel,
-26A AC Delete,Sel,
-26B AC Lock,Sel,
-26C AC Unlock,Sel,
-26D AC Protect,Sel,
-26E AC Unprotect,Sel,
-26F AC Attach Comment,Sel,
-270 AC Delete Comment,Sel,
-271 AC View Comment,Sel,
-272 AC Select Word,Sel,
-273 AC Select Sentence,Sel,
-274 AC Select Paragraph,Sel,
-275 AC Select Column,Sel,
-276 AC Select Row,Sel,
-277 AC Select Table,Sel,
-278 AC Select Object,Sel,
-279 AC Redo/Repeat,Sel,
-27A AC Sort,Sel,
-27B AC Sort Ascending,Sel,
-27C AC Sort Descending,Sel,
-27D AC Filter,Sel,
-27E AC Set Clock,Sel,
-27F AC View Clock,Sel,
-280 AC Select Time Zone,Sel,
-281 AC Edit Time Zones,Sel,
-282 AC Set Alarm,Sel,
-283 AC Clear Alarm,Sel,
-284 AC Snooze Alarm,Sel,
-285 AC Reset Alarm,Sel,
-286 AC Synchronize,Sel,
-287 AC Send/Receive,Sel,
-288 AC Send To,Sel,
-289 AC Reply,Sel,
-28A AC Reply All,Sel,
-28B AC Forward Msg,Sel,
-28C AC Send,Sel,
-28D AC Attach File,Sel,
-28E AC Upload,Sel,
-28F AC Download (Save Target As),Sel,
-290 AC Set Borders,Sel,
-291 AC Insert Row,Sel,
-292 AC Insert Column,Sel,
-293 AC Insert File,Sel,
-294 AC Insert Picture,Sel,
-295 AC Insert Object,Sel,
-296 AC Insert Symbol,Sel,
-297 AC Save and Close,Sel,
-298 AC Rename,Sel,
-299 AC Merge,Sel,
-29A AC Split,Sel,
-29B AC Distribute Horizontally,Sel,
-29C AC Distribute Vertically,Sel,
-
-PAGE 0D Digitizers,DIG
-00 Undefined
-01 Digitizer,CA,
-02 Pen,CA,
-03 Light Pen,CA,
-04 Touch Screen,CA,
-05 Touch Pad,CA,
-06 White Board,CA,
-07 Coordinate Measuring Machine,CA,
-08 3D Digitizer,CA,Digitizer3D
-09 Stereo Plotter,CA,
-0A Articulated Arm,CA,
-0B Armature,CA,
-0C Multiple Point Digitizer,CA,
-0D Free Space Wand,CA,
-0E Configuration,CA,
-20 Stylus,CL,
-21 Puck,CL,
-22 Finger,CL,
-23 Device Settings,CL,
-30 Tip Pressure,DV,
-31 Barrel Pressure,DV,
-32 In Range,MC,
-33 Touch,MC,
-34 Untouch,OSC,
-35 Tap,OSC,
-36 Quality,DV,
-37 Data Valid,MC,
-38 Transducer Index,DV,
-39 Tablet Function Keys,CL,
-3A Program Change Keys,CL,
-3B Battery Strength,DV,
-3C Invert,MC,
-3D X Tilt,DV,
-3E Y Tilt,DV,
-3F Azimuth,DV,
-40 Altitude,DV,
-41 Twist,DV,
-42 Tip Switch,MC,
-43 Secondary Tip Switch,MC,
-44 Barrel Switch,MC,
-45 Eraser,MC,
-46 Tablet Pick,MC,
-47 Confidence,DV,
-48 Width,DV,
-49 Height,DV,
-51 Contact Identifier,DV,
-52 Device Mode,DV,
-53 Device Identifier,SVDV,
-54 Contact Count,DV,
-55 Contact Count Maximum,DV,
-
-PAGE 0E Reserved,RES
-
-PAGE 0F Physical Interface Device Page,PID
-00 Undefined
-01 Physical Interface Device,CA,
-20 Normal,DV,
-21 Set Effect Report,CL,
-22 Effect Block Index,DV,
-23 Parameter Block Offset,DV,
-24 ROM Flag,DF,
-25 Effect Type,NAry,
-26 ET Constant Force,Sel,
-27 ET Ramp,Sel,
-28 ET Custom Force Data,Sel,
-30 ET Square,Sel,
-31 ET Sine,Sel,
-32 ET Triangle,Sel,
-33 ET Sawtooth Up,Sel,
-34 ET Sawtooth Down,Sel,
-40 ET Spring,Sel,
-41 ET Damper,Sel,
-42 ET Inertia,Sel,
-43 ET Friction,Sel,
-50 Duration,DV,
-51 Sample Period,DV,
-52 Gain,DV,
-53 Trigger Button,DV,
-54 Trigger Repeat Interval,DV,
-55 Axes Enable,US,
-56 Direction Enable,DF,
-57 Direction,CL,
-58 Type Specific Block Offset,CL,
-59 Block Type,NAry,
-5A Set Envelope Report,CL,
-5B Attack Level,DV,
-5C Attack Time,DV,
-5D Fade Level,DV,
-5E Fade Time,DV,
-5F Set Condition Report,CL,
-60 CP Offset,DV,
-61 Positive Coefficient,DV,
-62 Negative Coefficient,DV,
-63 Positive Saturation,DV,
-64 Negative Saturation,DV,
-65 Dead Band,DV,
-66 Download Force Sample,CL,
-67 Isoch Custom Force Enable,DF,
-68 Custom Force Data Report,CL,
-69 Custom Force Data,DV,
-6A Custom Force Vendor Defined Data,DV,
-6B Set Custom Force Report,CL,
-6C Custom Force Data Offset,DV,
-6D Sample Count,DV,
-6E Set Periodic Report,CL,
-6F Offset,DV,
-70 Magnitude,DV,
-71 Phase,DV,
-72 Period,DV,
-73 Set Constant Force Report,CL,
-74 Set Ramp Force Report,CL,
-75 Ramp Start,DV,
-76 Ramp End,DV,
-77 Effect Operation Report,CL,
-78 Effect Operation,NAry,
-79 Op Effect Start,Sel,
-7A Op Effect Start Solo,Sel,
-7B Op Effect Stop,Sel,
-7C Loop Count,DV,
-7D Device Gain Report,CL,
-7E Device Gain,DV,
-7F PID Pool Report,CL,
-80 RAM Pool Size,DV,
-81 ROM Pool Size,SV,
-82 ROM Effect Block Count,SV,
-83 Simultaneous Effects Max,SV,
-84 Pool Alignment,SV,
-85 PID Pool Move Report,CL,
-86 Move Source,DV,
-87 Move Destination,DV,
-88 Move Length,DV,
-89 PID Block Load Report,CL,
-8B Block Load Status,NAry,
-8C Block Load Success,Sel,
-8D Block Load Full,Sel,
-8E Block Load Error,Sel,
-8F Block Handle
-90 PID Block Free Report,CL,
-91 Type Specific Block Handle,CL,
-92 PID State Report,CL,
-94 Effect Playing,DF,
-95 PID Device Control Report,CL,
-96 PID Device Control,NAry,
-97 DC Enable Actuators,Sel,
-98 DC Disable Actuators,Sel,
-99 DC Stop All Effects,Sel,
-9A DC Device Reset,Sel,
-9B DC Device Pause,Sel,
-9C DC Device Continue,Sel,
-9F Device Paused,DF,
-A0 Actuators Enabled,DF,
-A4 Safety Switch,DF,
-A5 Actuator Override Switch,DF,
-A6 Actuator Power,DF,
-A7 Start Delay,DV,
-A8 Parameter Block Size,CL,
-A9 Device Managed Pool,SF,
-AA Shared Parameter Blocks,SF,
-AB Create New Effect Report,CL,
-AC RAM Pool Available,DV,
-
-PAGE 10 Unicode Page,UNI
-
-PAGE 11-13 Reserved,RES
-
-PAGE 14 Alphanumeric Display Page,AD
-00 Undefined 
-01 Alphanumeric Display,CA,
-02 Bit-mapped Display,CA,
-20 Display Attributes Report,CL,
-21 ASCII Character Set,SF,
-22 Data Read Back,SF,
-23 Font Read Back,SF,
-24 Display Control Report,CL,
-25 Clear Display,DF,
-26 Display Enable,DF,
-27 Screen Saver Delay,SVDV,
-28 Screen Saver Enable,DF,
-29 Vertical Scroll,SFDF,
-2A Horizontal Scroll,SFDF,
-2B Character Report,CL,
-2C Display Data,DV,
-2D Display Status,CL,
-2E Stat Not Ready,Sel,
-2F Stat Ready,Sel,
-30 Err Not a loadable character,Sel,
-31 Err Font data cannot be read,Sel,
-32 Cursor Position Report,CL,
-33 Row,DV,
-34 Column,DV,
-35 Rows,SV,
-36 Columns,SV,
-37 Cursor Pixel Positioning,SF,
-38 Cursor Mode,DF,
-39 Cursor Enable,DF,
-3A Cursor Blink,DF,
-3B Font Report,CL,
-3C Font Data,BB,
-3D Character Width,SV,
-3E Character Height,SV,
-3F Character Spacing Horizontal,SV,
-40 Character Spacing Vertical,SV,
-41 Unicode Character Set,SF,
-42 Font 7-Segment,SF,
-43 7-Segment Direct Map,SF,DirectMap7Segment
-44 Font 14-Segment,SF,
-45 14-Segment Direct Map,SF,DirectMap14Segment
-46 Display Brightness,DV,
-47 Display Contrast,DV,
-48 Character Attribute,CL,
-49 Attribute Readback,SF,
-4A Attribute Data,DV,
-4B Char Attr Enhance,OOC,
-4C Char Attr Underline,OOC,
-4D Char Attr Blink,OOC,
-80 Bitmap Size X,SV,
-81 Bitmap Size Y,SV,
-83 Bit Depth Format,SV,
-84 Display Orientation,DV,
-85 Palette Report,CL,
-86 Palette Data Size,SV,
-87 Palette Data Offset,SV,
-88 Palette Data,BB,
-8A Blit Report,CL,
-8B Blit Rectangle X1,SV,
-8C Blit Rectangle Y1,SV,
-8D Blit Rectangle X2,SV,
-8E Blit Rectangle Y2,SV,
-8F Blit Data,BB,
-90 Soft Button,CL,
-91 Soft Button ID,SV,
-92 Soft Button Side,SV,
-93 Soft Button Offset 1,SV,
-94 Soft Button Offset 2,SV,
-95 Soft Button Report,SV,
-
-PAGE 15-3F Reserved,RES
-
-PAGE 40 Medical Instrument Page,MED
-00 Undefined
-01 Medical Ultrasound,CA,
-20 VCR/Acquisition,OOC,
-21 Freeze/Thaw,OOC,
-22 Clip Store,OSC,
-23 Update,OSC,
-24 Next,OSC,
-25 Save,OSC,
-26 Print,OSC,
-27 Microphone Enable,OSC,
-40 Cine,LC,
-41 Transmit Power,LC,
-42 Volume,LC,
-43 Focus,LC,
-44 Depth,LC,
-60 Soft Step - Primary,LC,
-61 Soft Step - Secondary,LC,
-70 Depth Gain Compensation,LC,
-80 Zoom Select,OSC,
-81 Zoom Adjust,LC,
-82 Spectral Doppler Mode Select,OSC,
-83 Spectral Doppler Adjust,LC,
-84 Color Doppler Mode Select,OSC,
-85 Color Doppler Adjust,LC,
-86 Motion Mode Select,OSC,
-87 Motion Mode Adjust,LC,
-88 2-D Mode Select,OSC,ModeSelect2D
-89 2-D Mode Adjust,LC,ModeAdjust2D
-A0 Soft Control Select,OSC,
-A1 Soft Control Adjust,LC,
-
-PAGE 41-7F Reserved,RES
-
-PAGE 80-83 Monitor Page,MON
-
-PAGE 84-87 Power Page,POW
-
-PAGE 8C Bar Code Scanner Page,BAR
-
-PAGE 8D Scale Page,SCA
-
-PAGE 8E Magnetic Stripe Reading Devices,MSR
-
-PAGE 8F Point Of Sale Devices,POS
-
-PAGE 90 Camera Control Page,CAM
-
-PAGE 91 Arcade Page,ARC
-
-END*/
