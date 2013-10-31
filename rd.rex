@@ -228,7 +228,7 @@ processMAIN:
                                            'Page='getPageDesc(xPage)',',
                                            'Usage='getUsageDesc(xPage,xUsage)',',
                                            'Type='getUsageType(xPage,xUsage)')'
-          if left(xExtendedUsage,2) <> 'FF' & getCollectionType(xValue) <> getUsageType(xPage,xUsage)
+          if left(xExtendedUsage,2) <> 'FF' & pos(getCollectionType(xValue),getUsageType(xPage,xUsage)) = 0
           then do
             sMeaning = sMeaning '<-- Warning: USAGE type should be' getCollectionType(xValue),
                                 '('getCollectionDesc(xValue)')'
@@ -908,8 +908,14 @@ getFieldName: procedure expose k. f.
   if sLabel = '' then parse value getUsageDescAndType(xPage,xUsage) with sLabel'('
   if sLabel = '' then sLabel = xUsage
   if sLabel = '' then sLabel = getCollectionName()
+  sLabel = getSaneLabel(sLabel)
   sFieldName = getUniqueName(space(getShortPageName(xPage)'_'sLabel,0),sStructureName)
 return sFieldName
+
+getSaneLabel: procedure
+  parse arg sLabel
+  sLabel = space(translate(sLabel,'','~!@#$%^&*()+`-={}|[]\:;<>?,./"'"'"),0)
+return sLabel
 
 getCollectionName: procedure expose f.
   if f.0COLLECTION_NAME = ''
@@ -1145,7 +1151,7 @@ return sUnit
 
 emitOpenDecode: procedure expose g. o. f.
   if \o.0DECODE then return
-  call emitHeading 'Decoded report descriptor'
+  call emitHeading 'Decoded Application Collection'
   say 
   select
     when o.0FORMAT = 'AVR' then do
@@ -1538,6 +1544,7 @@ Prolog:
 
   call addType 'BB','Buffered Bytes'
   call addType 'CA','Application Collection'
+  call addType 'CACP','Application or Physical Collection'
   call addType 'CL','Logical Collection'
   call addType 'CP','Physical Collection'
   call addType 'DF','Dynamic Flag'
