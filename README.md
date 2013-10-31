@@ -14,25 +14,32 @@ Features
 Syntax
 ------
 
-    rexx rd.rex [-bvdsx] filein [-i path]
+    rexx rd.rex [-h format] [-i file] [-dsvxb] -f filein
 
 or
 
-    rexx rd.rex -h[vdsx] [-i path] xx...
+    rexx rd.rex [-h format] [-i file] [-dsvx]  -c xx...
 
 Where
 
     filein           = Input file path to be decoded
-    path             = Vendor-specific definition file to be included
-    -h --hex         = Read hex input (xx...) from command line
+    file             = Include file of PAGE/USAGE definitions
+    hex              = Printable hex to be decoded from command line
+    format           = Type of output C header file format:
+                       AVR    - AVR style
+                       MIKROC - MikroElektronika mikroC Pro for PIC style
+                       MCHIP  - Microchip C18 style
+    -f --file        = Read input from the specified file
+    -c --hex         = Read hex input from command line
     -b --binary      = Input file is binary (not text)
-    -i --include     = Include vendor-specific definitions file
     -s --struct      = Output C structure declarations (default)
     -d --decode      = Output decoded report descriptor
+    -h --header      = Output C header in AVR, MIKROC or MICROCHIP format
     -x --dump        = Output hex dump of report descriptor
-    -v --verbose     = Output more detail
+    -i --include     = Read vendor-specific definition file
+    -v --verbose     = Output detail
     -vv              = Output even more detail
-    -vvv             = Ouput an insane amount of detail
+    -vvv             = Output insane amount of detail
     --version        = Display version and exit
     -? --help        = Display this information
 

@@ -37,16 +37,7 @@ trace off
     return
   end
 
-  sFile        = g.0REST
-  sData        = getOption('--hex')
-  o.0BINARY    = getOption('--binary')
-  o.0VERBOSITY = getOption('--verbose')
-  o.0STRUCT    = getOption('--struct')
-  o.0DECODE    = getOption('--decode')
-  o.0FORMAT    = toUpper(getOption('--format'))
-  o.0DUMP      = getOption('--dump')
   o.0HELP      = getOption('--help')
-
   if o.0HELP | sCommandLine = ''
   then do
     parse source . . sThis .
@@ -62,13 +53,14 @@ trace off
     say 'Descriptor.'
     say 'As such, it is not perfect...merely useful.'
     say 
-    say 'Syntax: rexx' sThis '[-f format] [-dsvxb] filein'
-    say '    or: rexx' sThis '[-f format] [-dsvx] -h hex'
+    say 'Syntax: rexx' sThis '[-h format] [-i file] [-dsvxb] -f filein'
+    say '    or: rexx' sThis '[-h format] [-i file] [-dsvx]  -c hex'
     say
     say 'Where:'
     say '      filein           = Input file path to be decoded'
-    say '      hex              = Printable hex to be decoded'
-    say '      format           = Output C header file format:'
+    say '      file             = Include file of PAGE/USAGE definitions'
+    say '      hex              = Printable hex to be decoded from command line'
+    say '      format           = Type of output C header file format:'
     say '                         AVR    - AVR style'
     say '                         MIKROC - MikroElektronika mikroC Pro for PIC style'
     say '                         MCHIP  - Microchip C18 style'
@@ -77,22 +69,30 @@ trace off
     end
     say 
     say 'Example:'
-    say '      rexx' sThis '-h 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
+    say '      rexx' sThis '--hex 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
     say '       ...decodes the given hex string'
     say
-    say '      rexx' sThis 'myinputfile.h'
+    say '      rexx' sThis 'usbdesc.h'
     say '       ...decodes the hex strings found in the specified file'
     return
   end
 
+  o.0BINARY    = getOption('--binary')
+  o.0VERBOSITY = getOption('--verbose')
+  o.0STRUCT    = getOption('--struct')
+  o.0DECODE    = getOption('--decode')
+  o.0HEADER    = toUpper(getOption('--header',1))
+  o.0DUMP      = getOption('--dump')
+
   if \(o.0DECODE | o.0STRUCT | o.0DUMP) /* If neither --decode nor --struct nor --dump was specified */
   then o.0STRUCT = 1          /* then assume --struct was specified */
 
-  featureField.0 = 0
-  inputField.0 = 0
-  outputField.0 = 0
-  sCollectionStack = ''
-  g.0INDENT = 0
+  sData = ''
+  select
+    when getOptionCount('--file') > 0 then sFile = getOption('--file',1)
+    when getOptionCount('--hex') > 0  then sData = getOption('--hex',1)
+    otherwise sFile = g.0REST /* assume command line is the name of the input file */
+  end
 
   xData = readDescriptor(sFile,sData)
   if o.0DUMP
@@ -103,6 +103,11 @@ trace off
     say
   end
 
+  featureField.0 = 0
+  inputField.0 = 0
+  outputField.0 = 0
+  sCollectionStack = ''
+  g.0INDENT = 0
   sData = x2c(xData)
   nIndent = 0
   nByte = 1
@@ -1152,13 +1157,12 @@ return sUnit
 emitOpenDecode: procedure expose g. o. f.
   if \o.0DECODE then return
   call emitHeading 'Decoded Application Collection'
-  say 
   select
-    when o.0FORMAT = 'AVR' then do
+    when o.0HEADER = 'AVR' then do
       say 'PROGMEM char' getUniqueName('usbHidReportDescriptor')'[] ='
       say '{'
     end
-    when o.0FORMAT = 'MCHIP' then do
+    when o.0HEADER = 'MCHIP' then do
       say 'ROM struct'
       say '{'
       say '  BYTE report[USB_HID_REPORT_DESCRIPTOR_SIZE];'
@@ -1166,7 +1170,7 @@ emitOpenDecode: procedure expose g. o. f.
       say '{'
       say '  {'
     end
-    when o.0FORMAT = 'MIKROC' then do
+    when o.0HEADER = 'MIKROC' then do
       say 'const struct'
       say '{'
       say '  char report[USB_HID_REPORT_DESCRIPTOR_SIZE];'
@@ -1186,14 +1190,14 @@ emitCloseDecode: procedure expose g. o.
   if g.0DECODE_OPEN = 1
   then do  
     select
-      when o.0FORMAT = 'AVR' then do
+      when o.0HEADER = 'AVR' then do
         say '};'
       end
-      when o.0FORMAT = 'MCHIP' then do
+      when o.0HEADER = 'MCHIP' then do
         say '  }'
         say '};'
       end
-      when o.0FORMAT = 'MIKROC' then do
+      when o.0HEADER = 'MIKROC' then do
         say '  }'
         say '};'
       end
@@ -1213,7 +1217,7 @@ say: procedure expose g. o. f.
     call emitOpenDecode
   end
   select
-    when o.0FORMAT = 'AVR' | o.0FORMAT = 'MIKROC' | o.0FORMAT = 'MCHIP' then do
+    when o.0HEADER = 'AVR' | o.0HEADER = 'MIKROC' | o.0HEADER = 'MCHIP' then do
       sChunk = ' '
       xChunk = sCode || sParm
       do i = 1 to length(xChunk) by 2
@@ -1224,8 +1228,8 @@ say: procedure expose g. o. f.
       then say left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
       else say left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
     end
-    when o.0FORMAT = 'MICROCHIP' then do
-      say o.0FORMAT sCode sParm sType sTag xValue sDescription
+    when o.0HEADER = 'MICROCHIP' then do
+      say o.0HEADER sCode sParm sType sTag xValue sDescription
     end
     otherwise do
       if xValue = '' 
@@ -1329,14 +1333,22 @@ setOption: procedure expose g. k.
   if nOption = 0
   then say 'RDD001W Invalid option ignored:' sToken
   else do
-    g.0OPTION_PRESENT.nOption = 1
     nOptionType = getOptionType(sOption)
+    g.0OPTION_PRESENT.nOption = 1
     select
       when nOptionType = k.0OPTION_COUNT then do
         g.0OPTION.nOption = g.0OPTION.nOption + 1
       end
       when nOptionType = k.0OPTION_BOOLEAN then do
         g.0OPTION.nOption = \g.0OPTION.nOption
+      end
+      when nOptionType = k.0OPTION_LIST then do
+        n = g.0OPTION.nOption.0 
+        if n = '' 
+        then n = 1
+        else n = n + 1
+        g.0OPTION.nOption.0 = n
+        g.0OPTION.nOption.n = sValue
       end
       otherwise do
         g.0OPTION.nOption = sValue
@@ -1346,9 +1358,20 @@ setOption: procedure expose g. k.
 return
 
 getOption: procedure expose g. k.
+  parse arg sOption,n
+  nOption = getOptionIndex(sOption)
+  if n <> ''
+  then sValue = g.0OPTION.nOption.n
+  else sValue = g.0OPTION.nOption
+return sValue
+
+getOptionCount: procedure expose g. k.
   parse arg sOption
   nOption = getOptionIndex(sOption)
-return g.0OPTION.nOption
+  if g.0OPTION.nOption.0 = ''
+  then nOptionCount = 0
+  else nOptionCount = g.0OPTION.nOption.0
+return nOptionCount
 
 setOptions: procedure expose g. k.
   parse arg sCommandLine
@@ -1479,11 +1502,12 @@ Prolog:
   k.0OPTION_LIST    = -1
   k.0OPTION_BOOLEAN = 0
 
-  call addListOption      '-h','--hex'     ,'Read hex input from command line'
+  call addListOption      '-f','--file'    ,'Read input from the specified file'
+  call addListOption      '-c','--hex'     ,'Read hex input from command line'
   call addBooleanOption   '-b','--binary'  ,'Input file is binary (not text)'
   call addBooleanOption   '-s','--struct'  ,'Output C structure declarations (default)'
   call addBooleanOption   '-d','--decode'  ,'Output decoded report descriptor'
-  call addListOption      '-f','--format'  ,'Output C header in AVR, MIKROC or MICROCHIP format'
+  call addListOption      '-h','--header'  ,'Output C header in AVR, MIKROC or MICROCHIP format'
   call addBooleanOption   '-x','--dump'    ,'Output hex dump of report descriptor'
   call addListOption      '-i','--include' ,'Read vendor-specific definition file'
   call addCountableOption '-v','--verbose' ,'Output more detail'
@@ -1673,7 +1697,12 @@ Prolog:
   k.0UNIT.6.4 = 'Luminous Intensity=Candela'
 
   call loadUsageFile 'rd.conf'
-  call loadUsageFile getOption('--include')
+  do i = 1 to getOptionCount('--include')
+    sIncludeFile = getOption('--include',i)
+    if openFile(sIncludeFile)
+    then call loadUsageFile getOption('--include',i)
+    else say 'Could not open file' sIncludeFile
+  end
 return
 
 openFile: procedure expose g.
