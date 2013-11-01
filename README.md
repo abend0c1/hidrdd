@@ -7,9 +7,11 @@ Features
 --------
 * Decodes HID Report Descriptors
 * Converts HID Report Descriptor into C language structure declarations
-* Highlights redundant descriptor tags
+* Highlights common errors such as redundant descriptor tags, field size errors etc
 * Accepts binary or textual input (for example existing C structure definitions)
+* Decodes all the USB HID descriptors currently published by usb.org
 * Decodes vendor-specific descriptors (if you supply a simple definition file)
+
 
 Syntax
 ------
@@ -18,13 +20,13 @@ Syntax
 
 or
 
-    rexx rd.rex [-h format] [-i file] [-dsvx]  -c xx...
+    rexx rd.rex [-h format] [-i file] [-dsvx]  -c hex
 
 Where
 
     filein           = Input file path to be decoded
     file             = Include file of PAGE/USAGE definitions
-    hex              = Printable hex to be decoded from command line
+    hex              = Printable hex to be decoded from command line (e.g. 05 01 or 0x05 0x01)
     format           = Type of output C header file format:
                        AVR    - AVR style
                        MIKROC - MikroElektronika mikroC Pro for PIC style
