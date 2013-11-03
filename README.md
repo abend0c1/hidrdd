@@ -1,49 +1,56 @@
 RDD! HID Report Descriptor Decoder
 ==================================
 
-This will extract anything that looks like a USB Human Interface Device (HID) report descriptor from the specified input file and attempt to decode it into a C header file. It does this by concatenating all the printable-hex-like sequences it finds on each line (until the first unrecognisable sequence is encountered) into a single string of hex digits, and then attempts to decode that string as though it was a HID Report Descriptor. If your input file is already in binary format, then specify the -b option.
+This will read a USB Human Interface Device (HID) report descriptor from the
+specified input file then attempt to decode it and, optionally, create a
+C language header file from it. It also does some minimal sanity checks
+to verify that the report descriptor is valid.  The input file can be a
+binary file or a text file (for example, an existing C header file). If
+it is a text file, it will concatenate all the printable-hex-like text
+that it finds on each line (until the first non-hex sequence is found)
+into a single string of hex digits, and then attempt to decode that string.
+You can feed it an existing C header file and it will decode it as long
+as you have all the hex strings (e.g. 0x0F, 0x0Fb2) at the beginning of
+each line. Commas (,) and semicolons (;) are ignored.
+
 
 Features
 --------
-* Decodes HID Report Descriptors
+* Decodes all the USB HID descriptors currently published by usb.org
 * Converts HID Report Descriptor into C language structure declarations
 * Highlights common errors such as redundant descriptor tags, field size errors etc
 * Accepts binary or textual input (for example existing C structure definitions)
-* Decodes all the USB HID descriptors currently published by usb.org
 * Decodes vendor-specific descriptors (if you supply a simple definition file)
 
 
-Syntax
-------
+Usage
+-----
 
-    rexx rd.rex [-h format] [-i file] [-dsvxb] -f filein
+      rexx /home/aja/git/hidrdd/rd.rex [-h format] [-i fileinc] [-o fileout] [-dsvxb] -f filein
+Or:
+      rexx /home/aja/git/hidrdd/rd.rex [-h format] [-i fileinc] [-o fileout] [-dsvx]  -c hex
 
-or
-
-    rexx rd.rex [-h format] [-i file] [-dsvx]  -c hex
-
-Where
-
-    filein           = Input file path to be decoded
-    file             = Include file of PAGE/USAGE definitions
-    hex              = Printable hex to be decoded from command line (e.g. 05 01 or 0x05 0x01)
-    format           = Type of output C header file format:
-                       AVR    - AVR style
-                       MIKROC - MikroElektronika mikroC Pro for PIC style
-                       MCHIP  - Microchip C18 style
-    -f --file        = Read input from the specified file
-    -c --hex         = Read hex input from command line
-    -b --binary      = Input file is binary (not text)
-    -s --struct      = Output C structure declarations (default)
-    -d --decode      = Output decoded report descriptor
-    -h --header      = Output C header in AVR, MIKROC or MICROCHIP format
-    -x --dump        = Output hex dump of report descriptor
-    -i --include     = Read vendor-specific definition file
-    -v --verbose     = Output detail
-    -vv              = Output even more detail
-    -vvv             = Output insane amount of detail
-    --version        = Display version and exit
-    -? --help        = Display this information
+Where:
+      filein           = Input file path to be decoded
+      fileout          = Output file (default is console)
+      fileinc          = Include file of PAGE/USAGE definitions
+      hex              = Printable hex to be decoded from command line
+      format           = Type of output C header file format:
+                         AVR    - AVR style
+                         MIKROC - MikroElektronika mikroC Pro for PIC style
+                         MCHIP  - Microchip C18 style
+      -f --file        = Read input from the specified file
+      -c --hex         = Read hex input from command line
+      -b --binary      = Input file is binary (not text)
+      -o --output      = Write output to the specified file (default is console)
+      -s --struct      = Output C structure declarations (default)
+      -d --decode      = Output decoded report descriptor
+      -h --header      = Output C header in AVR, MIKROC or MICROCHIP format
+      -x --dump        = Output hex dump of report descriptor
+      -i --include     = Read vendor-specific definition file
+      -v --verbose     = Output more detail
+      --version        = Display version and exit
+      -? --help        = Display this information
 
 Prerequisites
 -------------
@@ -59,8 +66,8 @@ Examples
     rexx rd.rex -sh 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0
     ...generates C structure declarations for the given hex string
 
-    rexx rd.rex -d myinputfile.h
-    ...decodes the hex strings found in myinputfile.h
+    rexx rd.rex -d -f myinputfile.h -o myoutputfile.txt
+    ...decodes the hex strings found in myinputfile.h into myoutputfile.txt
 
     rexx rd.rex myinputfile.h
     ...generates C structure declarations for the hex strings found in myinputfile.h

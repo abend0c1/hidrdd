@@ -1,5 +1,5 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.2
+/* RDD! HID Report Descriptor Decoder v1.1.3
 
 Copyright (c) 2011-2013, Andrew J. Armstrong
 All rights reserved.
@@ -17,6 +17,8 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+Author:
+Andrew J. Armstrong <androidarmstrong@gmail.com> 
 */
 
 trace off
@@ -43,22 +45,27 @@ trace off
     parse source . . sThis .
     say getVersion()
     say
-    say 'This will extract anything that looks like a USB Human'
-    say 'Interface Device (HID) report descriptor from the specified'
-    say 'input file and attempt to decode it into a C header file.'
-    say 'It does this by concatenating all the printable-hex-like'
-    say 'sequences it finds on each line (until the first unrecognisable'
-    say 'sequence is encountered) into a single string of hex digits, and'
-    say 'then attempts to decode that string as though it was a HID Report'
-    say 'Descriptor.'
-    say 'As such, it is not perfect...merely useful.'
+    say 'This will read a USB Human Interface Device (HID) report descriptor from the'
+    say 'specified input file then attempt to decode it and, optionally, create a'
+    say 'C language header file from it. It also does some minimal sanity checks'
+    say 'to verify that the report descriptor is valid.  The input file can be a'
+    say 'binary file or a text file (for example, an existing C header file). If'
+    say 'it is a text file, it will concatenate all the printable-hex-like text'
+    say 'that it finds on each line (until the first non-hex sequence is found)'
+    say 'into a single string of hex digits, and then attempt to decode that string.'
+    say 'You can feed it an existing C header file and it will decode it as long'
+    say 'as you have all the hex strings (e.g. 0x0F, 0x0Fb2) at the beginning of'
+    say 'each line. Commas (,) and semicolons (;) are ignored.'
     say 
-    say 'Syntax: rexx' sThis '[-h format] [-i file] [-dsvxb] -f filein'
-    say '    or: rexx' sThis '[-h format] [-i file] [-dsvx]  -c hex'
+    say 'Usage:'
+    say '      rexx' sThis '[-h format] [-i fileinc] [-o fileout] [-dsvxb] -f filein'
+    say '   or:'
+    say '      rexx' sThis '[-h format] [-i fileinc] [-o fileout] [-dsvx]  -c hex'
     say
     say 'Where:'
     say '      filein           = Input file path to be decoded'
-    say '      file             = Include file of PAGE/USAGE definitions'
+    say '      fileout          = Output file (default is console)'
+    say '      fileinc          = Include file of PAGE/USAGE definitions'
     say '      hex              = Printable hex to be decoded from command line'
     say '      format           = Type of output C header file format:'
     say '                         AVR    - AVR style'
@@ -83,6 +90,16 @@ trace off
   o.0DECODE    = getOption('--decode')
   o.0HEADER    = toUpper(getOption('--header',1))
   o.0DUMP      = getOption('--dump')
+  o.0OUTPUT    = getOption('--output',1)
+
+  if o.0OUTPUT <> ''
+  then do
+    if \openFile(o.0OUTPUT,'WRITE REPLACE')
+    then do
+      say 'Could not open output file:' sFileOut'. Using console'
+      o.0OUTPUT = '' /* console */
+    end 
+  end
 
   if \(o.0DECODE | o.0STRUCT | o.0DUMP) /* If neither --decode nor --struct nor --dump was specified */
   then o.0STRUCT = 1          /* then assume --struct was specified */
@@ -98,9 +115,9 @@ trace off
   if o.0DUMP
   then do
     call emitHeading 'Report descriptor data in hex (length' length(xData)/2 'bytes)'
-    say
+    call say
     call dumpHex xData
-    say
+    call say
   end
 
   featureField.0 = 0
@@ -130,11 +147,11 @@ trace off
       when sType = k.0TYPE.MAIN   then call processMAIN
       when sType = k.0TYPE.GLOBAL then call processGLOBAL
       when sType = k.0TYPE.LOCAL  then call processLOCAL
-      otherwise call say xItem,xParm,'LOCAL',,,'<-- Invalid Item'
+      otherwise call emitDecode xItem,xParm,'LOCAL',,,'<-- Invalid Item'
     end
   end
   if sCollectionStack <> ''
-  then say 'RDD003E Missing END_COLLECTION MAIN tag (0xC0)'
+  then say 'Missing END_COLLECTION MAIN tag (0xC0)'
   call Epilog
 return
 
@@ -149,7 +166,7 @@ readDescriptor: procedure expose g. k. o.
     xData = space(sData,0)
     if \isHex(xData)
     then do
-      say 'RDD002E Expecting printable hexadecimal data. Found:' sData
+      say 'Expecting printable hexadecimal data. Found:' sData
       xData = ''
     end
   end
@@ -193,7 +210,7 @@ processMAIN:
   select
     when sTag = k.0MAIN.INPUT then do
       sFlags = getInputFlags()
-      call say xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
+      call emitDecode xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
       n = inputField.0 + 1
       inputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       inputField.0 = n
@@ -201,7 +218,7 @@ processMAIN:
     end
     when sTag = k.0MAIN.OUTPUT then do
       sFlags = getOutputFlags()
-      call say xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
+      call emitDecode xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
       n = outputField.0 + 1
       outputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       outputField.0 = n
@@ -209,7 +226,7 @@ processMAIN:
     end
     when sTag = k.0MAIN.FEATURE then do
       sFlags = getFeatureFlags()
-      call say xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
+      call emitDecode xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
       n = featureField.0 + 1
       featureField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       featureField.0 = n
@@ -240,7 +257,7 @@ processMAIN:
           end
         end
       end
-      call say xItem,xParm,'MAIN','COLLECTION',xValue,sMeaning
+      call emitDecode xItem,xParm,'MAIN','COLLECTION',xValue,sMeaning
       g.0INDENT = g.0INDENT + 2
       g.0USAGES = ''
     end
@@ -248,7 +265,7 @@ processMAIN:
       g.0INDENT = g.0INDENT - 2
       parse var sCollectionStack nCollectionType sCollectionStack /* pop the collection stack */
       xCollectionType = d2x(nCollectionType,2)
-      call say xItem,xParm,'MAIN','END_COLLECTION',,getCollectionDesc(xCollectionType)
+      call emitDecode xItem,xParm,'MAIN','END_COLLECTION',,getCollectionDesc(xCollectionType)
       if nCollectionType = 1 /* Application Collection */
       then do
         if o.0DECODE
@@ -267,7 +284,7 @@ processMAIN:
         g.0USAGES = ''
       end
     end
-    otherwise call say xItem,xParm,'MAIN',,,'<-- Invalid: Unknown MAIN tag'
+    otherwise call emitDecode xItem,xParm,'MAIN',,,'<-- Invalid: Unknown MAIN tag'
   end
 return
 
@@ -332,7 +349,7 @@ processGLOBAL:
     end
     otherwise sMeaning = '<-- Invalid: Unknown GLOBAL tag'
   end
-  call say xItem,xParm,'GLOBAL',k.0GLOBAL.sTag,xValue,sMeaning
+  call emitDecode xItem,xParm,'GLOBAL',k.0GLOBAL.sTag,xValue,sMeaning
 return
 
 processLOCAL:
@@ -410,7 +427,7 @@ processLOCAL:
     end
     otherwise sMeaning = '<-- Invalid: Unknown LOCAL tag'
   end
-  call say xItem,xParm,'LOCAL',k.0LOCAL.sTag,xValue,sMeaning
+  call emitDecode xItem,xParm,'LOCAL',k.0LOCAL.sTag,xValue,sMeaning
   if bIndent
   then do
     g.0INDENT = g.0INDENT + 2
@@ -480,11 +497,11 @@ getDimension: procedure
   parse arg nCount,nBits
 return '('getQuantity(nCount,'field','fields') 'x' getQuantity(nBits, 'bit', 'bits')')'
 
-dumpHex: procedure expose g.
+dumpHex: procedure expose g. o.
   parse upper arg xData
   do while xData <> ''
     parse var xData x1 +8 x2 +8 x3 +8 x4 +8 x5 +8 x6 +8 x7 +8 x8 +8 xData
-    say '//' x1 x2 x3 x4 x5 x6 x7 x8
+    call say '//' x1 x2 x3 x4 x5 x6 x7 x8
   end
 return
 
@@ -556,7 +573,7 @@ emitFeatureFields: procedure expose featureField. k. o. f.
   call emitEndStructure 'featureReport',xLastReportId
 return            
 
-emitBeginStructure: procedure expose g. k. f.
+emitBeginStructure: procedure expose g. k. f. o.
   parse arg sStructureName,xReportId,sDirection
   if xReportId <> 0
   then f.0TYPEDEFNAME = getUniqueName(sStructureName || xReportId)'_t'
@@ -564,34 +581,34 @@ emitBeginStructure: procedure expose g. k. f.
   call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName xReportId '('sDirection')'
   if xReportId <> 0
   then do
-    say 'typedef struct'
-    say '{'
+    call say 'typedef struct'
+    call say '{'
     c = x2c(xReportId)
     if isAlphanumeric(c)
     then sDesc = '('x2d(xReportId)')' "'"c"'"
     else sDesc = '('x2d(xReportId)')'
-    say '  'getStatement(k.0U8 'reportId;','Report ID = 0x'xReportId sDesc)
+    call say '  'getStatement(k.0U8 'reportId;','Report ID = 0x'xReportId sDesc)
   end
   else do
-    say 'typedef struct'
-    say '{'
-    say '  'getStatement(,'No REPORT ID byte')
+    call say 'typedef struct'
+    call say '{'
+    call say '  'getStatement(,'No REPORT ID byte')
   end
 return
 
-emitEndStructure: procedure expose g. f.
+emitEndStructure: procedure expose g. f. o.
   parse arg sStructureName,xReportId
-  say '}' f.0TYPEDEFNAME';'
-  say
+  call say '}' f.0TYPEDEFNAME';'
+  call say
 return
 
-emitHeading: procedure
+emitHeading: procedure expose o.
   parse arg sHeading
-  say 
-  say '//--------------------------------------------------------------------------------'
-  say '//' sHeading
-  say '//--------------------------------------------------------------------------------'
-  say 
+  call say 
+  call say '//--------------------------------------------------------------------------------'
+  call say '//' sHeading
+  call say '//--------------------------------------------------------------------------------'
+  call say 
 return  
 
 emitField: procedure expose k. o. f.
@@ -600,14 +617,14 @@ emitField: procedure expose k. o. f.
   call setLocals sLocals
   if o.0VERBOSITY > 0
   then do
-    say
-    say '  // Field:  ' nField
-    say '  // Width:  ' g.0REPORT_SIZE
-    say '  // Count:  ' g.0REPORT_COUNT
-    say '  // Flags:  ' xFlags':' sFlags
-    say '  // Globals:' getFormattedGlobals()
-    say '  // Locals: ' getFormattedLocals()
-    say '  // Usages: ' strip(xExplicitUsages) /* list of specified usages, if any */
+    call say
+    call say '  // Field:  ' nField
+    call say '  // Width:  ' g.0REPORT_SIZE
+    call say '  // Count:  ' g.0REPORT_COUNT
+    call say '  // Flags:  ' xFlags':' sFlags
+    call say '  // Globals:' getFormattedGlobals()
+    call say '  // Locals: ' getFormattedLocals()
+    call say '  // Usages: ' strip(xExplicitUsages) /* list of specified usages, if any */
   end
   sFlags = x2c(xFlags)
   nUsageMin = x2d(g.0USAGE_MINIMUM)
@@ -619,10 +636,10 @@ emitField: procedure expose k. o. f.
   then do
     if isData(sFlags)
     then do /* data i.e. can be changed */
-      say '  // Access:  Read/Write'
+      call say '  // Access:  Read/Write'
     end
     else do
-      say '  // Access:  Read/Only'
+      call say '  // Access:  Read/Only'
     end
   end
   xPage = g.0USAGE_PAGE
@@ -682,12 +699,12 @@ emitField: procedure expose k. o. f.
     */
     if o.0VERBOSITY > 0
     then do
-      say '  // Type:    Variable'
-      say '  'getStatement('', xPage getPageDesc(xPage))
+      call say '  // Type:    Variable'
+      call say '  'getStatement('', xPage getPageDesc(xPage))
     end
     if sCollectionName <> f.0LASTCOLLECTION
     then do
-      say '  'getStatement(,sCollectionName 'collection')
+      call say '  'getStatement(,sCollectionName 'collection')
 
       f.0LASTCOLLECTION = sCollectionName
     end
@@ -709,7 +726,7 @@ emitField: procedure expose k. o. f.
         do nIgnored = i to nUsages
           xIgnoredUsage = word(sUsages,nIgnored)
           parse var xIgnoredUsage xPage +4 xUsage +4
-          say '  'getStatement('',xPage xUsage getUsageDescAndType(xPage,xUsage) getRange() '<-- Ignored: REPORT_COUNT ('g.0REPORT_COUNT') is too small')
+          call say '  'getStatement('',xPage xUsage getUsageDescAndType(xPage,xUsage) getRange() '<-- Ignored: REPORT_COUNT ('g.0REPORT_COUNT') is too small')
         end
       end
       /* Now replicate the last usage to fill the report count */
@@ -787,8 +804,8 @@ emitField: procedure expose k. o. f.
     */
     if o.0VERBOSITY > 0
     then do
-      say '  // Type:    Array'
-      say '  'getStatement('', xPage getPageDesc(xPage))
+      call say '  // Type:    Array'
+      call say '  'getStatement('', xPage getPageDesc(xPage))
     end
     /* todo: coming up with a field name is tricky...each field can
              index many usages, so a particular usage name can't be
@@ -796,7 +813,7 @@ emitField: procedure expose k. o. f.
     */
     if sCollectionName <> f.0LASTCOLLECTION
     then do
-      say '  'getStatement(,sCollectionName 'collection')
+      call say '  'getStatement(,sCollectionName 'collection')
 
       f.0LASTCOLLECTION = sCollectionName
     end
@@ -818,7 +835,7 @@ emitField: procedure expose k. o. f.
           parse var xExtendedUsage xPage +4 xUsage +4
           sUsageDesc = getUsageDescAndType(xPage,xUsage)
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
-          then say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
+          then call say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
         end
       end
@@ -830,7 +847,7 @@ emitField: procedure expose k. o. f.
           xUsage = d2x(nUsage,4)
           sUsageDesc = getUsageDescAndType(xPage,xUsage)
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
-          then say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
+          then call say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
         end
       end
@@ -848,7 +865,7 @@ getUsages: procedure expose g.
   end
 return sUsages
 
-emitFieldDecl: procedure expose g. k. f.
+emitFieldDecl: procedure expose g. k. f. o.
   parse arg nReportCount,xExtendedUsage,sPad
   if nReportCount < 1 then return
   sFieldName = getFieldName(xExtendedUsage,f.0TYPEDEFNAME)sPad
@@ -856,28 +873,28 @@ emitFieldDecl: procedure expose g. k. f.
   if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
-    then say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
-    else say '  'getStatement(g.0FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
+    then call say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
+    else call say '  'getStatement(g.0FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
   end
   else do
-    say '  'getStatement(g.0FIELD_TYPE sFieldName ':' g.0REPORT_SIZE';', xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
+    call say '  'getStatement(g.0FIELD_TYPE sFieldName ':' g.0REPORT_SIZE';', xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
     do i = 1 to nReportCount-1
-      say '  'getStatement(g.0FIELD_TYPE sFieldName||i ':' g.0REPORT_SIZE';', xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
+      call say '  'getStatement(g.0FIELD_TYPE sFieldName||i ':' g.0REPORT_SIZE';', xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
     end
   end
 return
 
-emitPaddingFieldDecl: procedure expose g. k.
+emitPaddingFieldDecl: procedure expose g. k. o.
   parse arg nReportCount,nField
   if nReportCount < 1 then return
   if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
-    then say '  'getStatement(g.0FIELD_TYPE 'pad_'nField';', 'Pad')
-    else say '  'getStatement(g.0FIELD_TYPE 'pad_'nField'['nReportCount'];', 'Pad')
+    then call say '  'getStatement(g.0FIELD_TYPE 'pad_'nField';', 'Pad')
+    else call say '  'getStatement(g.0FIELD_TYPE 'pad_'nField'['nReportCount'];', 'Pad')
   end
   else do i = 1 to nReportCount
-    say '  'getStatement(g.0FIELD_TYPE ':' g.0REPORT_SIZE';', 'Pad')
+    call say '  'getStatement(g.0FIELD_TYPE ':' g.0REPORT_SIZE';', 'Pad')
   end
 return
 
@@ -1154,32 +1171,32 @@ getUnit: procedure expose k.
   end
 return sUnit
 
-emitOpenDecode: procedure expose g. o. f.
+emitOpenDecode: procedure expose g. o. f. o.
   if \o.0DECODE then return
   call emitHeading 'Decoded Application Collection'
   select
     when o.0HEADER = 'AVR' then do
-      say 'PROGMEM char' getUniqueName('usbHidReportDescriptor')'[] ='
-      say '{'
+      call say 'PROGMEM char' getUniqueName('usbHidReportDescriptor')'[] ='
+      call say '{'
     end
     when o.0HEADER = 'MCHIP' then do
-      say 'ROM struct'
-      say '{'
-      say '  BYTE report[USB_HID_REPORT_DESCRIPTOR_SIZE];'
-      say '}' getUniqueName('hid_report_descriptor') '='
-      say '{'
-      say '  {'
+      call say 'ROM struct'
+      call say '{'
+      call say '  BYTE report[USB_HID_REPORT_DESCRIPTOR_SIZE];'
+      call say '}' getUniqueName('hid_report_descriptor') '='
+      call say '{'
+      call say '  {'
     end
     when o.0HEADER = 'MIKROC' then do
-      say 'const struct'
-      say '{'
-      say '  char report[USB_HID_REPORT_DESCRIPTOR_SIZE];'
-      say '}' getUniqueName('hid_report_descriptor') '='
-      say '{'
-      say '  {'
+      call say 'const struct'
+      call say '{'
+      call say '  char report[USB_HID_REPORT_DESCRIPTOR_SIZE];'
+      call say '}' getUniqueName('hid_report_descriptor') '='
+      call say '{'
+      call say '  {'
     end
     otherwise do
-      say '/*'
+      call say '/*'
     end
   end
   g.0DECODE_OPEN = 1
@@ -1191,25 +1208,25 @@ emitCloseDecode: procedure expose g. o.
   then do  
     select
       when o.0HEADER = 'AVR' then do
-        say '};'
+        call say '};'
       end
       when o.0HEADER = 'MCHIP' then do
-        say '  }'
-        say '};'
+        call say '  }'
+        call say '};'
       end
       when o.0HEADER = 'MIKROC' then do
-        say '  }'
-        say '};'
+        call say '  }'
+        call say '};'
       end
       otherwise do
-        say '*/'
+        call say '*/'
       end
     end
   end
   g.0DECODE_OPEN = 0
 return
 
-say: procedure expose g. o. f.
+emitDecode: procedure expose g. o. f.
   if \o.0DECODE then return
   parse arg sCode,sParm,sType,sTag,xValue,sDescription
   if g.0DECODE_OPEN <> 1
@@ -1225,16 +1242,16 @@ say: procedure expose g. o. f.
         sChunk = sChunk '0x'xByte','
       end
       if xValue = '' 
-      then say left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
-      else say left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
+      then call say left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
+      else call say left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
     end
     when o.0HEADER = 'MICROCHIP' then do
-      say o.0HEADER sCode sParm sType sTag xValue sDescription
+      call say o.0HEADER sCode sParm sType sTag xValue sDescription
     end
     otherwise do
       if xValue = '' 
-      then say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
-      else say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
+      then call say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
+      else call say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
     end
   end
 return
@@ -1331,7 +1348,7 @@ setOption: procedure expose g. k.
   parse arg sOption,sValue
   nOption = getOptionIndex(sOption)
   if nOption = 0
-  then say 'RDD001W Invalid option ignored:' sToken
+  then say 'Invalid option ignored:' sToken
   else do
     nOptionType = getOptionType(sOption)
     g.0OPTION_PRESENT.nOption = 1
@@ -1418,7 +1435,7 @@ handleOption: procedure expose g. k.
   bGetNextToken = 1
   if getOptionIndex(sOption) = 0
   then do
-    say 'RDD001W Invalid option ignored:' sOption
+    say 'Invalid option ignored:' sOption
   end
   else do
     nOptionType = getOptionType(sOption)
@@ -1505,6 +1522,7 @@ Prolog:
   call addListOption      '-f','--file'    ,'Read input from the specified file'
   call addListOption      '-c','--hex'     ,'Read hex input from command line'
   call addBooleanOption   '-b','--binary'  ,'Input file is binary (not text)'
+  call addListOption      '-o','--output'  ,'Write output to the specified file (default is console)'
   call addBooleanOption   '-s','--struct'  ,'Output C structure declarations (default)'
   call addBooleanOption   '-d','--decode'  ,'Output decoded report descriptor'
   call addListOption      '-h','--header'  ,'Output C header in AVR, MIKROC or MICROCHIP format'
@@ -1714,6 +1732,11 @@ return stream(sFile,'COMMAND','OPEN' sOptions) = 'READY:'
 closeFile: procedure expose g.
   parse arg sFile
 return stream(sFile,'COMMAND','CLOSE') = 'READY:'
+
+say: procedure expose o.
+  parse arg sText
+  rc = lineout(o.0OUTPUT,sText)
+return  
 
 loadUsageFile: procedure expose k. g.
   parse arg sFile
@@ -1941,4 +1964,6 @@ setLocals: procedure expose g.
 return
 
 Epilog:
+  if g.0OUTPUT <> ''
+  then call closeFile(g.0OUTPUT)
 return
