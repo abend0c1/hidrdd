@@ -55,7 +55,8 @@ trace off
     say 'into a single string of hex digits, and then attempt to decode that string.'
     say 'You can feed it an existing C header file and it will decode it as long'
     say 'as you have all the hex strings (e.g. 0x0F, 0x0Fb2) at the beginning of'
-    say 'each line. Commas (,) and semicolons (;) are ignored.'
+    say 'each line. Commas (,) and semicolons (;) are ignored. Specify the --right'
+    say 'command line option if the hex strings are on the rightmost part of each line.'
     say 
     say 'Usage:'
     say '      rexx' sThis '[-h format] [-i fileinc] [-o fileout] [-dsvxb] -f filein'
@@ -75,12 +76,26 @@ trace off
       say '      'left(strip(g.0OPTION_SHORT.i g.0OPTION_LONG.i),16) '=' g.0OPTION_DESC.i
     end
     say 
-    say 'Example:'
+    say 'Examples:'
     say '      rexx' sThis '--hex 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
-    say '       ...decodes the given hex string'
+    say '      ...decodes the given hex string. Spaces are not significant'
     say
-    say '      rexx' sThis 'usbdesc.h'
-    say '       ...decodes the hex strings found in the specified file'
+    say '      rexx' sThis '-sh 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
+    say '      ...generates C structure declarations for the given hex string'
+    say
+    say '      rexx' sThis '-d -f myinputfile.h -o myoutputfile.txt'
+    say '      ...decodes the hex strings found in myinputfile.h into myoutputfile.txt'
+    say
+    say '      rexx' sThis 'myinputfile.h'
+    say '      ...generates C structure declarations for the hex strings found in myinputfile.h'
+    say
+    say '      rexx' sThis '--include mybuttonmap.txt myinputfile.h'
+    say '      ...generates C structure declarations for the hex strings found in myinputfile.h'
+    say '      using vendor-defined usages defined in mybuttonmap.txt'
+    say
+    say '      rexx' sThis '-dr usblyzer.txt'
+    say '      ...decodes the hex strings found on the rightmost side of each line of the'
+    say '      usblyzer.txt input file'
     return
   end
 
@@ -91,6 +106,7 @@ trace off
   o.0HEADER    = toUpper(getOption('--header',1))
   o.0DUMP      = getOption('--dump')
   o.0OUTPUT    = getOption('--output',1)
+  o.0RIGHT     = getOption('--right')
 
   if o.0OUTPUT <> ''
   then do
@@ -183,20 +199,42 @@ readDescriptor: procedure expose g. k. o.
         do while chars(sFile) > 0
           sLine = linein(sFile)
           sLine = translate(sLine,'',',;${}') /* Ignore some special chars */
-          do i = 1 to words(sLine)
-            sWord = word(sLine,i)
-            select
-              when left(sWord,2) = '0x' then sWord = substr(sWord,3)
-              when left(sWord,1) = "'" then do
-                sWord = strip(sWord,'BOTH',"'")
-                if isHex(sWord)
-                then sWord = c2x(sWord)
+          if o.0RIGHT
+          then do /* scan from right to left for hex */
+            xLine = ''
+            do i = words(sLine) to 1 by -1
+              sWord = word(sLine,i)
+              select
+                when left(sWord,2) = '0x' then sWord = substr(sWord,3)
+                when left(sWord,1) = "'" then do
+                  sWord = strip(sWord,'BOTH',"'")
+                  if isHex(sWord)
+                  then sWord = c2x(sWord)
+                end
+                otherwise nop
               end
-              otherwise nop
+              if isHex(sWord)
+              then xLine = sWord || xLine /* prepend any hex data found */
+              else leave /* stop when the first non-hexadecimal value is found */
             end
-            if isHex(sWord)
-            then xData = xData || sWord
-            else leave /* stop when the first non-hexadecimal value is found */
+            xData = xData || xLine
+          end
+          else do /* scan from left to right for hex */
+            do i = 1 to words(sLine)
+              sWord = word(sLine,i)
+              select
+                when left(sWord,2) = '0x' then sWord = substr(sWord,3)
+                when left(sWord,1) = "'" then do
+                  sWord = strip(sWord,'BOTH',"'")
+                  if isHex(sWord)
+                  then sWord = c2x(sWord)
+                end
+                otherwise nop
+              end
+              if isHex(sWord)
+              then xData = xData || sWord /* append any hex data found */
+              else leave /* stop when the first non-hexadecimal value is found */
+            end
           end
         end
       end
@@ -1521,6 +1559,7 @@ Prolog:
 
   call addListOption      '-f','--file'    ,'Read input from the specified file'
   call addListOption      '-c','--hex'     ,'Read hex input from command line'
+  call addBooleanOption   '-r','--right'   ,'Read hex input from the rightmost side of each line'
   call addBooleanOption   '-b','--binary'  ,'Input file is binary (not text)'
   call addListOption      '-o','--output'  ,'Write output to the specified file (default is console)'
   call addBooleanOption   '-s','--struct'  ,'Output C structure declarations (default)'

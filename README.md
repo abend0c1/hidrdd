@@ -11,7 +11,8 @@ that it finds on each line (until the first non-hex sequence is found)
 into a single string of hex digits, and then attempt to decode that string.
 You can feed it an existing C header file and it will decode it as long
 as you have all the hex strings (e.g. 0x0F, 0x0Fb2) at the beginning of
-each line. Commas (,) and semicolons (;) are ignored.
+each line. Commas (,) and semicolons (;) are ignored. Specify the --right
+option if the hex strings are on the rightmost side of each line.
 
 
 Features
@@ -44,6 +45,7 @@ Where:
                          MCHIP  - Microchip C18 style
       -f --file        = Read input from the specified file
       -c --hex         = Read hex input from command line
+      -r --right       = Read hex input from the rightmost side of each line
       -b --binary      = Input file is binary (not text)
       -o --output      = Write output to the specified file (default is console)
       -s --struct      = Output C structure declarations (default)
@@ -78,6 +80,10 @@ Examples
     rexx rd.rex --include mybuttonmap.txt myinputfile.h
     ...generates C structure declarations for the hex strings found in myinputfile.h 
     using vendor-defined usages defined in mybuttonmap.txt
+
+    rexx rd.rex -dr usblyzer.txt
+    ...decodes the hex strings found on the rightmost side of each line of the
+    usblyzer.txt input file
 
 Include File Format
 -------------------
