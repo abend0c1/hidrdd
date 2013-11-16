@@ -86,7 +86,7 @@ Refer to FFA0-Plantronics.txt for an example.
 
 Each USB HID Usage code is a 4 byte value comprising a 2 byte Usage Page and a 2 byte Usage within that page. Vendor-specific usages must have a Usage Page code in the range 0xFF00 to 0xFFFF. Within each Usage Page, there can be up to 65536 usages (from 0x0000 to 0xFFFF). The official USB HID Usage Tables specification defines usages for almost everything imaginable - including parts of the human body...although, strangely, it stops short of defining usages for any of the [naughty bits](http://en.wiktionary.org/wiki/naughty_bit). If you need to define a usage for naughty bits, then a vendor-specific usage page is the place to do it.
 
-The --include file contains the following comma-separated lines...
+The --include file contains the following lines of comma-separated values...
 
 * One line, identified by "PAGE", describing the the vendor-specific usage page:
     * pppp - The vendor-specific Usage Page in hex (FF00 to FFFF)
@@ -114,7 +114,9 @@ The --include file contains the following comma-separated lines...
         * MULTI - Selector, On/Off, Momentary or One Shot
         * Sel - Selector
         * SF - Static Flag
+        * SF-DF - Static or Dynamic Flag
         * SV - Static Value
+        * SV-DV - Static or Dynamic Value
         * UM - Usage Modifier
         * US - Usage Switch
     * usageshortname - Optional: A short name of the usage which is used in any generated C language variable names. Normally this is extracted from the "usagedesc", but if you want to specify a different short name, then define it here.
