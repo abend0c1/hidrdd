@@ -27,10 +27,13 @@ Usage
 -----
 
       rexx /home/aja/git/hidrdd/rd.rex [-h format] [-i fileinc] [-o fileout] [-dsvxb] -f filein
+
 Or:
+
       rexx /home/aja/git/hidrdd/rd.rex [-h format] [-i fileinc] [-o fileout] [-dsvx]  -c hex
 
 Where:
+
       filein           = Input file path to be decoded
       fileout          = Output file (default is console)
       fileinc          = Include file of PAGE/USAGE definitions
