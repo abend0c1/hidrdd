@@ -1,0 +1,79 @@
+Interface 0 HID Report Descriptor Keyboard
+Item Tag (Value) 	Raw Data
+
+Usage Page (Generic Desktop) 	05 01 
+Usage (Keyboard) 	09 06 
+Collection (Application) 	A1 01 
+    Usage Page (Keyboard/Keypad) 	05 07 
+    Usage Minimum (Keyboard Left Control) 	19 E0 
+    Usage Maximum (Keyboard Right GUI) 	29 E7 
+    Logical Minimum (0) 	15 00 
+    Logical Maximum (1) 	25 01 
+    Report Size (1) 	75 01 
+    Report Count (8) 	95 08 
+    Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,Bit) 	81 02 
+    Report Count (1) 	95 01 
+    Report Size (8) 	75 08 
+    Input (Cnst,Ary,Abs) 	81 01 
+    Report Count (5) 	95 05 
+    Report Size (1) 	75 01 
+    Usage Page (LEDs) 	05 08 
+    Usage Minimum (Num Lock) 	19 01 
+    Usage Maximum (Kana) 	29 05 
+    Output (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol,Bit) 	91 02 
+    Report Count (1) 	95 01 
+    Report Size (3) 	75 03 
+    Output (Cnst,Ary,Abs,NWrp,Lin,Pref,NNul,NVol,Bit) 	91 01 
+    Report Count (6) 	95 06 
+    Report Size (8) 	75 08 
+    Logical Minimum (0) 	15 00 
+    Logical Maximum (151) 	26 97 00 
+    Usage Page (Keyboard/Keypad) 	05 07 
+    Usage Minimum (Undefined) 	19 00 
+    Usage Maximum (Keyboard LANG8) 	29 97 
+    Input (Data,Ary,Abs) 	81 00 
+End Collection 	C0 
+
+Interface 1 HID Report Descriptor Consumer Control
+Item Tag (Value) 	Raw Data
+
+Usage Page (Consumer Devices) 	05 0C 
+Usage (Consumer Control) 	09 01 
+Collection (Application) 	A1 01 
+    Report ID (1) 	85 01 
+    Usage Page (Consumer Devices) 	05 0C 
+    Logical Minimum (0) 	15 00 
+    Logical Maximum (1) 	25 01 
+    Report Size (1) 	75 01 
+    Report Count (7) 	95 07 
+    Usage (Scan Next Track) 	09 B5 
+    Usage (Scan Previous Track) 	09 B6 
+    Usage (Stop) 	09 B7 
+    Usage (Play/Pause) 	09 CD 
+    Usage (Mute) 	09 E2 
+    Usage (Volume Increment) 	09 E9 
+    Usage (Volume Decrement) 	09 EA 
+    Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,Bit) 	81 02 
+    Report Count (1) 	95 01 
+    Input (Cnst,Ary,Abs) 	81 01 
+End Collection 	C0 
+Usage Page (Vendor-Defined 1) 	06 00 FF 
+Usage (Vendor-Defined 1) 	09 01 
+Collection (Application) 	A1 01 
+    Usage Page (Vendor-Defined 1) 	06 00 FF 
+    Usage (Vendor-Defined 1) 	09 01 
+    Logical Maximum (255) 	26 FF 00 
+    Report Size (8) 	75 08 
+    Report Count (7) 	95 07 
+    Report ID (2) 	85 02 
+    Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,Bit) 	81 02 
+    Report Count (1) 	95 01 
+    Usage (Vendor-Defined 2) 	09 02 
+    Report ID (3) 	85 03 
+    Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,Bit) 	81 02 
+    Usage (Vendor-Defined 3) 	09 03 
+    Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol,Bit) 	B1 02 
+    Usage (Vendor-Defined 15) 	09 0F 
+    Report Count (20) 	95 14 
+    Output (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol,Bit) 	91 02 
+End Collection 	C0 
