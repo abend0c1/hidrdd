@@ -1,5 +1,5 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.3
+/* RDD! HID Report Descriptor Decoder v1.1.5
 
 Copyright (c) 2011-2013, Andrew J. Armstrong
 All rights reserved.
@@ -163,7 +163,7 @@ trace off
       when sType = k.0TYPE.MAIN   then call processMAIN
       when sType = k.0TYPE.GLOBAL then call processGLOBAL
       when sType = k.0TYPE.LOCAL  then call processLOCAL
-      otherwise call emitDecode xItem,xParm,'LOCAL',,,'<-- Invalid Item'
+      otherwise call emitDecode xItem,xParm,'LOCAL',,,'<-- Error: Invalid Item'
     end
   end
   if sCollectionStack <> ''
@@ -271,10 +271,8 @@ processMAIN:
       call clearLocals
     end
     when sTag = k.0MAIN.COLLECTION then do
-      xPage = right(g.0USAGE_PAGE,4,'0')
-      xUsage = right(g.0USAGE,4,'0')
-      xExtendedUsage = xPage || xUsage
-      parse value getUsageDescAndType(xPage,xUsage) with sCollectionName '('
+      xExtendedUsage = g.0USAGE
+      sCollectionName = getUsageDesc(xExtendedUsage)
       f.0COLLECTION_NAME = space(sCollectionName,0)
       sValue = reverse(sParm)
       nValue = c2d(sValue)
@@ -285,10 +283,10 @@ processMAIN:
         when nValue > 6   then sMeaning = 'Reserved'
         otherwise do
           sMeaning = g.0COLLECTION.xParm '(Usage=0x'xExtendedUsage':',
-                                           'Page='getPageDesc(xPage)',',
-                                           'Usage='getUsageDesc(xPage,xUsage)',',
-                                           'Type='getUsageType(xPage,xUsage)')'
-          if left(xExtendedUsage,2) <> 'FF' & pos(getCollectionType(xValue),getUsageType(xPage,xUsage)) = 0
+                                           'Page='getPageDesc(xExtendedUsage)',',
+                                           'Usage='getUsageDesc(xExtendedUsage)',',
+                                           'Type='getUsageType(xExtendedUsage)')'
+          if left(xExtendedUsage,2) <> 'FF' & pos(getCollectionType(xValue),getUsageType(xExtendedUsage)) = 0
           then do
             sMeaning = sMeaning '<-- Warning: USAGE type should be' getCollectionType(xValue),
                                 '('getCollectionDesc(xValue)')'
@@ -322,7 +320,7 @@ processMAIN:
         g.0USAGES = ''
       end
     end
-    otherwise call emitDecode xItem,xParm,'MAIN',,,'<-- Invalid: Unknown MAIN tag'
+    otherwise call emitDecode xItem,xParm,'MAIN',,,'<-- Error: Unknown MAIN tag'
   end
 return
 
@@ -385,7 +383,7 @@ processGLOBAL:
       call setGlobals popStack()
       sMeaning = getFormattedGlobalsLong()
     end
-    otherwise sMeaning = '<-- Invalid: Unknown GLOBAL tag'
+    otherwise sMeaning = '<-- Error: Unknown GLOBAL tag'
   end
   call emitDecode xItem,xParm,'GLOBAL',k.0GLOBAL.sTag,xValue,sMeaning
 return
@@ -400,12 +398,13 @@ processLOCAL:
     when sTag = k.0LOCAL.USAGE then do
       if length(sValue) = 4
       then do /* Both page and usage are specified: ppppuuuu */
-        sMeaning = getExtendedUsageDescAndType(xValue)
+        call loadPage xValue
+        sMeaning = getPageAndUsageMeaning(xValue) updateHexValue('USAGE',xValue)
       end
       else do /* Only usage is specified: uuuu */
         xUsage = right(xValue,4,'0')
         xValue = xPage || xUsage
-        sMeaning = getUsageDescAndType(xPage,xUsage) updateHexValue('USAGE',xUsage)
+        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE',xValue)
       end
       if g.0IN_DELIMITER
       then do /* only use the first usage in the delimited set */
@@ -418,12 +417,12 @@ processLOCAL:
     when sTag = k.0LOCAL.USAGE_MINIMUM then do
       xUsage = right(xValue,4,'0')
       xValue = xPage || xUsage
-      sMeaning = getUsageDescAndType(xPage,xUsage) updateHexValue('USAGE_MINIMUM',xUsage)
+      sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MINIMUM',xUsage)
     end
     when sTag = k.0LOCAL.USAGE_MAXIMUM then do
       xUsage = right(xValue,4,'0')
       xValue = xPage || xUsage
-      sMeaning = getUsageDescAndType(xPage,xUsage) updateHexValue('USAGE_MAXIMUM',xUsage)
+      sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MAXIMUM',xUsage)
     end
     when sTag = k.0LOCAL.DESIGNATOR_INDEX then do
       sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue)
@@ -446,24 +445,24 @@ processLOCAL:
     when sTag = k.0LOCAL.DELIMITER then do
       select
         when nValue = 1 then do
+          sMeaning = '('nValue') Open set'
           if g.0IN_DELIMITER
-          then sMeaning = '('nValue') <-- Error: Already in a DELIMITER set'
+          then sMeaning = sMeaning '<-- Error: Already in a DELIMITER set'
           g.0IN_DELIMITER = 1
           g.0FIRST_USAGE = 1
           bIndent = 1
-          sMeaning = '('nValue') Open set'
         end
         when nValue = 0 then do
+          sMeaning = '('nValue') Close set'
           if \g.0IN_DELIMITER
-          then sMeaning = '('nValue') <-- Error: Not already in a DELIMITER set'
+          then sMeaning = sMeaning '<-- Error: Not already in a DELIMITER set'
           g.0IN_DELIMITER = 0
           g.0INDENT = g.0INDENT - 2
-          sMeaning = '('nValue') Close set'
         end
-        otherwise sMeaning = '('nValue') <-- Invalid: Should be 0 or 1'
+        otherwise sMeaning = '('nValue') <-- Error: Should be 0 or 1'
       end
     end
-    otherwise sMeaning = '<-- Invalid: Unknown LOCAL tag'
+    otherwise sMeaning = '<-- Error: Unknown LOCAL tag'
   end
   call emitDecode xItem,xParm,'LOCAL',k.0LOCAL.sTag,xValue,sMeaning
   if bIndent
@@ -474,7 +473,7 @@ processLOCAL:
 return
 
 loadPage: procedure expose g. k.
-  parse arg xPage
+  parse arg xPage +4
   if g.0CACHED.xPage = 1 then return
   call loadUsageFile xPage'.conf'
   g.0CACHED.xPage = 1
@@ -764,7 +763,7 @@ emitField: procedure expose k. o. f.
         do nIgnored = i to nUsages
           xIgnoredUsage = word(sUsages,nIgnored)
           parse var xIgnoredUsage xPage +4 xUsage +4
-          call say '  'getStatement('',xPage xUsage getUsageDescAndType(xPage,xUsage) getRange() '<-- Ignored: REPORT_COUNT ('g.0REPORT_COUNT') is too small')
+          call say '  'getStatement('',xPage xUsage getUsageMeaning(xIgnoredUsage) getRange() '<-- Ignored: REPORT_COUNT ('g.0REPORT_COUNT') is too small')
         end
       end
       /* Now replicate the last usage to fill the report count */
@@ -871,7 +870,7 @@ emitField: procedure expose k. o. f.
         do i = 1 to nExplicitUsages 
           xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
           parse var xExtendedUsage xPage +4 xUsage +4
-          sUsageDesc = getUsageDescAndType(xPage,xUsage)
+          sUsageDesc = getUsageMeaning(xExtendedUsage)
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
           then call say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
@@ -883,7 +882,8 @@ emitField: procedure expose k. o. f.
         do nUsage = nUsageMin to nUsageMax
           xPage = g.0USAGE_PAGE
           xUsage = d2x(nUsage,4)
-          sUsageDesc = getUsageDescAndType(xPage,xUsage)
+          xExtendedUsage = xPage || xUsage
+          sUsageDesc = getUsageMeaning(xExtendedUsage)
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
           then call say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
@@ -911,13 +911,13 @@ emitFieldDecl: procedure expose g. k. f. o.
   if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
-    then call say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
-    else call say '  'getStatement(g.0FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
+    then call say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageMeaning(xExtendedUsage) getRange())
+    else call say '  'getStatement(g.0FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageMeaning(xExtendedUsage) getRange())
   end
   else do
-    call say '  'getStatement(g.0FIELD_TYPE sFieldName ':' g.0REPORT_SIZE';', xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
+    call say '  'getStatement(g.0FIELD_TYPE sFieldName ':' g.0REPORT_SIZE';', xPage xUsage getUsageMeaning(xExtendedUsage) getRange())
     do i = 1 to nReportCount-1
-      call say '  'getStatement(g.0FIELD_TYPE sFieldName||i ':' g.0REPORT_SIZE';', xPage xUsage getUsageDescAndType(xPage,xUsage) getRange())
+      call say '  'getStatement(g.0FIELD_TYPE sFieldName||i ':' g.0REPORT_SIZE';', xPage xUsage getUsageMeaning(xExtendedUsage) getRange())
     end
   end
 return
@@ -963,9 +963,10 @@ getPadding: procedure expose g.
 return 'Padding' getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE)
 
 getFieldName: procedure expose k. f.
-  parse arg xPage +4 xUsage +4,sStructureName
+  parse arg xExtendedUsage,sStructureName
+  parse var xExtendedUsage xPage +4 xUsage +4
   sLabel = k.0LABEL.xPage.xUsage
-  if sLabel = '' then parse value getUsageDescAndType(xPage,xUsage) with sLabel'('
+  if sLabel = '' then parse value getUsageMeaning(xExtendedUsage) with sLabel'('
   if sLabel = '' then sLabel = xUsage
   if sLabel = '' then sLabel = getCollectionName()
   sLabel = getSaneLabel(sLabel)
@@ -1021,22 +1022,21 @@ getPageName: procedure expose k.
   end
 return sPageDesc
 
-getUsageDescAndType: procedure expose k.
-  parse arg xPage,xUsage /* pppp, uuuu */
+getUsageMeaning: procedure expose k.
+  parse arg xPage +4 xUsage +4 /* ppppuuuu */
 return k.0USAGE.xPage.xUsage
 
-getExtendedUsageDescAndType: procedure expose k.
+getPageAndUsageMeaning: procedure expose k.
   parse arg xPage +4 xUsage +4 /* ppppuuuu */
 return getPageDesc(xPage)':' k.0USAGE.xPage.xUsage
 
 getUsageDesc: procedure expose k.
-  parse arg xPage,xUsage
-  /* sUsageDesc = k.0USAGE.xPage.xUsage  */
+  parse arg xPage +4 xUsage +4 /* ppppuuuu */
   parse var k.0USAGE.xPage.xUsage sUsageDesc '('
 return strip(sUsageDesc)
 
 getUsageType: procedure expose k.
-  parse arg xPage,xUsage
+  parse arg xPage +4 xUsage +4 /* ppppuuuu */
   parse var k.0USAGE.xPage.xUsage '('sUsageType'='
 return sUsageType
 
