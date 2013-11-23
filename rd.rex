@@ -77,10 +77,10 @@ trace off
     end
     say 
     say 'Examples:'
-    say '      rexx' sThis '--hex 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
+    say '      rexx' sThis '-d --hex 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
     say '      ...decodes the given hex string. Spaces are not significant'
     say
-    say '      rexx' sThis '-sh 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
+    say '      rexx' sThis '-sc 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
     say '      ...generates C structure declarations for the given hex string'
     say
     say '      rexx' sThis '-d -f myinputfile.h -o myoutputfile.txt'
