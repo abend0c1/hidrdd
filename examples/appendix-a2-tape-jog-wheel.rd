@@ -6,7 +6,7 @@
 
 05 0c UsagePage(Consumer)
 09 01 Usage(Consumer Control)
-a1 01	Collection(Application),
+a1 01 Collection(Application),
 09 bd Usage(Tape Jog?)
 15 81 Logical Minimum(-127), 
 25 7f Logical Maximum(127),

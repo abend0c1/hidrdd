@@ -8,7 +8,7 @@
 
 05 14 UsagePage(Alphanumeric Display)
 09 01 Usage(Consumer Control)
-a1 01	Collection(Application),
+a1 01 Collection(Application),
 75 02 ReportSize(2), 
 95 01 ReportCount(1),
 25 01 Logical Maximum(2),

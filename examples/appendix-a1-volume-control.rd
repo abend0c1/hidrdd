@@ -8,7 +8,7 @@
 
 05 0c UsagePage(Consumer)
 09 01 Usage(Consumer Control)
-a1 01	Collection(Application),
+a1 01 Collection(Application),
 09 e0 Usage(Volume)
 15 ff Logical Minimum(-1), 
 25 01 Logical Maximum(1),
@@ -23,7 +23,7 @@ c0 End collection
 
 05 0c UsagePage(Consumer)
 09 01 Usage(Consumer Control)
-a1 01	Collection(Application),
+a1 01 Collection(Application),
 09 e0 Usage(Volume)
 15 00 Logical Minimum(0), 
 25 64 Logical Maximum(100),

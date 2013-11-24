@@ -41,7 +41,7 @@ b1 03 Feature(Constant, Variable, Absolute),   ; Four 5-bit fields
 09 21 Usage(ASCII Character Set),
 09 22 Usage(Data Read Back),
 09 29 Usage(Vertical Scroll),
-b1 03 Feature(Constant, Variable, Absolute), 	; Three 1-bit fields
+b1 03 Feature(Constant, Variable, Absolute),   ; Three 1-bit fields
 
 95 01 ReportCount(1),
 b1 03 Feature(Constant, Variable, Absolute), ; 1-bit pad

@@ -17,7 +17,7 @@ a1 02 Collection(Logical),
 
   05 0a UsagePage(Ordinal),
   09 01 Usage(Instance 1),
-  a1 00 Collection(Physical),				; Pointer 1
+  a1 00 Collection(Physical),        ; Pointer 1
     05 01 UsagePage(Generic Desktop),
     09 30 Usage(X-axis),
     09 31 Usage(Y-axis),
@@ -26,7 +26,7 @@ a1 02 Collection(Logical),
 
   05 0a UsagePage(Ordinal),
   09 02 Usage(Instance 2),
-  a1 00 Collection(Physical),				; Pointer 2
+  a1 00 Collection(Physical),        ; Pointer 2
     05 01 UsagePage(Generic Desktop),
     09 30 Usage(X-axis),
     09 31 Usage(Y-axis),

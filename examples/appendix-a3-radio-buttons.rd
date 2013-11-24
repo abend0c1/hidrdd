@@ -11,7 +11,7 @@
 
 05 0c UsagePage(Consumer)
 09 01 Usage(Consumer Control)
-a1 01	Collection(Application),
+a1 01 Collection(Application),
 15 01 Logical Minimum(1), 
 25 03 Logical Maximum(3),
 09 88 Usage(Media Select Computer),
@@ -36,7 +36,7 @@ c0    End Collection
 
 05 0c UsagePage(Consumer)
 09 01 Usage(Consumer Control)
-a1 01	Collection(Application),
+a1 01 Collection(Application),
 15 01 Logical Minimum(1), 
 25 03 Logical Maximum(3),
 09 88 Usage(Media Select Computer),
