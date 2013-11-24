@@ -57,8 +57,8 @@ Where:
       -v --verbose     = Output more detail
       --version        = Display version and exit
       -? --help        = Display this information
-      -vv              = Same as -v but, when --all is specified, even lists
-                         array field indices that have blank usage descriptions
+      -vv              = Modifies --all so that even array field indices that
+                         have blank usage descriptions are listed
 
 Prerequisites
 -------------
