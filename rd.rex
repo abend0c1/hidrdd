@@ -1,5 +1,5 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.5
+/* RDD! HID Report Descriptor Decoder v1.1.6
 
 Copyright (c) 2011-2013, Andrew J. Armstrong
 All rights reserved.
@@ -75,16 +75,13 @@ trace off
     do i = 1 to g.0OPTION_INDEX.0
       say '      'left(strip(g.0OPTION_SHORT.i g.0OPTION_LONG.i),16) '=' g.0OPTION_DESC.i
     end
+    say '      -vv              = Modifies --all so that even array field indices that'
+    say '                         have blank usage descriptions are listed'
     say
     say 'Prerequisites:'
     say '      You need a REXX interpreter installed, such as'
     say '      1. Regina REXX      (http://regina-rexx.sourceforge.net)'
     say '      2. Open Object REXX (http://www.oorexx.org/)'
-    say 
-    say 'Note:'
-    say '      -v    Displays more information about each field in a structure'
-    say '      -vv   Displays the same as -v and also maps, for array fields,'
-    say '            index to usage for all valid indices.'
     say 
     say 'Examples:'
     say '      rexx' sThis '-d --hex 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
@@ -117,6 +114,7 @@ trace off
   o.0DUMP      = getOption('--dump')
   o.0OUTPUT    = getOption('--output',1)
   o.0RIGHT     = getOption('--right')
+  o.0ALL       = getOption('--all')
 
   if o.0OUTPUT <> ''
   then do
@@ -873,7 +871,7 @@ emitField: procedure expose k. o. f.
     else do /* data */
       call emitFieldDecl g.0REPORT_COUNT,xPage
     end
-    if o.0VERBOSITY > 1
+    if o.0ALL
     then do /* Document the valid indexes in the array */
       nLogical = g.0LOGICAL_MINIMUM
       /* Emit any explicitly listed usages */
@@ -883,7 +881,7 @@ emitField: procedure expose k. o. f.
           xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
           parse var xExtendedUsage xPage +4 xUsage +4
           sUsageDesc = getUsageMeaning(xExtendedUsage)
-          if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
+          if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 1)
           then call say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
         end
@@ -896,7 +894,7 @@ emitField: procedure expose k. o. f.
           xUsage = d2x(nUsage,4)
           xExtendedUsage = xPage || xUsage
           sUsageDesc = getUsageMeaning(xExtendedUsage)
-          if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 2)
+          if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 1)
           then call say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
           nLogical = nLogical + 1
         end
@@ -1594,6 +1592,7 @@ Prolog:
   call addBooleanOption   '-d','--decode'  ,'Output decoded report descriptor'
   call addListOption      '-h','--header'  ,'Output C header in AVR, MIKROC or MICROCHIP format'
   call addBooleanOption   '-x','--dump'    ,'Output hex dump of report descriptor'
+  call addBooleanOption   '-a','--all'     ,'Output all valid array indices and usages'
   call addListOption      '-i','--include' ,'Read vendor-specific definition file'
   call addCountableOption '-v','--verbose' ,'Output more detail'
   call addBooleanOption       ,'--version' ,'Display version and exit'

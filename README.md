@@ -52,24 +52,19 @@ Where:
       -d --decode      = Output decoded report descriptor
       -h --header      = Output C header in AVR, MIKROC or MICROCHIP format
       -x --dump        = Output hex dump of report descriptor
+      -a --all         = Output all valid array indices and usages
       -i --include     = Read vendor-specific definition file
       -v --verbose     = Output more detail
       --version        = Display version and exit
       -? --help        = Display this information
-
+      -vv              = Same as -v but, when --all is specified, even lists
+                         array field indices that have blank usage descriptions
 
 Prerequisites
 -------------
 You need a REXX interpreter installed, such as
   1. [Regina REXX](http://regina-rexx.sourceforge.net)
   2. [Open Object REXX](http://www.oorexx.org/)
-
-
-Note
-----
-      -v    Displays more information about each field in a structure
-      -vv   Displays the same as -v and also maps, for array fields,
-            index to usage for all valid indices.
 
 
 Examples
