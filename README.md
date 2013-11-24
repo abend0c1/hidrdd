@@ -57,11 +57,20 @@ Where:
       --version        = Display version and exit
       -? --help        = Display this information
 
+
 Prerequisites
 -------------
 You need a REXX interpreter installed, such as
   1. [Regina REXX](http://regina-rexx.sourceforge.net)
   2. [Open Object REXX](http://www.oorexx.org/)
+
+
+Note
+----
+      -v    Displays more information about each field in a structure
+      -vv   Displays the same as -v and also maps, for array fields,
+            index to usage for all valid indices.
+
 
 Examples
 -------

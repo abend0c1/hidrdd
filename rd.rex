@@ -75,6 +75,16 @@ trace off
     do i = 1 to g.0OPTION_INDEX.0
       say '      'left(strip(g.0OPTION_SHORT.i g.0OPTION_LONG.i),16) '=' g.0OPTION_DESC.i
     end
+    say
+    say 'Prerequisites:'
+    say '      You need a REXX interpreter installed, such as'
+    say '      1. Regina REXX      (http://regina-rexx.sourceforge.net)'
+    say '      2. Open Object REXX (http://www.oorexx.org/)'
+    say 
+    say 'Note:'
+    say '      -v    Displays more information about each field in a structure'
+    say '      -vv   Displays the same as -v and also maps, for array fields,'
+    say '            index to usage for all valid indices.'
     say 
     say 'Examples:'
     say '      rexx' sThis '-d --hex 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0'
@@ -669,6 +679,7 @@ emitField: procedure expose k. o. f.
     call say '  // Globals:' getFormattedGlobals()
     call say '  // Locals: ' getFormattedLocals()
     call say '  // Usages: ' strip(xExplicitUsages) /* list of specified usages, if any */
+    call say '  // Coll:   ' sCollectionName
   end
   sFlags = x2c(xFlags)
   nUsageMin = x2d(g.0USAGE_MINIMUM)
@@ -749,7 +760,6 @@ emitField: procedure expose k. o. f.
     if sCollectionName <> f.0LASTCOLLECTION
     then do
       call say '  'getStatement(,sCollectionName 'collection')
-
       f.0LASTCOLLECTION = sCollectionName
     end
     sUsages = getUsages(xExplicitUsages,nUsageMin,nUsageMax)
@@ -837,8 +847,8 @@ emitField: procedure expose k. o. f.
               9     C     <-- Last in range
             other  novalue
 
-    Note: An array is not like a string of characters in a buffer, each array 
-    element can contain an INDEX (from LOGICAL_MINIMUM to LOGICAL_MAXIMUM) 
+    Note: An array is not like a string of characters in a buffer. Each array 
+    element can contain an index (from LOGICAL_MINIMUM to LOGICAL_MAXIMUM) 
     to a usage, so if, in a keyboard example, three keys on a keyboard are 
     pressed simultaneously, then three elements of the array will contain an 
     index to the corresponding usage (a key in this case) - and not necessarily 
@@ -970,7 +980,8 @@ getFieldName: procedure expose k. f.
   sLabel = k.0LABEL.xPage.xUsage
   if sLabel = '' then parse value getUsageMeaning(xExtendedUsage) with sLabel'('
   if sLabel = '' then sLabel = xUsage
-  if sLabel = '' then sLabel = getCollectionName()
+  if sLabel = '' then sLabel = f.0LASTCOLLECTION
+  if sLabel = '' then sLabel = 'VendorDefined'
   sLabel = getSaneLabel(sLabel)
   sFieldName = getUniqueName(space(getShortPageName(xPage)'_'sLabel,0),sStructureName)
 return sFieldName
@@ -979,12 +990,6 @@ getSaneLabel: procedure
   parse arg sLabel
   sLabel = space(translate(sLabel,'','~!@#$%^&*()+`-={}|[]\:;<>?,./"'"'"),0)
 return sLabel
-
-getCollectionName: procedure expose f.
-  if f.0COLLECTION_NAME = ''
-  then sCollectionName = 'VendorDefined'
-  else sCollectionName = f.0COLLECTION_NAME
-return sCollectionName
 
 getUniqueName: procedure expose f.
   parse arg sName,sContext
