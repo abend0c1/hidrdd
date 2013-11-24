@@ -844,14 +844,9 @@ emitField: procedure expose k. o. f.
       call say '  // Type:    Array'
       call say '  'getStatement('', xPage getPageDesc(xPage))
     end
-    /* todo: coming up with a field name is tricky...each field can
-             index many usages, so a particular usage name can't be
-             used.
-    */
     if sCollectionName <> f.0LASTCOLLECTION
     then do
       call say '  'getStatement(,sCollectionName 'collection')
-
       f.0LASTCOLLECTION = sCollectionName
     end
     sUsages = getUsages(xExplicitUsages,nUsageMin,nUsageMax)
@@ -1071,26 +1066,46 @@ getInputArrayFlags:
   if isRelative(sValue)
   then sFlags = sFlags '1=Relative'
   else sFlags = sFlags '0=Absolute'
+  if isWrap(sValue)
+  then sFlags = sFlags '1=Ignored'
+  else sFlags = sFlags '0=Ignored'
+  if isNonLinear(sValue)
+  then sFlags = sFlags '1=Ignored'
+  else sFlags = sFlags '0=Ignored'
+  if isNoPrefState(sValue)
+  then sFlags = sFlags '1=NoPrefState'
+  else sFlags = sFlags '0=PrefState'
+  if isNull(sValue)
+  then sFlags = sFlags '1=Null'    
+  else sFlags = sFlags '0=NoNull'
 return strip(sFlags)
 
 getFlags:
-  sFlags = getInputArrayFlags()
+  sFlags = ''
+  if isConstant(sValue)
+  then sFlags = sFlags '1=Constant'
+  else sFlags = sFlags '0=Data'
+  if isVariable(sValue)
+  then sFlags = sFlags '1=Variable'
+  else sFlags = sFlags '0=Array'
+  if isRelative(sValue)
+  then sFlags = sFlags '1=Relative'
+  else sFlags = sFlags '0=Absolute'
   if isWrap(sValue)
   then sFlags = sFlags '1=Wrap'
   else sFlags = sFlags '0=NoWrap'
   if isNonLinear(sValue)
   then sFlags = sFlags '1=NonLinear'
   else sFlags = sFlags '0=Linear'
-  if isNoPrestate(sValue)
+  if isNoPrefState(sValue)
   then sFlags = sFlags '1=NoPrefState'
   else sFlags = sFlags '0=PrefState'
-  if isNull(sValue,'01000000'b)
+  if isNull(sValue)
   then sFlags = sFlags '1=Null'    
   else sFlags = sFlags '0=NoNull'
   if isVolatile(sValue)
   then sFlags = sFlags '1=Volatile'
   else sFlags = sFlags '0=NonVolatile'
-
   if isBuffer(sValue)
   then sFlags = sFlags '1=Buffer'
   else sFlags = sFlags '0=Bitmap'
@@ -1136,13 +1151,13 @@ isLinear: procedure
   parse arg sFlags
 return \isNonLinear(sFlags)
 
-isNoPreState: procedure
+isNoPrefState: procedure
   parse arg sFlags
 return isOn(sFlags,'00100000'b)
 
-isPreState: procedure
+isPrefState: procedure
   parse arg sFlags
-return \isNoPreState(sFlags)
+return \isNoPrefState(sFlags)
 
 isNull: procedure
   parse arg sFlags
