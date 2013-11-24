@@ -277,6 +277,7 @@ processMAIN:
       sValue = reverse(sParm)
       nValue = c2d(sValue)
       xValue = c2x(sValue)
+      sCollectionType = getCollectionType(xValue)
       sCollectionStack = nValue sCollectionStack /* push onto collection stack */
       select 
         when nValue > 127 then sMeaning = 'Vendor Defined'
@@ -286,12 +287,18 @@ processMAIN:
                                            'Page='getPageDesc(xExtendedUsage)',',
                                            'Usage='getUsageDesc(xExtendedUsage)',',
                                            'Type='getUsageType(xExtendedUsage)')'
-          if left(xExtendedUsage,2) <> 'FF' & pos(getCollectionType(xValue),getUsageType(xExtendedUsage)) = 0
+          if left(xExtendedUsage,2) <> 'FF' & pos(sCollectionType,getUsageType(xExtendedUsage)) = 0
           then do
-            sMeaning = sMeaning '<-- Warning: USAGE type should be' getCollectionType(xValue),
+            sMeaning = sMeaning '<-- Warning: USAGE type should be' sCollectionType,
                                 '('getCollectionDesc(xValue)')'
           end
         end
+      end
+      if sCollectionType = 'CA' 
+      then g.0IN_APP_COLLECTION = 1
+      else do
+        if \g.0IN_APP_COLLECTION 
+        then sMeaning = sMeaning '<-- Error: No enclosing Application Collection'
       end
       call emitDecode xItem,xParm,'MAIN','COLLECTION',xValue,sMeaning
       g.0INDENT = g.0INDENT + 2
@@ -1559,6 +1566,7 @@ return
 Prolog:
   g.0IN_DELIMITER = 0 /* Inside a delimited set of usages */
   g.0FIRST_USAGE  = 0 /* First delimited usage has been processed */
+  g.0IN_APP_COLLECTION = 0 /* Inside an Application Collection */
 
   k.0I8  = 'int8_t'
   k.0U8  = 'uint8_t'
