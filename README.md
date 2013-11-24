@@ -1,6 +1,5 @@
 RDD! HID Report Descriptor Decoder
 ==================================
-
 This will read a USB Human Interface Device (HID) report descriptor from the
 specified input file then attempt to decode it and, optionally, create a
 C language header file from it. It also does some minimal sanity checks
