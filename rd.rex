@@ -281,7 +281,7 @@ processMAIN:
     when sTag = k.0MAIN.COLLECTION then do
       xExtendedUsage = g.0USAGE
       sCollectionName = getUsageDesc(xExtendedUsage)
-      f.0COLLECTION_NAME = space(sCollectionName,0)
+      f.0COLLECTION_NAME = strip(f.0COLLECTION_NAME space(sCollectionName,0))
       sValue = reverse(sParm)
       nValue = c2d(sValue)
       xValue = c2x(sValue)
@@ -317,6 +317,11 @@ processMAIN:
       parse var sCollectionStack nCollectionType sCollectionStack /* pop the collection stack */
       xCollectionType = d2x(nCollectionType,2)
       call emitDecode xItem,xParm,'MAIN','END_COLLECTION',,getCollectionDesc(xCollectionType)
+      n = words(f.0COLLECTION_NAME)
+      if n > 0
+      then do
+        f.0COLLECTION_NAME = subword(f.0COLLECTION_NAME,1,n-1)
+      end
       if nCollectionType = 1 /* Application Collection */
       then do
         if o.0DECODE
@@ -560,7 +565,7 @@ return
 getStatement: procedure
   parse arg sType sName,sComment
   sLabel = left(sType,8) sName
-return left(sLabel, max(length(sLabel),37)) '//' sComment
+return left(sLabel, max(length(sLabel),50)) '//' sComment
 
 emitInputFields: procedure expose inputField. k. o. f.
   /* Cycle through all the input fields accumulated and when the report_id
@@ -757,7 +762,7 @@ emitField: procedure expose k. o. f.
     end
     if sCollectionName <> f.0LASTCOLLECTION
     then do
-      call say '  'getStatement(,sCollectionName 'collection')
+      call say '  'getStatement(,'Collection:' sCollectionName)
       f.0LASTCOLLECTION = sCollectionName
     end
     sUsages = getUsages(xExplicitUsages,nUsageMin,nUsageMax)
@@ -861,7 +866,7 @@ emitField: procedure expose k. o. f.
     end
     if sCollectionName <> f.0LASTCOLLECTION
     then do
-      call say '  'getStatement(,sCollectionName 'collection')
+      call say '  'getStatement(,'Collection:' sCollectionName)
       f.0LASTCOLLECTION = sCollectionName
     end
     sUsages = getUsages(xExplicitUsages,nUsageMin,nUsageMax)
@@ -975,18 +980,36 @@ return 'Padding' getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE)
 getFieldName: procedure expose k. f.
   parse arg xExtendedUsage,sStructureName
   parse var xExtendedUsage xPage +4 xUsage +4
-  sLabel = k.0LABEL.xPage.xUsage
-  if sLabel = '' then parse value getUsageMeaning(xExtendedUsage) with sLabel'('
-  if sLabel = '' then sLabel = xUsage
-  if sLabel = '' then sLabel = f.0LASTCOLLECTION
-  if sLabel = '' then sLabel = 'VendorDefined'
+  /* Use the collection names as a prefix */
+  if f.0LASTCOLLECTION = ''
+  then sLabel = 'VendorDefined'
+  else sLabel = f.0LASTCOLLECTION
+  /* Append the fieldname (or usage code) */
+  if k.0LABEL.xPage.xUsage = ''
+  then sLabel = sLabel xUsage
+  else sLabel = sLabel k.0LABEL.xPage.xUsage
   sLabel = getSaneLabel(sLabel)
-  sFieldName = getUniqueName(space(getShortPageName(xPage)'_'sLabel,0),sStructureName)
+  /* 
+  Prepend the usage page prefix, and generate a unique field name
+  within the specified C structure by appending a sequence number if
+  necessary
+  */
+  sFieldName = getUniqueName(space(getShortPageName(xPage)sLabel,0),sStructureName)
 return sFieldName
 
 getSaneLabel: procedure
   parse arg sLabel
-  sLabel = space(translate(sLabel,'','~!@#$%^&*()+`-={}|[]\:;<>?,./"'"'"),0)
+  sNewLabel = ''
+  sLastWord = ''
+  do i = 1 to words(sLabel)
+    sWord = word(sLabel,i)
+    if sWord <> sLastWord
+    then do
+      sNewLabel = sNewLabel sWord
+      sLastWord = sWord
+    end
+  end 
+  sLabel = space(translate(sNewLabel,'','~!@#$%^&*()+`-={}|[]\:;<>?,./"'"'"),0)
 return sLabel
 
 getUniqueName: procedure expose f.
@@ -1570,6 +1593,7 @@ Prolog:
   g.0IN_DELIMITER = 0 /* Inside a delimited set of usages */
   g.0FIRST_USAGE  = 0 /* First delimited usage has been processed */
   g.0IN_APP_COLLECTION = 0 /* Inside an Application Collection */
+  f.0COLLECTION_NAME = '' /* Collection hierarchy names */
 
   k.0I8  = 'int8_t'
   k.0U8  = 'uint8_t'
