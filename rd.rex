@@ -1043,7 +1043,7 @@ getPageName: procedure expose k.
     when sPage > '0092'x & sPage < 'ff00'x then sPageDesc =  'Reserved,RES'
     when sPage >= 'ff00'x then do
         if k.0PAGE.xPage = ''
-        then sPageDesc = 'Vendor-defined,VEN'
+        then sPageDesc = 'Vendor-defined,VEN_'
         else sPageDesc = k.0PAGE.xPage
     end
     otherwise sPageDesc = k.0PAGE.xPAGE
