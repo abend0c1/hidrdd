@@ -633,11 +633,9 @@ return
 emitBeginStructure: procedure expose g. k. f. o.
   parse arg sStructureName,xReportId,sDirection
   if xReportId <> 0
-  then f.0TYPEDEFNAME = getUniqueName(sStructureName || xReportId)'_t'
-  else f.0TYPEDEFNAME = getUniqueName(sStructureName)'_t'
-  call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName xReportId '('sDirection')'
-  if xReportId <> 0
   then do
+    f.0TYPEDEFNAME = getUniqueName(sStructureName || xReportId)'_t'
+    call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName xReportId '('sDirection')'
     call say 'typedef struct'
     call say '{'
     c = x2c(xReportId)
@@ -647,6 +645,8 @@ emitBeginStructure: procedure expose g. k. f. o.
     call say '  'getStatement(k.0U8 'reportId;','Report ID = 0x'xReportId sDesc)
   end
   else do
+    f.0TYPEDEFNAME = getUniqueName(sStructureName)'_t'
+    call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName '('sDirection')'
     call say 'typedef struct'
     call say '{'
     call say '  'getStatement(,'No REPORT ID byte')
