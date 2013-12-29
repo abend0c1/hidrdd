@@ -26,11 +26,11 @@ Features
 Usage
 -----
 
-      rexx /home/aja/git/hidrdd/rd.rex [-h format] [-i fileinc] [-o fileout] [-dsvxb] -f filein
+      rexx rd.rex [-h format] [-i fileinc] [-o fileout] [-dsvxb] -f filein
 
 Or:
 
-      rexx /home/aja/git/hidrdd/rd.rex [-h format] [-i fileinc] [-o fileout] [-dsvx]  -c hex
+      rexx rd.rex [-h format] [-i fileinc] [-o fileout] [-dsvx]  -c hex
 
 Where:
 
