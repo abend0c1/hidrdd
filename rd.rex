@@ -383,8 +383,8 @@ processGLOBAL:
     when sTag = k.0GLOBAL.REPORT_ID then do
       c = x2c(xValue)
       if isAlphanumeric(c)
-      then sMeaning = '('nValue')' "'"c"'" updateHexValue('REPORT_ID',xValue)
-      else sMeaning = '('nValue')'         updateHexValue('REPORT_ID',xValue)
+      then sMeaning = '('x2d(xValue)')' "'"c"'" updateHexValue('REPORT_ID',xValue)
+      else sMeaning = '('x2d(xValue)')'         updateHexValue('REPORT_ID',xValue)
       if nValue = 0 then sMeaning = sMeaning '<-- Error: REPORT_ID 0 is reserved'
       if nValue > 255 then sMeaning = sMeaning '<-- Error: REPORT_ID must be in the range 0x01 to 0xFF'
     end
