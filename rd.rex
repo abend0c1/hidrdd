@@ -408,6 +408,11 @@ processGLOBAL:
   call emitDecode xItem,xParm,'GLOBAL',k.0GLOBAL.sTag,xValue,sMeaning
 return
 
+addUsage: procedure expose g. k.
+  parse arg xUsage
+  g.0USAGES = g.0USAGES xValue
+return  
+
 processLOCAL:
   xValue = c2x(sValue)
   nValue = x2d(xValue,2*length(sValue))
@@ -429,10 +434,10 @@ processLOCAL:
       if g.0IN_DELIMITER
       then do /* only use the first usage in the delimited set */
         if g.0FIRST_USAGE
-        then g.0USAGES = g.0USAGES xValue
+        then call addUsage xValue
         g.0FIRST_USAGE = 0 
       end
-      else g.0USAGES = g.0USAGES xValue
+      else call addUsage xValue
     end
     when sTag = k.0LOCAL.USAGE_MINIMUM then do
       xUsage = right(xValue,4,'0')
