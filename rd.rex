@@ -410,7 +410,7 @@ return
 
 addUsage: procedure expose g. k.
   parse arg xUsage
-  g.0USAGES = g.0USAGES xValue
+  g.0USAGES = g.0USAGES xUsage
 return  
 
 processLOCAL:
@@ -440,14 +440,36 @@ processLOCAL:
       else call addUsage xValue
     end
     when sTag = k.0LOCAL.USAGE_MINIMUM then do
-      xUsage = right(xValue,4,'0')
-      xValue = xPage || xUsage
-      sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MINIMUM',xUsage)
+      if length(sValue) = 4
+      then do /* Both page and usage are specified: ppppuuuu */
+        call loadPage xValue
+        sMeaning = getPageAndUsageMeaning(xValue) updateHexValue('USAGE_MINIMUM',xValue)
+      end
+      else do /* Only usage is specified: uuuu */
+        xUsage = right(xValue,4,'0')
+        xValue = xPage || xUsage
+        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MINIMUM',xValue)
+      end
     end
     when sTag = k.0LOCAL.USAGE_MAXIMUM then do
-      xUsage = right(xValue,4,'0')
-      xValue = xPage || xUsage
-      sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MAXIMUM',xUsage)
+      if length(sValue) = 4
+      then do /* Both page and usage are specified: ppppuuuu */
+        call loadPage xValue
+        sMeaning = getPageAndUsageMeaning(xValue) updateHexValue('USAGE_MAXIMUM',xValue)
+      end
+      else do /* Only usage is specified: uuuu */
+        xUsage = right(xValue,4,'0')
+        xValue = xPage || xUsage
+        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MAXIMUM',xValue)
+      end
+      if left(g.0USAGE_MINIMUM,4) <> left(g.0USAGE_MAXIMUM,4)
+      then sMeaning = sMeaning '<-- Error: USAGE_MAXIMUM usage page must match USAGE_MINIMUM' 
+      else do
+        do nExtendedUsage = x2d(g.0USAGE_MINIMUM) to x2d(g.0USAGE_MAXIMUM)
+          xExtendedUsage = d2x(nExtendedUsage,8)
+          call addUsage xExtendedUsage
+        end
+      end
     end
     when sTag = k.0LOCAL.DESIGNATOR_INDEX then do
       sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue)
@@ -674,7 +696,7 @@ emitHeading: procedure expose o.
 return  
 
 emitField: procedure expose k. o. f.
-  parse arg nField,xFlags sGlobals','sLocals','xExplicitUsages','sFlags','sCollectionName
+  parse arg nField,xFlags sGlobals','sLocals','xUsages','sFlags','sCollectionName
   call setGlobals sGlobals
   call setLocals sLocals
   if o.0VERBOSITY > 0
@@ -686,14 +708,11 @@ emitField: procedure expose k. o. f.
     call say '  // Flags:  ' xFlags':' sFlags
     call say '  // Globals:' getFormattedGlobals()
     call say '  // Locals: ' getFormattedLocals()
-    call say '  // Usages: ' strip(xExplicitUsages) /* list of specified usages, if any */
+    call say '  // Usages: ' strip(xUsages)
     call say '  // Coll:   ' sCollectionName
   end
   sFlags = x2c(xFlags)
-  nUsageMin = x2d(g.0USAGE_MINIMUM)
-  nUsageMax = x2d(g.0USAGE_MAXIMUM)
-  nUsage = nUsageMin /* first usage to be emitted in the range */
-  nExplicitUsages = words(xExplicitUsages)
+  nUsages = words(xUsages)
   g.0FIELD_TYPE = getFieldType()
   if o.0VERBOSITY > 0
   then do
@@ -717,8 +736,6 @@ emitField: procedure expose k. o. f.
        REPORT_SIZE is the size of each field (in bits).
        LOGICAL_MINIMUM is the minimum value in each field.
        LOGICAL_MAXIMUM is the maximum value in each field.
-       USAGE_MINIMUM is the minimum usage in a range.
-       USAGE_MAXIMUM is the maximum usage in a range.
 
     You can assign a usage to each field by either:
 
@@ -748,9 +765,9 @@ emitField: procedure expose k. o. f.
 
        or,
 
-    3. Both of the above, in which case the explicit usages are assigned
-       first, and then the range of usages is assigned, and then  the
-       last assigned usage is applied to the remaining fields if any.
+    3. Both of the above in any combination.
+       If REPORT_COUNT is greater than the number of usages in the range
+       then the last assigned usage is applied to the remaining fields. 
        E.g. REPORT_COUNT 5, USAGE A, USAGE_MINIMUM B, USAGE_MAXIMUM D:
             field   usage
               1      A    <-- Explicit
@@ -763,32 +780,30 @@ emitField: procedure expose k. o. f.
     if o.0VERBOSITY > 0
     then do
       call say '  // Type:    Variable'
-      call say '  'getStatement('', xPage getPageDesc(xPage))
+      call say '  'getStatement('', 'Page' xPage':' getPageDesc(xPage))
     end
     if sCollectionName <> f.0LASTCOLLECTION
     then do
       call say '  'getStatement(,'Collection:' sCollectionName)
       f.0LASTCOLLECTION = sCollectionName
     end
-    sUsages = getUsages(xExplicitUsages,nUsageMin,nUsageMax)
-    nUsages = words(sUsages)
     if nUsages = 0 & isConstant(sFlags) 
     then call emitPaddingFieldDecl g.0REPORT_COUNT,nField
     else do /* data or constant, with usage(s) specified */
       nRemainingReportCount = g.0REPORT_COUNT
       /* Emit all but the last usage */
       do i = 1 to nUsages-1 while nRemainingReportCount > 0
-        xExtendedUsage = word(sUsages,i)
+        xExtendedUsage = word(xUsages,i)
         call emitFieldDecl 1,xExtendedUsage
         nRemainingReportCount = nRemainingReportCount - 1
       end
-      xExtendedUsage = word(sUsages,i) /* usage to be replicated if room */
+      xExtendedUsage = word(xUsages,i) /* usage to be replicated if room */
       if nUsages > g.0REPORT_COUNT
       then do
         do nIgnored = i to nUsages
-          xIgnoredUsage = word(sUsages,nIgnored)
+          xIgnoredUsage = word(xUsages,nIgnored)
           parse var xIgnoredUsage xPage +4 xUsage +4
-          call say '  'getStatement('',xPage xUsage getUsageMeaning(xIgnoredUsage) getRange() '<-- Ignored: REPORT_COUNT ('g.0REPORT_COUNT') is too small')
+          call say '  'getStatement('','Usage' xPage||xUsage getUsageMeaning(xIgnoredUsage) getRange() '<-- Ignored: REPORT_COUNT ('g.0REPORT_COUNT') is too small')
         end
       end
       /* Now replicate the last usage to fill the report count */
@@ -805,8 +820,6 @@ emitField: procedure expose k. o. f.
        REPORT_SIZE is the size of each field (in bits).
        LOGICAL_MINIMUM is the minimum INDEX in each field.
        LOGICAL_MAXIMUM is the maximum INDEX in each field.
-       USAGE_MINIMUM is the minimum usage in a range.
-       USAGE_MAXIMUM is the maximum usage in a range.
 
 
     You can assign index numbers to usages by either:
@@ -844,15 +857,14 @@ emitField: procedure expose k. o. f.
 
        or,
 
-    3. Both of the above, in which case the explicit usages are assigned
-       first, and then the range of usages is assigned.
+    3. Both of the above in any combination.
        E.g. LOGICAL_MINIMUM 7, LOGICAL_MAXIMUM 9, 
             USAGE_MININUM B, USAGE_MAXIMUM C
             USAGE A:
             index usage
-              7     A     <-- Explicit
-              8     B     <-- First in range
-              9     C     <-- Last in range
+              7     B     <-- First in range
+              8     C     <-- Last in range
+              9     A     <-- Explicit
             other  novalue
 
     Note: An array is not like a string of characters in a buffer. Each array 
@@ -867,15 +879,13 @@ emitField: procedure expose k. o. f.
     if o.0VERBOSITY > 0
     then do
       call say '  // Type:    Array'
-      call say '  'getStatement('', xPage getPageDesc(xPage))
+      call say '  'getStatement('', 'Page' xPage':' getPageDesc(xPage))
     end
     if sCollectionName <> f.0LASTCOLLECTION
     then do
       call say '  'getStatement(,'Collection:' sCollectionName)
       f.0LASTCOLLECTION = sCollectionName
     end
-    sUsages = getUsages(xExplicitUsages,nUsageMin,nUsageMax)
-    nUsages = words(sUsages)
     if nUsages = 0 & isConstant(sFlags) 
     then call emitPaddingFieldDecl g.0REPORT_COUNT,nField
     else do /* data */
@@ -884,28 +894,18 @@ emitField: procedure expose k. o. f.
     if o.0ALL
     then do /* Document the valid indexes in the array */
       nLogical = g.0LOGICAL_MINIMUM
-      /* Emit any explicitly listed usages */
-      if nExplicitUsages > 0 
+      if nUsages > 0 
       then do
-        do i = 1 to nExplicitUsages 
-          xExtendedUsage = word(xExplicitUsages,i) /* ppppuuuu */
+        do i = 1 to nUsages 
+          xExtendedUsage = word(xUsages,i) /* ppppuuuu */
           parse var xExtendedUsage xPage +4 xUsage +4
           sUsageDesc = getUsageMeaning(xExtendedUsage)
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 1)
-          then call say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
-          nLogical = nLogical + 1
-        end
-      end
-      /* Emit a range of usages if present */
-      if nUsageMin < nUsageMax 
-      then do
-        do nUsage = nUsageMin to nUsageMax
-          xPage = g.0USAGE_PAGE
-          xUsage = d2x(nUsage,4)
-          xExtendedUsage = xPage || xUsage
-          sUsageDesc = getUsageMeaning(xExtendedUsage)
-          if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 1)
-          then call say '  'getStatement('', 'Value' nLogical '=' xPage xUsage sUsageDesc)
+          then do
+            if nLogical > g.0LOGICAL_MAXIMUM
+            then call say '  'getStatement('', 'Value' nLogical '= Usage' xPage||xUsage':' sUsageDesc '<-- Error: Value exceeds LOGICAL_MAXIMUM')
+            else call say '  'getStatement('', 'Value' nLogical '= Usage' xPage||xUsage':' sUsageDesc)
+          end
           nLogical = nLogical + 1
         end
       end
@@ -913,31 +913,24 @@ emitField: procedure expose k. o. f.
   end
 return
 
-getUsages: procedure expose g.
-  parse arg sUsages,nUsageMin,nUsageMax
-  /* Build the combined list of usages - explicit (if any) + range (if any) */
-  if nUsageMin <> 0 | nUsageMax <> 0 /* if a range is present */
-  then do nUsage = nUsageMin to nUsageMax
-    xExtendedUsage = g.0USAGE_PAGE || d2x(nUsage,4)
-    sUsages = sUsages xExtendedUsage
-  end
-return sUsages
-
 emitFieldDecl: procedure expose g. k. f. o.
   parse arg nReportCount,xExtendedUsage,sPad
   if nReportCount < 1 then return
   sFieldName = getFieldName(xExtendedUsage,f.0TYPEDEFNAME)sPad
   parse var xExtendedUsage xPage +4 xUsage +4
+  if xUsage = ''
+  then sComment = getRange()
+  else sComment = 'Usage' xPage||xUsage':' getUsageMeaning(xExtendedUsage) getRange()
   if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
-    then call say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   , xPage xUsage getUsageMeaning(xExtendedUsage) getRange())
-    else call say '  'getStatement(g.0FIELD_TYPE sFieldName'['nReportCount'];'   , xPage xUsage getUsageMeaning(xExtendedUsage) getRange())
+    then call say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   ,sComment)
+    else call say '  'getStatement(g.0FIELD_TYPE sFieldName'['nReportCount'];'   ,sComment)
   end
   else do
-    call say '  'getStatement(g.0FIELD_TYPE sFieldName ':' g.0REPORT_SIZE';', xPage xUsage getUsageMeaning(xExtendedUsage) getRange())
+    call      say '  'getStatement(g.0FIELD_TYPE sFieldName ':' g.0REPORT_SIZE';',sComment)
     do i = 1 to nReportCount-1
-      call say '  'getStatement(g.0FIELD_TYPE sFieldName||i ':' g.0REPORT_SIZE';', xPage xUsage getUsageMeaning(xExtendedUsage) getRange())
+      call say '  'getStatement(g.0FIELD_TYPE sFieldName||i ':' g.0REPORT_SIZE';',sComment)
     end
   end
 return

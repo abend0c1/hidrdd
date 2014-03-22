@@ -11,7 +11,7 @@
 a1 01 Collection(Application),
 75 02 ReportSize(2), 
 95 01 ReportCount(1),
-25 01 Logical Maximum(2),
+25 02 Logical Maximum(2),
 09 2d Usage(Display Status),
 a1 02 Collection(Logical),
 09 2e Usage(Stat Not Ready),
