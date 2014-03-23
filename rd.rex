@@ -1,7 +1,7 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.7
+/* RDD! HID Report Descriptor Decoder v1.1.8
 
-Copyright (c) 2011-2013, Andrew J. Armstrong
+Copyright (c) 2011-2014, Andrew J. Armstrong
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -780,7 +780,7 @@ emitField: procedure expose k. o. f.
     if o.0VERBOSITY > 0
     then do
       call say '  // Type:    Variable'
-      call say '  'getStatement('', 'Page' xPage':' getPageDesc(xPage))
+      call say '  'getStatement('', 'Page 0x'xPage':' getPageDesc(xPage))
     end
     if sCollectionName <> f.0LASTCOLLECTION
     then do
@@ -803,7 +803,7 @@ emitField: procedure expose k. o. f.
         do nIgnored = i to nUsages
           xIgnoredUsage = word(xUsages,nIgnored)
           parse var xIgnoredUsage xPage +4 xUsage +4
-          call say '  'getStatement('','Usage' xPage||xUsage getUsageMeaning(xIgnoredUsage) getRange() '<-- Ignored: REPORT_COUNT ('g.0REPORT_COUNT') is too small')
+          call say '  'getStatement('','Usage 0x'xPage||xUsage getUsageMeaning(xIgnoredUsage) getRange() '<-- Ignored: REPORT_COUNT ('g.0REPORT_COUNT') is too small')
         end
       end
       /* Now replicate the last usage to fill the report count */
@@ -879,7 +879,7 @@ emitField: procedure expose k. o. f.
     if o.0VERBOSITY > 0
     then do
       call say '  // Type:    Array'
-      call say '  'getStatement('', 'Page' xPage':' getPageDesc(xPage))
+      call say '  'getStatement('', 'Page 0x'xPage':' getPageDesc(xPage))
     end
     if sCollectionName <> f.0LASTCOLLECTION
     then do
@@ -903,8 +903,8 @@ emitField: procedure expose k. o. f.
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 1)
           then do
             if nLogical > g.0LOGICAL_MAXIMUM
-            then call say '  'getStatement('', 'Value' nLogical '= Usage' xPage||xUsage':' sUsageDesc '<-- Error: Value exceeds LOGICAL_MAXIMUM')
-            else call say '  'getStatement('', 'Value' nLogical '= Usage' xPage||xUsage':' sUsageDesc)
+            then call say '  'getStatement('', 'Value' nLogical '= Usage 0x'xPage||xUsage':' sUsageDesc '<-- Error: Value exceeds LOGICAL_MAXIMUM')
+            else call say '  'getStatement('', 'Value' nLogical '= Usage 0x'xPage||xUsage':' sUsageDesc)
           end
           nLogical = nLogical + 1
         end
@@ -920,7 +920,7 @@ emitFieldDecl: procedure expose g. k. f. o.
   parse var xExtendedUsage xPage +4 xUsage +4
   if xUsage = ''
   then sComment = getRange()
-  else sComment = 'Usage' xPage||xUsage':' getUsageMeaning(xExtendedUsage) getRange()
+  else sComment = 'Usage 0x'xPage||xUsage':' getUsageMeaning(xExtendedUsage) getRange()
   if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
