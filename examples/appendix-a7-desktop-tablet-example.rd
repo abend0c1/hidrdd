@@ -101,7 +101,7 @@ b4            Pop,      ; Refer to Global items saved during initial Push
 81 02          Input(Date, Variable, Absolute),
 
 15 00         Logical Minimum(0), 
-25 00          Logical Maximum(1),
+25 01          Logical Maximum(1),
 35 00          Physical Minimum(0), 
 45 01          Physical Maximum(1),
 65 00          Units(None),

@@ -369,7 +369,7 @@ processGLOBAL:
     end
     when sTag = k.0GLOBAL.UNIT_EXPONENT then do
       nUnitExponent = getUnitExponent(nValue) 
-      sMeaning = '(Unit Value x 10^'nUnitExponent')' updateValue('UNIT_EXPONENT',nUnitExponent)
+      sMeaning = '(Unit Value x 10'getSuperscript(nUnitExponent)')' updateValue('UNIT_EXPONENT',nUnitExponent)
     end
     when sTag = k.0GLOBAL.UNIT then do
       xValue = right(xValue,8,'0')
@@ -1232,7 +1232,11 @@ return nValue
 
 getPower: procedure expose k.
   parse arg xValue
-return getUnitExponent(x2d(xValue))
+  nExponent = getUnitExponent(x2d(xValue))
+  if nExponent = 1
+  then sExponent = ''
+  else sExponent = getSuperscript(nExponent)
+return sExponent
 
 getUnit: procedure expose k.
   parse arg xValue
@@ -1245,12 +1249,12 @@ getUnit: procedure expose k.
     when pos(xSystem,'56789ABCDE') > 0 then sUnit = 'E=Reserved <-- Error: Measurement system type' xSystem 'is reserved'
     otherwise do
       sUnit = xSystem'='k.0UNIT.0.xSystem
-      if xLength      <> '0' then sUnit = sUnit','      xLength'='k.0UNIT.1.xSystem'^'getPower(xLength)
-      if xMass        <> '0' then sUnit = sUnit','        xMass'='k.0UNIT.2.xSystem'^'getPower(xMass)
-      if xTime        <> '0' then sUnit = sUnit','        xTime'='k.0UNIT.3.xSystem'^'getPower(xTime)
-      if xTemperature <> '0' then sUnit = sUnit',' xTemperature'='k.0UNIT.4.xSystem'^'getPower(xTemperature)
-      if xCurrent     <> '0' then sUnit = sUnit','     xCurrent'='k.0UNIT.5.xSystem'^'getPower(xCurrent)
-      if xLight       <> '0' then sUnit = sUnit','       xLight'='k.0UNIT.6.xSystem'^'getPower(xLight)
+      if xLength      <> '0' then sUnit = sUnit','      xLength'='k.0UNIT.1.xSystem || getPower(xLength)
+      if xMass        <> '0' then sUnit = sUnit','        xMass'='k.0UNIT.2.xSystem || getPower(xMass)
+      if xTime        <> '0' then sUnit = sUnit','        xTime'='k.0UNIT.3.xSystem || getPower(xTime)
+      if xTemperature <> '0' then sUnit = sUnit',' xTemperature'='k.0UNIT.4.xSystem || getPower(xTemperature)
+      if xCurrent     <> '0' then sUnit = sUnit','     xCurrent'='k.0UNIT.5.xSystem || getPower(xCurrent)
+      if xLight       <> '0' then sUnit = sUnit','       xLight'='k.0UNIT.6.xSystem || getPower(xLight)
     end
   end
 return sUnit
@@ -1587,6 +1591,22 @@ addBoundedListOption: procedure expose g. k.
   call addOption nMaxListSize,sShort,sLong,sInitialValue,sDesc
 return
 
+addSuperscript: procedure expose k.
+  parse arg sText,sSuperscript
+  k.0SUPER.sText = sSuperscript
+return
+
+getSuperscript: procedure expose k.
+  parse arg sText
+  sSuperscript = ''
+  do i = 1 to length(sText)
+    c = substr(sText,i,1)
+    if k.0SUPER.c = ''
+    then sSuperscript = sSuperscript || c
+    else sSuperscript = sSuperscript || k.0SUPER.c
+  end
+return sSuperscript
+
 Prolog:
   g.0IN_DELIMITER = 0 /* Inside a delimited set of usages */
   g.0FIRST_USAGE  = 0 /* First delimited usage has been processed */
@@ -1697,6 +1717,23 @@ Prolog:
   call addType 'UM','Usage Modifier'
   call addType 'US','Usage Switch'
 
+  k.0SUPER. = ''
+  call addSuperscript '0','⁰'
+  call addSuperscript '1','¹'
+  call addSuperscript '2','²'
+  call addSuperscript '3','³'
+  call addSuperscript '4','⁴'
+  call addSuperscript '5','⁵'
+  call addSuperscript '6','⁶'
+  call addSuperscript '7','⁷'
+  call addSuperscript '8','⁸'
+  call addSuperscript '9','⁹'
+  call addSuperscript '+','⁺'
+  call addSuperscript '-','⁻'
+  call addSuperscript '=','⁼'
+  call addSuperscript '(','⁽'
+  call addSuperscript ')','⁾'
+
   /* Some pre-defined common SI units:
           .---------- Reserved                 |-- Perhaps should be "amount of substance" in moles, to conform with SI
           |.--------- Luminous intensity (in candelas)
@@ -1710,6 +1747,8 @@ Prolog:
           VVVVVVVV
   Nibble: 76543210    Description of unit
           --------    ------------------------------------- */
+  k.0UNIT.00000012 = 'Rotation in radians [1 rad units]'
+
   /* SI base units (excluding "amount of substance" in moles) */
   k.0UNIT.00000011 = 'Distance in metres [1 cm units]'
   k.0UNIT.00000101 = 'Mass in grams [1 g units]'
@@ -1763,6 +1802,15 @@ Prolog:
   k.0UNIT.00204FD1 = 'Permittivity in farad per metre [1 GF/m units]' /* WTF! */
   k.0UNIT.00E0E111 = 'Permeability in henry per metre [0.01 H/m units]'
   k.0UNIT.0000F111 = 'Momentum [1 gram cm/s units]'
+
+  /* Other common units (non-SI): 
+
+  Nibble: 76543210    Description of unit
+          --------    ------------------------------------- */
+  k.0UNIT.00000000 = 'Unit not specified'
+  k.0UNIT.00001003 = 'Time in Imperial seconds [1 s units]' /* haha */
+  k.0UNIT.00000014 = 'Rotation in degrees [1° units]'
+
   
   /*      .--Nibble number
           | .--Measurement system
