@@ -1,5 +1,5 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.8
+/* RDD! HID Report Descriptor Decoder v1.1.9
 
 Copyright (c) 2011-2014, Andrew J. Armstrong
 All rights reserved.
@@ -256,7 +256,7 @@ processMAIN:
   select
     when sTag = k.0MAIN.INPUT then do
       sFlags = getInputFlags()
-      call emitDecode xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
+      call emitDecode xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity(sValue)
       n = inputField.0 + 1
       inputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       inputField.0 = n
@@ -264,7 +264,7 @@ processMAIN:
     end
     when sTag = k.0MAIN.OUTPUT then do
       sFlags = getOutputFlags()
-      call emitDecode xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
+      call emitDecode xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity(sValue)
       n = outputField.0 + 1
       outputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       outputField.0 = n
@@ -272,7 +272,7 @@ processMAIN:
     end
     when sTag = k.0MAIN.FEATURE then do
       sFlags = getFeatureFlags()
-      call emitDecode xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity()
+      call emitDecode xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity(sValue)
       n = featureField.0 + 1
       featureField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       featureField.0 = n
@@ -373,7 +373,8 @@ processGLOBAL:
     end
     when sTag = k.0GLOBAL.UNIT then do
       xValue = right(xValue,8,'0')
-      sMeaning = k.0UNIT.xValue '('getUnit(xValue)')' updateHexValue('UNIT',xValue)
+      parse var k.0UNIT.xValue sUnitDesc','
+      sMeaning = sUnitDesc '('getUnit(xValue)')' updateHexValue('UNIT',xValue)
     end
     when sTag = k.0GLOBAL.REPORT_SIZE then do
       sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue)
@@ -527,21 +528,25 @@ loadPage: procedure expose g. k.
 return
 
 getSanity: procedure expose g.
+  parse arg sFlags
   sError = ''
   if g.0REPORT_SIZE = 0
   then sError = sError '<-- Error: REPORT_SIZE = 0'
   if g.0REPORT_COUNT = 0
   then sError = sError '<-- Error: REPORT_COUNT = 0'
-  nMinBits = getMinBits(g.0LOGICAL_MINIMUM)
-  if g.0REPORT_SIZE < nMinBits
-  then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM') which needs' nMinBits 'bits.'
-  nMinBits = getMinBits(g.0LOGICAL_MAXIMUM)
-  if g.0REPORT_SIZE < nMinBits
-  then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') which needs' nMinBits 'bits.'
-  if g.0LOGICAL_MAXIMUM < g.0LOGICAL_MINIMUM
-  then sError = sError '<-- Error: LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') is less than LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM')'
-  if g.0PHYSICAL_MAXIMUM < g.0PHYSICAL_MINIMUM
-  then sError = sError '<-- Error: PHYSICAL_MAXIMUM ('g.0PHYSICAL_MAXIMUM') is less than PHYSICAL_MINIMUM ('g.0PHYSICAL_MINIMUM')'
+  if \isConstant(sFlags)
+  then do
+    nMinBits = getMinBits(g.0LOGICAL_MINIMUM)
+    if g.0REPORT_SIZE < nMinBits
+    then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM') which needs' nMinBits 'bits.'
+    nMinBits = getMinBits(g.0LOGICAL_MAXIMUM)
+    if g.0REPORT_SIZE < nMinBits
+    then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') which needs' nMinBits 'bits.'
+    if g.0LOGICAL_MAXIMUM < g.0LOGICAL_MINIMUM
+    then sError = sError '<-- Error: LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') is less than LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM')'
+    if g.0PHYSICAL_MAXIMUM < g.0PHYSICAL_MINIMUM
+    then sError = sError '<-- Error: PHYSICAL_MAXIMUM ('g.0PHYSICAL_MAXIMUM') is less than PHYSICAL_MINIMUM ('g.0PHYSICAL_MINIMUM')'
+  end
 return sError
 
 getMinBits: procedure 
@@ -899,7 +904,7 @@ emitField: procedure expose k. o. f.
         do i = 1 to nUsages 
           xExtendedUsage = word(xUsages,i) /* ppppuuuu */
           parse var xExtendedUsage xPage +4 xUsage +4
-          sUsageDesc = getUsageMeaning(xExtendedUsage)
+          sUsageDesc = getUsageMeaningText(xExtendedUsage)
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 1)
           then do
             if nLogical > g.0LOGICAL_MAXIMUM
@@ -920,7 +925,11 @@ emitFieldDecl: procedure expose g. k. f. o.
   parse var xExtendedUsage xPage +4 xUsage +4
   if xUsage = ''
   then sComment = getRange()
-  else sComment = 'Usage 0x'xPage||xUsage':' getUsageMeaning(xExtendedUsage) getRange()
+  else sComment = 'Usage 0x'xPage||xUsage':' getUsageMeaningText(xExtendedUsage)',' getRange()
+
+  if g.0UNIT <> 0 | g.0PHYSICAL_MAXIMUM <> 0 | g.0PHYSICAL_MINIMUM <> 0
+  then sComment = sComment || getUnitConversionFormula()
+
   if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
   then do
     if nReportCount = 1
@@ -934,6 +943,93 @@ emitFieldDecl: procedure expose g. k. f. o.
     end
   end
 return
+
+getUnitConversionFormula: procedure expose g. k. f. o.
+  xUnit = g.0UNIT
+
+  if g.0PHYSICAL_MAXIMUM = 0 & g.0PHYSICAL_MINIMUM = 0
+  then do
+    nPhysicalMaximum = g.0LOGICAL_MAXIMUM
+    nPhysicalMinimum = g.0LOGICAL_MINIMUM
+  end
+  else do
+    nPhysicalMaximum = g.0PHYSICAL_MAXIMUM
+    nPhysicalMinimum = g.0PHYSICAL_MINIMUM
+  end
+
+  if g.0UNIT <> 0
+  then do
+    parse var k.0UNIT.xUnit sDesc' ['sUnits'],'nBaseUnitExponent sBaseUnit /* e.g. Force in newtons [10 μN units],-5 N */
+    parse var sDesc sQuantity ' in ' sUnitName
+    if nBaseUnitExponent = '' then nBaseUnitExponent = 0
+  end
+  else do
+    nBaseUnitExponent = 0
+    sUnits = ''
+    sBaseUnit = ''
+  end
+
+  if g.0UNIT_EXPONENT + nBaseUnitExponent = 0
+  then sPhysicalUnits = sBaseUnit
+  else sPhysicalUnits = '10'getSuperscript(g.0UNIT_EXPONENT + nBaseUnitExponent) sBaseUnit 'units'
+
+  n = nPhysicalMaximum - nPhysicalMinimum
+  d = g.0LOGICAL_MAXIMUM - g.0LOGICAL_MINIMUM
+  nGCD = getGreatestCommonDenominator(n,d)
+  if nGCD > 1
+  then do
+    n = n / nGCD
+    d = d / nGCD
+  end
+
+  sFormula = calc(calc(calc('Value','-',g.0LOGICAL_MINIMUM),'x',calc(n,'/',d)),'+',nPhysicalMinimum)
+  if left(sFormula,10) = 'Value x 1 ' then sFormula = 'Value' substr(sFormula,11)  /* kludge */
+  if g.0UNIT = 0
+  then sFormula = ', Physical =' sFormula 
+  else sFormula = ', Physical =' sFormula 'in' sPhysicalUnits
+return sFormula
+
+getGreatestCommonDenominator: procedure
+  parse arg n,d
+  if n = 1 then return 1
+  if d = 0 then return n
+  return getGreatestCommonDenominator(d,n//d)
+return
+
+calc: procedure
+  parse arg sArg1,sOperator,nArg2
+  sResult = sArg1 sOperator nArg2
+  select
+    when sOperator = '+' then select
+      when nArg2 = 0  then sResult = sArg1
+      when nArg2 < 0  then sResult = '('sArg1 '-' (-nArg2)')'
+      otherwise sResult = '('sArg1 '+' nArg2')'
+    end
+    when sOperator = '-' then select
+      when nArg2 = 0  then sResult = sArg1
+      when nArg2 < 0  then sResult = '('sArg1 '+' (-nArg2)')'
+      otherwise sResult = '('sArg1 '-' nArg2')'
+    end
+    when sOperator = 'x' then select
+      when nArg2 = 0  then sResult = 0
+      when nArg2 = 1  then sResult = sArg1
+      when nArg2 = -1 then sResult = '-'sArg1
+      otherwise sResult = sArg1 'x' nArg2
+    end
+    when sOperator = '/' then select
+      when nArg2 = 1  then sResult = sArg1
+      when nArg2 = -1 then sResult = '-'sArg1
+      otherwise sResult = sArg1 '/' nArg2
+    end
+    when sOperator = '^' then select
+      when nArg2 = 0  then sResult = 1
+      otherwise sResult = sArg1 '^' nArg2
+    end
+    otherwise do
+      sResult = '('sArg1 sOperator nArg2')'
+    end
+  end
+return sResult
 
 emitPaddingFieldDecl: procedure expose g. k. o.
   parse arg nReportCount,nField
@@ -1051,6 +1147,11 @@ return sPageDesc
 getUsageMeaning: procedure expose k.
   parse arg xPage +4 xUsage +4 /* ppppuuuu */
 return k.0USAGE.xPage.xUsage
+
+getUsageMeaningText: procedure expose k.
+  parse arg xPage +4 xUsage +4 /* ppppuuuu */
+  parse var k.0USAGE.xPage.xUsage sMeaning ' ('
+return sMeaning
 
 getPageAndUsageMeaning: procedure expose k.
   parse arg xPage +4 xUsage +4 /* ppppuuuu */
@@ -1738,78 +1839,93 @@ Prolog:
           .---------- Reserved                 |-- Perhaps should be "amount of substance" in moles, to conform with SI
           |.--------- Luminous intensity (in candelas)
           ||.-------- Current (in amperes)
-          |||.------- Temperature (in kelvin for SI)
+          |||.------- Temperature (in kelvin)
           ||||.------ Time (in seconds)        |
-          |||||.----- Mass (in grams)          |-- Odd, since CGS units were deprecated in favour of MKS units (+ the above + moles for SI units)
+          |||||.----- Mass (in grams)          |-- Odd, since CGS units were deprecated in favour of MKS units in the 1940's
           ||||||.---- Length (in centimetres)  |
-          |||||||.--- System of measurement
+          |||||||.--- System of measurement (either 1 or 2 for metric measurement system)
+          ||||||||
+          VVVVVVVV
+  Nibble: 76543210    Description of unit [base units],kms_exponent kms_unit
+          --------    ------------------------------------------------------ */
+  k.0UNIT.00000000 = 'No unit,0'
+  k.0UNIT.00000012 = 'Rotation in radians [1 rad units],0 rad'
+
+  /* SI base units (excluding "amount of substance" in moles) */
+  k.0UNIT.00000011 = 'Distance in metres [1 cm units],-2 m'
+  k.0UNIT.00000101 = 'Mass in grams [1 g units],-3 kg'
+  k.0UNIT.00001001 = 'Time in seconds [1 s units],0 s'
+  k.0UNIT.00010001 = 'Temperature in kelvin [1 K units],0 K'
+  k.0UNIT.00100001 = 'Current in amperes [1 A units],0 A'
+  k.0UNIT.01000001 = 'Luminous intensity in candelas [1 cd units],0 cd'
+
+  /* Coherent derived units in the SI expressed in terms of base units */
+  k.0UNIT.00000021 = 'Area [1 cm² units],-4 m²'
+  k.0UNIT.00000031 = 'Volume [1 cm³ units],-6 m³'
+  k.0UNIT.0000F011 = 'Velocity [1 cm/s units],-2 m/s'
+  k.0UNIT.0000E011 = 'Acceleration [1 cm/s² units],-2 m/s²'
+  k.0UNIT.000001D1 = 'Mass density [1 g/cm³ units],3 kg/m³'
+  k.0UNIT.000001E1 = 'Surface density [1 g/cm² units],1 kg/m²'
+  k.0UNIT.00000F31 = 'Specific volume [1 cm³/g units],-3 m³/kg'
+  k.0UNIT.001000E1 = 'Current density [1 A/cm² units],4 A/m²'
+  k.0UNIT.001000F1 = 'Magnetic field strength [1 A/cm units],2 A/m'
+  k.0UNIT.010000E1 = 'Luminance [1 cd/cm² units],4 cd/m²'
+
+  /* Coherent derived units in the SI with special names and symbols */
+  k.0UNIT.0000F001 = 'Frequency in hertz [1 Hz units],0 Hz'
+  k.0UNIT.0000E111 = 'Force in newtons [10 μN units],-5 N'
+  k.0UNIT.0000E1F1 = 'Pressure in pascals [0.1 Pa units],-1 Pa'
+  k.0UNIT.0000E121 = 'Energy in joules [0.1 μJ units],-7 J'
+  k.0UNIT.0000D121 = 'Power in watts [0.1 μW units],-7 W'
+  k.0UNIT.00101001 = 'Electric charge in coulombs [1 C units],0 C'
+  k.0UNIT.00F0D121 = 'Voltage [0.1 μV units],-7 V'
+  k.0UNIT.00204FE1 = 'Capacitance in farads [10 MF units],7 F' /* sheesh! */
+  k.0UNIT.00E0D121 = 'Resistance in ohms [0.1 μΩ units],-7 Ω'
+  k.0UNIT.00203FE1 = 'Conductance in siemens [10 MS units],7 S'
+  k.0UNIT.00F0E121 = 'Magnetic flux in webers [0.1 μWb units],-7 Wb'
+  k.0UNIT.00F0E101 = 'Magnetic flux density in teslas [1 mT units],-3 T'
+  k.0UNIT.00E0E121 = 'Inductance in henrys [0.1 μH units],-7 H'
+  k.0UNIT.010000E1 = 'Luminance [1 cd/cm² units],4 cd/m²'
+
+  /* Coherent derived units whose names and symbols include SI coherent derived units with special names and symbols */
+  k.0UNIT.0000F1F1 = 'Dynamic viscosity in pascal seconds [0.1 Pa s units],-1 Pa s'
+  k.0UNIT.0000E121 = 'Moment of force in newton metres [0.1 μN m units],-7 N m'
+  k.0UNIT.0000E121 = 'Surface tension in newton per metre [1 g/s² units],-3 kg/s²'
+  k.0UNIT.0000F002 = 'Angular velocity [1 rad/s units],0 rad/s'
+  k.0UNIT.0000E002 = 'Angular acceleration [1 rad/s² units],0 rad/s²'
+  k.0UNIT.0000D101 = 'Heat flux density in watt per square metre [1 mW/m² units],-3 W/m²'
+  k.0UNIT.000FE121 = 'Heat capacity in joule per kelvin [0.1 μJ/K units],-7 J/K'
+  k.0UNIT.000FE021 = 'Specific heat capacity in joule per kilogram kelvin [100 μJ/(kg K) units],-4 J/(kg K)'
+  k.0UNIT.0000E021 = 'Specific energy in joule per kilogram [100 μJ/kg units],-4 J/kg'
+  k.0UNIT.000FD111 = 'Thermal conductivity in watts per metre per kelvin [10 μW/(m K) units],-5 W/(m K)'
+  k.0UNIT.00F0D111 = 'Electric field strength in volt per metre [10 μV/m units],-5 V/m'
+  k.0UNIT.001010D1 = 'Electric charge density in coulomb per m³ [1 MC/m³ units],6 C/m³'
+  k.0UNIT.001010E1 = 'Surface charge density in coulomb per m² [10 kC/m² units],4 C/m²'
+  k.0UNIT.00204FD1 = 'Permittivity in farad per metre [1 GF/m units],9 F/m' /* WTF! */
+  k.0UNIT.00E0E111 = 'Permeability in henry per metre [0.01 H/m units],-2 H/m'
+  k.0UNIT.0000F111 = 'Momentum [1 g cm/s units],-5 kg m/s'
+
+  /* Other common units (non-metric):
+          .---------- Reserved
+          |.--------- Luminous intensity (in candelas) - same as metric
+          ||.-------- Current (in amperes) - same as metric
+          |||.------- Temperature (in degrees Fahrenheit)
+          ||||.------ Time (in seconds)
+          |||||.----- Mass (in slugs)
+          ||||||.---- Length (in inches)
+          |||||||.--- System of measurement (either 3 or 4 for non-metric measurement system)
           ||||||||
           VVVVVVVV
   Nibble: 76543210    Description of unit
           --------    ------------------------------------- */
-  k.0UNIT.00000012 = 'Rotation in radians [1 rad units]'
-
-  /* SI base units (excluding "amount of substance" in moles) */
-  k.0UNIT.00000011 = 'Distance in metres [1 cm units]'
-  k.0UNIT.00000101 = 'Mass in grams [1 g units]'
-  k.0UNIT.00001001 = 'Time in seconds [1 s units]'
-  k.0UNIT.00010001 = 'Temperature in kelvin [1 K units]'
-  k.0UNIT.00100001 = 'Current in amperes [1 A units]'
-  k.0UNIT.01000001 = 'Luminous intensity in candelas [1 cd units]'
-
-  /* Coherent derived units in the SI expressed in terms of base units */
-  k.0UNIT.00000021 = 'Area [1 cm² units]'
-  k.0UNIT.00000031 = 'Volume [1 cm³ units]'
-  k.0UNIT.0000F011 = 'Velocity [1 cm/s units]'
-  k.0UNIT.0000E011 = 'Acceleration [1 cm/s² units]'
-  k.0UNIT.000001D1 = 'Mass density [1 g/cm³ units]'
-  k.0UNIT.000001E1 = 'Surface density [1 g/cm² units]'
-  k.0UNIT.00000F31 = 'Specific volume [1 cm³/g units]'
-  k.0UNIT.001000E1 = 'Current density [1 A/cm² units]'
-  k.0UNIT.001000F1 = 'Magnetic field strength [1 A/cm units]'
-  k.0UNIT.010000E1 = 'Luminance [1 cd/cm² units]'
-
-  /* Coherent derived units in the SI with special names and symbols */
-  k.0UNIT.0000F001 = 'Frequency in hertz [1 Hz units]'
-  k.0UNIT.0000E111 = 'Force in newtons [10 μN units]'
-  k.0UNIT.0000E1F1 = 'Pressure in pascals [0.1 Pa units]'
-  k.0UNIT.0000E121 = 'Energy in joules [0.1 μJ units]'
-  k.0UNIT.0000D121 = 'Power in watts [0.1 μW units]'
-  k.0UNIT.00101001 = 'Electric charge in coulombs [1 C units]'
-  k.0UNIT.00F0D121 = 'Voltage [0.1 μV units]'
-  k.0UNIT.00204FE1 = 'Capacitance in farads [10 MF units]' /* sheesh! */
-  k.0UNIT.00E0D121 = 'Resistance in ohms [0.1 μΩ units]'
-  k.0UNIT.00203FE1 = 'Conductance in siemens [10 MS units]'
-  k.0UNIT.00F0E121 = 'Magnetic flux in webers [0.1 μWb units]'
-  k.0UNIT.00F0E101 = 'Magnetic flux density in teslas [1 mT units]'
-  k.0UNIT.00E0E121 = 'Inductance in henries [0.1 μH units]'
-  k.0UNIT.010000E1 = 'Luminance [1 cd/cm² units]'
-
-  /* Coherent derived units whose names and symbols include SI coherent derived units with special names and symbols */
-  k.0UNIT.0000F1F1 = 'Dynamic viscosity in pascal seconds [0.1 Pa s units]'
-  k.0UNIT.0000E121 = 'Moment of force in newton metres [0.1 μN m units]'
-  k.0UNIT.0000E121 = 'Surface tension in newton per metre [1 g/s² units]'
-  k.0UNIT.0000F002 = 'Angular velocity [1 rad/s units]'
-  k.0UNIT.0000E002 = 'Angular acceleration [1 rad/s² units]'
-  k.0UNIT.0000D101 = 'Heat flux density in watt per square metre [1 mW/m² units]'
-  k.0UNIT.000FE121 = 'Heat capacity in joule per kelvin [0.1 μJ/K units]'
-  k.0UNIT.000FE021 = 'Specific heat capacity in joule per kilogram kelvin [100 μJ/(kg K) units]'
-  k.0UNIT.0000E021 = 'Specific energy in joule per kilogram [100 μJ/kg units]'
-  k.0UNIT.000FD111 = 'Thermal conductivity in watts per metre per kelvin [10 μW/(m K) units]'
-  k.0UNIT.00F0D111 = 'Electric field strength in volt per metre [10 μV/m units]'
-  k.0UNIT.001010D1 = 'Electric charge density in coulomb per m³ [1 MC/m³ units]'
-  k.0UNIT.001010E1 = 'Surface charge density in coulomb per m² [10 kC/m² units]'
-  k.0UNIT.00204FD1 = 'Permittivity in farad per metre [1 GF/m units]' /* WTF! */
-  k.0UNIT.00E0E111 = 'Permeability in henry per metre [0.01 H/m units]'
-  k.0UNIT.0000F111 = 'Momentum [1 gram cm/s units]'
-
-  /* Other common units (non-SI): 
-
-  Nibble: 76543210    Description of unit
-          --------    ------------------------------------- */
-  k.0UNIT.00000000 = 'Unit not specified'
-  k.0UNIT.00001003 = 'Time in Imperial seconds [1 s units]' /* haha */
-  k.0UNIT.00000014 = 'Rotation in degrees [1° units]'
+  k.0UNIT.00000013 = 'Distance in inches [1 inch units],0 inch'
+  k.0UNIT.00000023 = 'Area in square inches [1 inch² units],0 inch²'
+  k.0UNIT.00000033 = 'Volume in cubic inches [1 inch³ units],0 inch³'
+  k.0UNIT.00001003 = 'Time in seconds [1 s units],0 s' /* Imperial seconds haha */
+  k.0UNIT.00010003 = 'Temperature in degrees Fahrenheit [1 °F units],0 °F'
+  k.0UNIT.00000014 = 'Rotation in degrees [1° units],0 degrees'
+  k.0UNIT.0000F014 = 'Angular velocity [1°/s units],0 °/s'
+  k.0UNIT.0000E004 = 'Angular acceleration [1°/s² units],0 °/s²'
 
   
   /*      .--Nibble number

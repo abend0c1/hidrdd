@@ -24,7 +24,7 @@
 a1 01      Collection(Application),
 85 01       ReportID(1),    ; 2-Button Stylus
 09 21        Usage(Puck),
-a1 00        Collection(Physical),
+a1 02        Collection, <-- Changed to Logical
 05 01          Usage Page(Generic Desktop),  ; X and Y Position
 09 30          Usage(X), 
 09 31          Usage(Y),
@@ -58,7 +58,7 @@ a4            Push,    ; Save position item state
 c0          End Collection,
 
 09 20        Usage(Stylus),
-a1 00        Collection(Physical),
+a1 02        Collection <-- Changed to Logical
 b4            Pop,  ; Refer to Global items
 a4            Push,  ; saved during last Push
 85 02          Report ID(2),  ; 16-Button Cursor Tag
@@ -93,7 +93,7 @@ c0          End Collection,
 
 05 0d        Usage Page(Digitizer),
 09 20        Usage(Stylus),
-a1 00        Collection(Physical),
+a1 02        Collection <-- Changed to Logical
 b4            Pop,      ; Refer to Global items saved during initial Push
 85 03          Report ID(3),    ; Pressure Stylus Tag
 09 30          Usage(X), ; X and Y position usages
