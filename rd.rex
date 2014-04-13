@@ -1,5 +1,5 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.9
+/* RDD! HID Report Descriptor Decoder v1.1.10
 
 Copyright (c) 2011-2014, Andrew J. Armstrong
 All rights reserved.
@@ -930,7 +930,7 @@ emitFieldDecl: procedure expose g. k. f. o.
   if g.0UNIT <> 0 | g.0PHYSICAL_MAXIMUM <> 0 | g.0PHYSICAL_MINIMUM <> 0
   then sComment = sComment || getUnitConversionFormula()
 
-  if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
+  if wordpos(g.0REPORT_SIZE,'8 16 32 64') > 0
   then do
     if nReportCount = 1
     then call say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   ,sComment)
@@ -1034,7 +1034,7 @@ return sResult
 emitPaddingFieldDecl: procedure expose g. k. o.
   parse arg nReportCount,nField
   if nReportCount < 1 then return
-  if wordpos(g.0REPORT_SIZE,'8 16 32') > 0
+  if wordpos(g.0REPORT_SIZE,'8 16 32 64') > 0
   then do
     if nReportCount = 1
     then call say '  'getStatement(g.0FIELD_TYPE 'pad_'nField';', 'Pad')
@@ -1057,10 +1057,15 @@ getFieldType: procedure expose g. k.
       then sFieldType = k.0I16
       else sFieldType = k.0U16
     end
-    otherwise do
+    when g.0REPORT_SIZE <= 32 then do
       if g.0LOGICAL_MINIMUM < 0 
       then sFieldType = k.0I32
       else sFieldType = k.0U32
+    end
+    otherwise do
+      if g.0LOGICAL_MINIMUM < 0 
+      then sFieldType = k.0I64
+      else sFieldType = k.0U64
     end
   end
 return sFieldType
@@ -1134,7 +1139,7 @@ getPageName: procedure expose k.
   parse arg xPage +4
   sPage = x2c(xPage)
   select
-    when sPage > '0092'x & sPage < 'ff00'x then sPageDesc =  'Reserved,RES'
+    when sPage > '0092'x & sPage < 'ff00'x then sPageDesc =  'Reserved,RES_'
     when sPage >= 'ff00'x then do
         if k.0PAGE.xPage = ''
         then sPageDesc = 'Vendor-defined,VEN_'
@@ -1720,6 +1725,8 @@ Prolog:
   k.0U16 = 'uint16_t'
   k.0I32 = 'int32_t'
   k.0U32 = 'uint32_t'
+  k.0I64 = 'int64_t'
+  k.0U64 = 'uint64_t'
 
   g.0OPTION_INDEX.0 = 0 /* Number of valid options */
   k.0OPTION_COUNT   = -2
