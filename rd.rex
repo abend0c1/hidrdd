@@ -898,6 +898,7 @@ emitField: procedure expose k. o. f.
     end
     if o.0ALL
     then do /* Document the valid indexes in the array */
+      g.0LOGICAL_MAXIMUM_WIDTH = length(g.0LOGICAL_MAXIMUM)
       nLogical = g.0LOGICAL_MINIMUM
       if nUsages > 0 
       then do
@@ -908,8 +909,8 @@ emitField: procedure expose k. o. f.
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 1)
           then do
             if nLogical > g.0LOGICAL_MAXIMUM
-            then call say '  'getStatement('', 'Value' nLogical '= Usage 0x'xPage||xUsage':' sUsageDesc '<-- Error: Value exceeds LOGICAL_MAXIMUM')
-            else call say '  'getStatement('', 'Value' nLogical '= Usage 0x'xPage||xUsage':' sUsageDesc)
+            then call say '  'getStatement('', 'Value' getFormattedLogical(nLogical) '= Usage 0x'xPage||xUsage':' sUsageDesc '<-- Error: Value exceeds LOGICAL_MAXIMUM')
+            else call say '  'getStatement('', 'Value' getFormattedLogical(nLogical) '= Usage 0x'xPage||xUsage':' sUsageDesc)
           end
           nLogical = nLogical + 1
         end
@@ -917,6 +918,10 @@ emitField: procedure expose k. o. f.
     end
   end
 return
+
+getFormattedLogical: procedure expose g.
+  parse arg nValue
+return right(nValue,max(length(nValue), g.0LOGICAL_MAXIMUM_WIDTH))
 
 emitFieldDecl: procedure expose g. k. f. o.
   parse arg nReportCount,xExtendedUsage,sPad
