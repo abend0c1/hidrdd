@@ -136,6 +136,12 @@ trace off
   end
 
   xData = readDescriptor(sFile,sData)
+  if xData = ''
+  then do /* try reading hex values from the rightmost end of each line */
+    o.0RIGHT = 1 /* force the --right option */
+    xData = readDescriptor(sFile,sData)
+  end
+
   if o.0DUMP
   then do
     call emitHeading 'Report descriptor data in hex (length' length(xData)/2 'bytes)'
