@@ -1,5 +1,5 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.10
+/* RDD! HID Report Descriptor Decoder v1.1.11
 
 Copyright (c) 2011-2014, Andrew J. Armstrong
 All rights reserved.
@@ -316,7 +316,7 @@ processMAIN:
       end
       call emitDecode xItem,xParm,'MAIN','COLLECTION',xValue,sMeaning
       g.0INDENT = g.0INDENT + 2
-      g.0USAGES = ''
+      call clearLocals
     end
     when sTag = k.0MAIN.END_COLLECTION then do
       g.0INDENT = g.0INDENT - 2
@@ -343,8 +343,8 @@ processMAIN:
         featureField.0 = 0
         inputField.0 = 0
         outputField.0 = 0
-        g.0USAGES = ''
       end
+      call clearLocals
     end
     otherwise call emitDecode xItem,xParm,'MAIN',,,'<-- Error: Unknown MAIN tag'
   end
