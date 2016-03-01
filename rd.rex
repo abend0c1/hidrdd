@@ -1,7 +1,7 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.11
+/* RDD! HID Report Descriptor Decoder v1.1.12
 
-Copyright (c) 2011-2014, Andrew J. Armstrong
+Copyright (c) 2011-2016, Andrew J. Armstrong
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -1150,7 +1150,7 @@ getPageName: procedure expose k.
   parse arg xPage +4
   sPage = x2c(xPage)
   select
-    when sPage > '0092'x & sPage < 'ff00'x then sPageDesc =  'Reserved,RES_'
+    when sPage > '0092'x & sPage < 'f1d0'x then sPageDesc =  'Reserved,RES_'
     when sPage >= 'ff00'x then do
         if k.0PAGE.xPage = ''
         then sPageDesc = 'Vendor-defined,VEN_'
