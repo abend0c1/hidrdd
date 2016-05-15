@@ -1,5 +1,5 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.12
+/* RDD! HID Report Descriptor Decoder v1.1.13
 
 Copyright (c) 2011-2016, Andrew J. Armstrong
 All rights reserved.
@@ -115,6 +115,7 @@ trace off
   o.0OUTPUT    = getOption('--output',1)
   o.0RIGHT     = getOption('--right')
   o.0ALL       = getOption('--all')
+  o.0OPT       = getOption('--opt')
 
   if o.0OUTPUT <> ''
   then do
@@ -567,6 +568,7 @@ updateValue: procedure expose g.
   sKey = '0'sName
   if g.sKey = nValue
   then do
+    g.0REDUNDANT = 1
     sWarning = '<-- Redundant:' sName 'is already' nValue
   end
   else do
@@ -580,6 +582,7 @@ updateHexValue: procedure expose g.
   sKey = '0'sName
   if x2d(g.sKey) = x2d(xValue)
   then do
+    g.0REDUNDANT = 1
     sWarning = '<-- Redundant:' sName 'is already 0x'xValue
   end
   else do
@@ -1447,18 +1450,19 @@ emitDecode: procedure expose g. o. f.
         sChunk = sChunk '0x'xByte','
       end
       if xValue = '' 
-      then call say left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
-      else call say left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
-    end
-    when o.0HEADER = 'MICROCHIP' then do
-      call say o.0HEADER sCode sParm sType sTag xValue sDescription
+      then sDecode = left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
+      else sDecode = left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
     end
     otherwise do
       if xValue = '' 
-      then call say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
-      else call say sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
+      then sDecode = sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
+      else sDecode = sCode left(sParm,8) left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
     end
   end
+  if g.0REDUNDANT & o.0OPT /* If we should optimise redundant items */
+  then nop 
+  else call say sDecode
+  g.0REDUNDANT = 0
 return
 
 getNext:
@@ -1725,10 +1729,11 @@ getSuperscript: procedure expose k.
 return sSuperscript
 
 Prolog:
-  g.0IN_DELIMITER = 0 /* Inside a delimited set of usages */
-  g.0FIRST_USAGE  = 0 /* First delimited usage has been processed */
+  g.0REDUNDANT = 0         /* Item already has the same value set */
+  g.0IN_DELIMITER = 0      /* Inside a delimited set of usages */
+  g.0FIRST_USAGE  = 0      /* First delimited usage has been processed */
   g.0IN_APP_COLLECTION = 0 /* Inside an Application Collection */
-  f.0COLLECTION_NAME = '' /* Collection hierarchy names */
+  f.0COLLECTION_NAME = ''  /* Collection hierarchy names */
 
   k.0I8  = 'int8_t'
   k.0U8  = 'uint8_t'
@@ -1749,6 +1754,7 @@ Prolog:
   call addBooleanOption   '-r','--right'   ,'Read hex input from the rightmost side of each line'
   call addBooleanOption   '-b','--binary'  ,'Input file is binary (not text)'
   call addListOption      '-o','--output'  ,'Write output to the specified file (default is console)'
+  call addBooleanOption   '-O','--opt'     ,'Optimise by ignoring redundant items'
   call addBooleanOption   '-s','--struct'  ,'Output C structure declarations (default)'
   call addBooleanOption   '-d','--decode'  ,'Output decoded report descriptor'
   call addListOption      '-h','--header'  ,'Output C header in AVR, MIKROC or MICROCHIP format'
@@ -1756,7 +1762,7 @@ Prolog:
   call addBooleanOption   '-a','--all'     ,'Output all valid array indices and usages'
   call addListOption      '-i','--include' ,'Read vendor-specific definition file'
   call addCountableOption '-v','--verbose' ,'Output more detail'
-  call addBooleanOption       ,'--version' ,'Display version and exit'
+  call addBooleanOption   '-V','--version' ,'Display version and exit'
   call addBooleanOption   '-?','--help'    ,'Display this information'
 
   call setOptions sCommandLine
