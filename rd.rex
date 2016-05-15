@@ -178,7 +178,7 @@ trace off
       when sType = k.0TYPE.MAIN   then call processMAIN
       when sType = k.0TYPE.GLOBAL then call processGLOBAL
       when sType = k.0TYPE.LOCAL  then call processLOCAL
-      otherwise call emitDecode xItem,xParm,'LOCAL',,,'<-- Error: Invalid Item'
+      otherwise call emitDecode xItem,xParm,'ERROR',,,'<-- Error: Item' xItem 'is not a MAIN, GLOBAL or LOCAL item'
     end
   end
   if sCollectionStack <> ''
