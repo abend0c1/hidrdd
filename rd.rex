@@ -164,6 +164,8 @@ trace off
     sTag  = bitand(sItem,'11110000'b)
     sType = bitand(sItem,'00001100'b)
     sSize = bitand(sItem,'00000011'b)
+    nSize = c2d(sSize)
+    if nSize = 3 then nSize = 4
     select
       when sSize = '00000000'b then sParm = ''
       when sSize = '00000001'b then sParm = getNext(1)
@@ -363,16 +365,16 @@ processGLOBAL:
       sMeaning = getPageDesc(xPage) updateHexValue('USAGE_PAGE',xValue)
     end
     when sTag = k.0GLOBAL.LOGICAL_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('LOGICAL_MINIMUM',nValue)
+      sMeaning = '('nValue')' updateValue('LOGICAL_MINIMUM',nValue) checkSize(nValue,nSize)
     end
     when sTag = k.0GLOBAL.LOGICAL_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('LOGICAL_MAXIMUM',nValue)
+      sMeaning = '('nValue')' updateValue('LOGICAL_MAXIMUM',nValue) checkSize(nValue,nSize)
     end
     when sTag = k.0GLOBAL.PHYSICAL_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('PHYSICAL_MINIMUM',nValue)
+      sMeaning = '('nValue')' updateValue('PHYSICAL_MINIMUM',nValue) checkSize(nValue,nSize)
     end
     when sTag = k.0GLOBAL.PHYSICAL_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('PHYSICAL_MAXIMUM',nValue)
+      sMeaning = '('nValue')' updateValue('PHYSICAL_MAXIMUM',nValue) checkSize(nValue,nSize)
     end
     when sTag = k.0GLOBAL.UNIT_EXPONENT then do
       nUnitExponent = getUnitExponent(nValue) 
@@ -384,7 +386,7 @@ processGLOBAL:
       sMeaning = sUnitDesc '('getUnit(xValue)')' updateHexValue('UNIT',xValue)
     end
     when sTag = k.0GLOBAL.REPORT_SIZE then do
-      sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue)
+      sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue) checkSize(nValue,nSize)
       if nValue <= 0
       then sMeaning = sMeaning '<-- Error: Report size should be > 0'
     end
@@ -397,7 +399,7 @@ processGLOBAL:
       if nValue > 255 then sMeaning = sMeaning '<-- Error: REPORT_ID must be in the range 0x01 to 0xFF'
     end
     when sTag = k.0GLOBAL.REPORT_COUNT then do
-      sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue)
+      sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue) checkSize(nValue,nSize)
       if nValue <= 0
       then sMeaning = sMeaning '<-- Error: Report count should be > 0'
     end
@@ -480,22 +482,22 @@ processLOCAL:
       end
     end
     when sTag = k.0LOCAL.DESIGNATOR_INDEX then do
-      sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue)
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue) checkSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.DESIGNATOR_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('DESIGNATOR_MINIMUM',nValue)
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_MINIMUM',nValue) checkSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.DESIGNATOR_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('DESIGNATOR_MAXIMUM',nValue)
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_MAXIMUM',nValue) checkSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.STRING_INDEX then do
-      sMeaning = '('nValue')' updateValue('STRING_INDEX',nValue)
+      sMeaning = '('nValue')' updateValue('STRING_INDEX',nValue) checkSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.STRING_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('STRING_MINIMUM',nValue)
+      sMeaning = '('nValue')' updateValue('STRING_MINIMUM',nValue) checkSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.STRING_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('STRING_MAXIMUM',nValue)
+      sMeaning = '('nValue')' updateValue('STRING_MAXIMUM',nValue) checkSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.DELIMITER then do
       select
@@ -562,6 +564,45 @@ getMinBits: procedure
   then nMinBits = length(strip(x2b(d2x(n,16)),'LEADING','1')) + 1
   else nMinBits = length(strip(x2b(d2x(n,16)),'LEADING','0'))
 return nMinBits
+
+checkSize: procedure expose g. xItem xValue
+  parse arg nValue,nSize
+  sItem0 = bitand(x2c(xItem),'11111100'b)
+  xItem0 = c2x(sItem0)
+  xItem1 = c2x(bitor(sItem0,'00000001'b))
+  xItem2 = c2x(bitor(sItem0,'00000010'b))
+  xItem4 = c2x(bitor(sItem0,'00000011'b))
+  select 
+    when nSize = 0 then do
+    end
+    when nSize = 1 then do
+      select
+        when nValue = 0                   then return '<-- Info: Consider replacing' xItem xValue 'with' xItem0
+        otherwise nop
+      end
+    end
+    when nSize = 2 then do
+      select
+        when nValue = 0                   then return '<-- Info: Consider replacing' xItem xValue 'with' xItem0
+        when inRange(nValue,-128,127)     then return '<-- Info: Consider replacing' xItem xValue 'with' xItem1 d2x(nValue, 2)
+        otherwise nop
+      end
+    end
+    when nSize = 4 then do
+      select
+        when nValue = 0                   then return '<-- Info: Consider replacing' xItem xValue 'with' xItem0
+        when inRange(nValue,-128,127)     then return '<-- Info: Consider replacing' xItem xValue 'with' xItem1 d2x(nValue,2)
+        when inrange(nValue,-32768,32767) then return '<-- Info: Consider replacing' xItem xValue 'with' xItem2 d2x(nValue,4)
+        otherwise nop
+      end
+    end
+    otherwise nop 
+  end
+return ''
+
+inRange: procedure 
+  parse arg n,min,max
+return n >= min & n <= max  
 
 updateValue: procedure expose g.
   parse arg sName,nValue
