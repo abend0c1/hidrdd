@@ -322,10 +322,16 @@ processMAIN:
       call clearLocals
     end
     when sTag = k.0MAIN.END_COLLECTION then do
-      g.0INDENT = g.0INDENT - 2
       parse var sCollectionStack nCollectionType sCollectionStack /* pop the collection stack */
-      xCollectionType = d2x(nCollectionType,2)
-      call emitDecode xItem,xParm,'MAIN','END_COLLECTION',,getCollectionDesc(xCollectionType)
+      if nCollectionType = ''
+      then do 
+        call emitDecode xItem,xParm,'MAIN','END_COLLECTION',,'<-- Error: Superfluous END_COLLECTION'
+      end
+      else do
+        g.0INDENT = g.0INDENT - 2
+        xCollectionType = d2x(nCollectionType,2)
+        call emitDecode xItem,xParm,'MAIN','END_COLLECTION',,getCollectionDesc(xCollectionType)
+      end
       n = words(f.0COLLECTION_NAME)
       if n > 0
       then do
@@ -607,7 +613,7 @@ return n >= min & n <= max
 updateValue: procedure expose g.
   parse arg sName,nValue
   sKey = '0'sName
-  if g.sKey = nValue
+  if g.sKey = nValue & sName <> 'USAGE' 
   then do
     g.0REDUNDANT = 1
     sWarning = '<-- Redundant:' sName 'is already' nValue
@@ -621,7 +627,7 @@ return sWarning
 updateHexValue: procedure expose g.
   parse arg sName,xValue
   sKey = '0'sName
-  if x2d(g.sKey) = x2d(xValue)
+  if x2d(g.sKey) = x2d(xValue) & sName <> 'USAGE' 
   then do
     g.0REDUNDANT = 1
     sWarning = '<-- Redundant:' sName 'is already 0x'xValue
