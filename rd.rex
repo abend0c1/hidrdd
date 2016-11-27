@@ -365,22 +365,28 @@ processGLOBAL:
   sMeaning = ''
   select
     when sTag = k.0GLOBAL.USAGE_PAGE then do
-      xPage = right(xValue,4,'0')
-      call loadPage xPage
-      xValue = xPage 
-      sMeaning = getPageDesc(xPage) updateHexValue('USAGE_PAGE',xValue)
+      select
+        when nValue = 0     then sMeaning = '<-- Error: USAGE_PAGE must not be 0'
+        when nValue > 65535 then sMeaning = '<-- Error: USAGE_PAGE must be in the range 0x0001 to 0xFFFF'
+        otherwise do
+          xPage = right(xValue,4,'0')
+          call loadPage xPage
+          xValue = xPage 
+          sMeaning = getPageDesc(xPage) updateHexValue('USAGE_PAGE',xValue)
+        end
+      end
     end
     when sTag = k.0GLOBAL.LOGICAL_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('LOGICAL_MINIMUM',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('LOGICAL_MINIMUM',nValue) recommendedSize(nValue,nSize)
     end
     when sTag = k.0GLOBAL.LOGICAL_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('LOGICAL_MAXIMUM',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('LOGICAL_MAXIMUM',nValue) recommendedSize(nValue,nSize)
     end
     when sTag = k.0GLOBAL.PHYSICAL_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('PHYSICAL_MINIMUM',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('PHYSICAL_MINIMUM',nValue) recommendedSize(nValue,nSize)
     end
     when sTag = k.0GLOBAL.PHYSICAL_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('PHYSICAL_MAXIMUM',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('PHYSICAL_MAXIMUM',nValue) recommendedSize(nValue,nSize)
     end
     when sTag = k.0GLOBAL.UNIT_EXPONENT then do
       nUnitExponent = getUnitExponent(nValue) 
@@ -392,7 +398,7 @@ processGLOBAL:
       sMeaning = sUnitDesc '('getUnit(xValue)')' updateHexValue('UNIT',xValue)
     end
     when sTag = k.0GLOBAL.REPORT_SIZE then do
-      sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue) recommendedSize(nValue,nSize)
       if nValue <= 0
       then sMeaning = sMeaning '<-- Error: Report size should be > 0'
     end
@@ -405,7 +411,7 @@ processGLOBAL:
       if nValue > 255 then sMeaning = sMeaning '<-- Error: REPORT_ID must be in the range 0x01 to 0xFF'
     end
     when sTag = k.0GLOBAL.REPORT_COUNT then do
-      sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue) recommendedSize(nValue,nSize)
       if nValue <= 0
       then sMeaning = sMeaning '<-- Error: Report count should be > 0'
     end
@@ -413,11 +419,15 @@ processGLOBAL:
       xValue = ''
       call pushStack getGlobals()
       sMeaning = getFormattedGlobalsLong()
+      if nValue <> 0
+      then sMeaning = sMeaning '<-- Error: PUSH data field must be 0'
     end
     when sTag = k.0GLOBAL.POP then do
       xValue = ''
       call setGlobals popStack()
       sMeaning = getFormattedGlobalsLong()
+      if nValue <> 0
+      then sMeaning = sMeaning '<-- Error: POP data field must be 0'
     end
     otherwise sMeaning = '<-- Error: Unknown GLOBAL tag'
   end
@@ -488,22 +498,22 @@ processLOCAL:
       end
     end
     when sTag = k.0LOCAL.DESIGNATOR_INDEX then do
-      sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue) recommendedSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.DESIGNATOR_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('DESIGNATOR_MINIMUM',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_MINIMUM',nValue) recommendedSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.DESIGNATOR_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('DESIGNATOR_MAXIMUM',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_MAXIMUM',nValue) recommendedSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.STRING_INDEX then do
-      sMeaning = '('nValue')' updateValue('STRING_INDEX',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('STRING_INDEX',nValue) recommendedSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.STRING_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('STRING_MINIMUM',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('STRING_MINIMUM',nValue) recommendedSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.STRING_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('STRING_MAXIMUM',nValue) checkSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('STRING_MAXIMUM',nValue) recommendedSize(nValue,nSize)
     end
     when sTag = k.0LOCAL.DELIMITER then do
       select
@@ -522,7 +532,7 @@ processLOCAL:
           g.0IN_DELIMITER = 0
           g.0INDENT = g.0INDENT - 2
         end
-        otherwise sMeaning = '('nValue') <-- Error: Should be 0 or 1'
+        otherwise sMeaning = '('nValue') <-- Error: DELIMITER should be 0 or 1'
       end
     end
     otherwise sMeaning = '<-- Error: Unknown LOCAL tag'
@@ -571,7 +581,7 @@ getMinBits: procedure
   else nMinBits = length(strip(x2b(d2x(n,16)),'LEADING','0'))
 return nMinBits
 
-checkSize: procedure expose g. xItem xValue
+recommendedSize: procedure expose g. xItem xValue
   parse arg nValue,nSize
   sItem0 = bitand(x2c(xItem),'11111100'b)
   xItem0 = c2x(sItem0)
