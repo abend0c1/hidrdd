@@ -1884,6 +1884,7 @@ Prolog:
   call addType 'DVDF','Dynamic Value/Flag'
   call addType 'LC','Linear Control'
   call addType 'MC','Momentary Control'
+  call addType 'MCDV','Momentary Control/Dynamic Value'
   call addType 'NAry','Named Array'
   call addType 'OOC','On/Off Control'
   call addType 'OSC','One Shot Control'
