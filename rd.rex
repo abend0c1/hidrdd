@@ -291,9 +291,7 @@ processMAIN:
       xExtendedUsage = g.0USAGE
       sCollectionName = getUsageDesc(xExtendedUsage)
       f.0COLLECTION_NAME = strip(f.0COLLECTION_NAME space(sCollectionName,0))
-      sValue = reverse(sParm)
       nValue = c2d(sValue)
-      xValue = c2x(sValue)
       sCollectionType = getCollectionType(xValue)
       sCollectionStack = nValue sCollectionStack /* push onto collection stack */
       select 
@@ -1245,10 +1243,12 @@ return sUsageType
 
 getCollectionType: procedure expose g.
   parse arg xType
+  xType = right(xType,2,'0')
 return g.0COLLECTION_TYPE.xType
 
 getCollectionDesc: procedure expose g.
   parse arg xType
+  xType = right(xType,2,'0')
 return g.0COLLECTION.xType
 
 getInputFlags:
