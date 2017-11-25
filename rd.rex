@@ -535,6 +535,8 @@ processLOCAL:
     end
     otherwise sMeaning = '<-- Error: Unknown LOCAL tag'
   end
+  if sMeaning = '' 
+  then sMeaning = '<-- Warning: Undocumented usage'
   call emitDecode xItem,xParm,'LOCAL',k.0LOCAL.sTag,xValue,sMeaning
   if bIndent
   then do
