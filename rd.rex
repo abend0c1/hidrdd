@@ -1,7 +1,7 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.13
+/* RDD! HID Report Descriptor Decoder v1.1.17
 
-Copyright (c) 2011-2016, Andrew J. Armstrong
+Copyright (c) 2011-2017, Andrew J. Armstrong
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -326,9 +326,17 @@ processMAIN:
         call emitDecode xItem,xParm,'MAIN','END_COLLECTION',,'<-- Error: Superfluous END_COLLECTION'
       end
       else do
+        /* This is a reasonable place to warn if physical units are still being applied.
+           If physical units are not reset to 0 after they are needed, then they will be
+           applied to ALL subsequent LOGICAL_MINIMUM and LOGICAL_MAXIMUM values.
+        */
+        if g.0PHYSICAL_MINIMUM <> 0 | g.0PHYSICAL_MAXIMUM <> 0 | g.0UNIT <> 0 | g.0UNIT_EXPONENT <> 0
+        then do 
+          sMeaning = '<-- Warning: Physical units are still in effect' getFormattedPhysicalUnits()
+        end
         g.0INDENT = g.0INDENT - 2
         xCollectionType = d2x(nCollectionType,2)
-        call emitDecode xItem,xParm,'MAIN','END_COLLECTION',,getCollectionDesc(xCollectionType)
+        call emitDecode xItem,xParm,'MAIN','END_COLLECTION',,getCollectionDesc(xCollectionType) sMeaning
       end
       n = words(f.0COLLECTION_NAME)
       if n > 0
@@ -2222,6 +2230,12 @@ getFormattedGlobalsLong: procedure expose g.
              'UNIT(0x'g.0UNIT',EXP='g.0UNIT_EXPONENT')',
              'REPORT(ID=0x'g.0REPORT_ID',SIZE='g.0REPORT_SIZE',COUNT='g.0REPORT_COUNT')'
 return sGlobals
+
+getFormattedPhysicalUnits: procedure expose g.
+  sGlobals = 'PHYSICAL(MIN='g.0PHYSICAL_MINIMUM',MAX='g.0PHYSICAL_MAXIMUM')',
+             'UNIT(0x'g.0UNIT',EXP='g.0UNIT_EXPONENT')'
+return sGlobals
+
 
 getFormattedGlobals: procedure expose g.
   sGlobals = 'PAGE:'g.0USAGE_PAGE,
