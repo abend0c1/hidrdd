@@ -176,6 +176,7 @@ trace off
     xParm = c2x(sParm)
     sValue = reverse(sParm) /* 0xllhh --> 0xhhll */
     xValue = right(c2x(sValue),8,'0')
+    sMeaning = ''
     select
       when sType = k.0TYPE.MAIN   then call processMAIN
       when sType = k.0TYPE.GLOBAL then call processGLOBAL
@@ -368,7 +369,6 @@ return
 processGLOBAL:
   xValue = c2x(sValue)
   nValue = x2d(xValue,2*length(sValue))
-  sMeaning = ''
   select
     when sTag = k.0GLOBAL.USAGE_PAGE then do
       select
@@ -450,7 +450,6 @@ processLOCAL:
   nValue = x2d(xValue,2*length(sValue))
   xPage = g.0USAGE_PAGE
   bIndent = 0
-  sMeaning = ''
   select
     when sTag = k.0LOCAL.USAGE then do
       if length(sValue) = 4
@@ -463,6 +462,8 @@ processLOCAL:
         xValue = xPage || xUsage
         sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE',xValue)
       end
+      if sMeaning = '' 
+      then sMeaning = '<-- Warning: Undocumented usage'
       if g.0IN_DELIMITER
       then do /* only use the first usage in the delimited set */
         if g.0FIRST_USAGE
@@ -482,6 +483,8 @@ processLOCAL:
         xValue = xPage || xUsage
         sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MINIMUM',xValue)
       end
+      if sMeaning = '' 
+      then sMeaning = '<-- Warning: Undocumented usage'
     end
     when sTag = k.0LOCAL.USAGE_MAXIMUM then do
       if length(sValue) = 4
@@ -494,6 +497,8 @@ processLOCAL:
         xValue = xPage || xUsage
         sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MAXIMUM',xValue)
       end
+      if sMeaning = '' 
+      then sMeaning = '<-- Warning: Undocumented usage'
       if left(g.0USAGE_MINIMUM,4) <> left(g.0USAGE_MAXIMUM,4)
       then sMeaning = sMeaning '<-- Error: USAGE_MAXIMUM usage page must match USAGE_MINIMUM' 
       else do
@@ -543,8 +548,6 @@ processLOCAL:
     end
     otherwise sMeaning = '<-- Error: Unknown LOCAL tag'
   end
-  if sMeaning = '' 
-  then sMeaning = '<-- Warning: Undocumented usage'
   call emitDecode xItem,xParm,'LOCAL',k.0LOCAL.sTag,xValue,sMeaning
   if bIndent
   then do
