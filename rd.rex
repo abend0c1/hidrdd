@@ -362,7 +362,7 @@ processMAIN:
       end
       call clearLocals
     end
-    otherwise call emitDecode xItem,xParm,'MAIN',,,'<-- Error: Unknown MAIN tag'
+    otherwise call emitDecode xItem,xParm,'MAIN',,,'<-- Error: Unknown MAIN tag. Expected INPUT(8x) OUTPUT(9x) FEATURE(Bx) COLLECTION(Ax) or END_COLLECTION(Cx).'
   end
 return
 
