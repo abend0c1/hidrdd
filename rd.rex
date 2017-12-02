@@ -362,7 +362,7 @@ processMAIN:
       end
       call clearLocals
     end
-    otherwise call emitDecode xItem,xParm,'MAIN',,,'<-- Error: Unknown MAIN tag. Expected INPUT(8x) OUTPUT(9x) FEATURE(Bx) COLLECTION(Ax) or END_COLLECTION(Cx).'
+    otherwise call emitDecode xItem,xParm,'MAIN',,,'<-- Error: Item' xItem 'is not a MAIN item. Expected INPUT(8x) OUTPUT(9x) FEATURE(Bx) COLLECTION(Ax) or END_COLLECTION(Cx).'
   end
 return
 
@@ -435,7 +435,7 @@ processGLOBAL:
       if nValue <> 0
       then sMeaning = sMeaning '<-- Error: POP data field must be 0'
     end
-    otherwise sMeaning = '<-- Error: Unknown GLOBAL tag'
+    otherwise sMeaning = '<-- Error:' Item xItem 'is not a GLOBAL item. Expected 0x, 1x, 2x, 3x, 4x, 5x, 6x, 7x, 8x, 9x, Ax or Bx'
   end
   call emitDecode xItem,xParm,'GLOBAL',k.0GLOBAL.sTag,xValue,sMeaning
 return
@@ -546,7 +546,7 @@ processLOCAL:
         otherwise sMeaning = '('nValue') <-- Error: DELIMITER should be 0 or 1'
       end
     end
-    otherwise sMeaning = '<-- Error: Unknown LOCAL tag'
+    otherwise sMeaning = '<-- Error: Item' xItem 'is not a LOCAL item. Expected 0x, 1x, 2x, 3x, 4x, 5x, 7x, 8x, 9x or Ax'
   end
   call emitDecode xItem,xParm,'LOCAL',k.0LOCAL.sTag,xValue,sMeaning
   if bIndent
