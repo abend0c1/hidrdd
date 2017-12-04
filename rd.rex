@@ -181,7 +181,7 @@ trace off
       when sType = k.0TYPE.MAIN   then call processMAIN
       when sType = k.0TYPE.GLOBAL then call processGLOBAL
       when sType = k.0TYPE.LOCAL  then call processLOCAL
-      otherwise call emitDecode xItem,xParm,'ERROR',,,'<-- Error: Item' xItem 'is not a MAIN, GLOBAL or LOCAL item'
+      otherwise call emitDecode xItem,xParm,'ERROR',,,'<-- Error: Item ('xItem') is not a MAIN, GLOBAL or LOCAL item'
     end
   end
   if sCollectionStack <> ''
@@ -321,10 +321,12 @@ processMAIN:
       call clearLocals
     end
     when sTag = k.0MAIN.END_COLLECTION then do
+      if length(sValue) <> 0
+      then sMeaning = '<-- Error: Data ('c2x(sValue)') is not applicable to END_COLLECTION items'
       parse var sCollectionStack nCollectionType sCollectionStack /* pop the collection stack */
       if nCollectionType = ''
       then do 
-        call emitDecode xItem,xParm,'MAIN','END_COLLECTION',,'<-- Error: Superfluous END_COLLECTION'
+        call emitDecode xItem,xParm,'MAIN','END_COLLECTION',,sMeaning '<-- Error: Superfluous END_COLLECTION'
       end
       else do
         /* This is a reasonable place to warn if physical units are still being applied.
@@ -333,7 +335,7 @@ processMAIN:
         */
         if g.0PHYSICAL_MINIMUM <> 0 | g.0PHYSICAL_MAXIMUM <> 0 | g.0UNIT <> 0 | g.0UNIT_EXPONENT <> 0
         then do 
-          sMeaning = '<-- Warning: Physical units are still in effect' getFormattedPhysicalUnits()
+          sMeaning = sMeaning '<-- Warning: Physical units are still in effect' getFormattedPhysicalUnits()
         end
         g.0INDENT = g.0INDENT - 2
         xCollectionType = d2x(nCollectionType,2)
@@ -362,7 +364,7 @@ processMAIN:
       end
       call clearLocals
     end
-    otherwise call emitDecode xItem,xParm,'MAIN',,,'<-- Error: Item' xItem 'is not a MAIN item. Expected INPUT(8x) OUTPUT(9x) FEATURE(Bx) COLLECTION(Ax) or END_COLLECTION(Cx).'
+    otherwise call emitDecode xItem,xParm,'MAIN',,,'<-- Error: Item ('xItem') is not a MAIN item. Expected INPUT(8x) OUTPUT(9x) FEATURE(Bx) COLLECTION(Ax) or END_COLLECTION(Cx) (where x = 0,1,2,3).'
   end
 return
 
@@ -406,7 +408,7 @@ processGLOBAL:
     when sTag = k.0GLOBAL.REPORT_SIZE then do
       sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue) recommendedSize(nValue,nSize)
       if nValue <= 0
-      then sMeaning = sMeaning '<-- Error: Report size should be > 0'
+      then sMeaning = sMeaning '<-- Error: REPORT_SIZE must be > 0'
     end
     when sTag = k.0GLOBAL.REPORT_ID then do
       c = x2c(xValue)
@@ -419,7 +421,7 @@ processGLOBAL:
     when sTag = k.0GLOBAL.REPORT_COUNT then do
       sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue) recommendedSize(nValue,nSize)
       if nValue <= 0
-      then sMeaning = sMeaning '<-- Error: Report count should be > 0'
+      then sMeaning = sMeaning '<-- Error: REPORT_COUNT must be > 0'
     end
     when sTag = k.0GLOBAL.PUSH then do
       xValue = ''
@@ -430,12 +432,16 @@ processGLOBAL:
     end
     when sTag = k.0GLOBAL.POP then do
       xValue = ''
-      call setGlobals popStack()
-      sMeaning = getFormattedGlobalsLong()
       if nValue <> 0
       then sMeaning = sMeaning '<-- Error: POP data field must be 0'
+      if isStackEmpty()
+      then sMeaning = sMeaning '<-- Error: No preceding PUSH'
+      else do
+        call setGlobals popStack()
+        sMeaning = getFormattedGlobalsLong()
+      end
     end
-    otherwise sMeaning = '<-- Error:' Item xItem 'is not a GLOBAL item. Expected 0x, 1x, 2x, 3x, 4x, 5x, 6x, 7x, 8x, 9x, Ax or Bx'
+    otherwise sMeaning = '<-- Error:  Item ('xItem') is not a GLOBAL item. Expected 0x, 1x, 2x, 3x, 4x, 5x, 6x, 7x, 8x, 9x, Ax or Bx (where x = 4,5,6,7)'
   end
   call emitDecode xItem,xParm,'GLOBAL',k.0GLOBAL.sTag,xValue,sMeaning
 return
@@ -448,13 +454,14 @@ return
 processLOCAL:
   xValue = c2x(sValue)
   nValue = x2d(xValue,2*length(sValue))
-  xPage = g.0USAGE_PAGE
+  xPage = right(g.0USAGE_PAGE,4,'0')
   bIndent = 0
   select
     when sTag = k.0LOCAL.USAGE then do
       if length(sValue) = 4
       then do /* Both page and usage are specified: ppppuuuu */
-        call loadPage xValue
+        xPage = left(xValue,4)
+        call loadPage xPage
         sMeaning = getPageAndUsageMeaning(xValue) updateHexValue('USAGE',xValue)
       end
       else do /* Only usage is specified: uuuu */
@@ -464,6 +471,8 @@ processLOCAL:
       end
       if sMeaning = '' 
       then sMeaning = '<-- Warning: Undocumented usage'
+      if xPage = '0000'
+      then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       if g.0IN_DELIMITER
       then do /* only use the first usage in the delimited set */
         if g.0FIRST_USAGE
@@ -475,7 +484,8 @@ processLOCAL:
     when sTag = k.0LOCAL.USAGE_MINIMUM then do
       if length(sValue) = 4
       then do /* Both page and usage are specified: ppppuuuu */
-        call loadPage xValue
+        xPage = left(xValue,4)
+        call loadPage xPage
         sMeaning = getPageAndUsageMeaning(xValue) updateHexValue('USAGE_MINIMUM',xValue)
       end
       else do /* Only usage is specified: uuuu */
@@ -485,11 +495,14 @@ processLOCAL:
       end
       if sMeaning = '' 
       then sMeaning = '<-- Warning: Undocumented usage'
+      if xPage = '0000'
+      then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
     end
     when sTag = k.0LOCAL.USAGE_MAXIMUM then do
       if length(sValue) = 4
       then do /* Both page and usage are specified: ppppuuuu */
-        call loadPage xValue
+        xPage = left(xValue,4)
+        call loadPage xPage
         sMeaning = getPageAndUsageMeaning(xValue) updateHexValue('USAGE_MAXIMUM',xValue)
       end
       else do /* Only usage is specified: uuuu */
@@ -499,8 +512,10 @@ processLOCAL:
       end
       if sMeaning = '' 
       then sMeaning = '<-- Warning: Undocumented usage'
+      if xPage = '0000'
+      then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       if left(g.0USAGE_MINIMUM,4) <> left(g.0USAGE_MAXIMUM,4)
-      then sMeaning = sMeaning '<-- Error: USAGE_MAXIMUM usage page must match USAGE_MINIMUM' 
+      then sMeaning = sMeaning '<-- Error: Usage page for USAGE_MAXIMUM and USAGE_MINIMUM must be the same' 
       else do
         do nExtendedUsage = x2d(g.0USAGE_MINIMUM) to x2d(g.0USAGE_MAXIMUM)
           xExtendedUsage = d2x(nExtendedUsage,8)
@@ -543,10 +558,10 @@ processLOCAL:
           g.0IN_DELIMITER = 0
           g.0INDENT = g.0INDENT - 2
         end
-        otherwise sMeaning = '('nValue') <-- Error: DELIMITER should be 0 or 1'
+        otherwise sMeaning = '('nValue') <-- Error: DELIMITER data field ('nValue') must be 0 (CLOSE) or 1 (OPEN)'
       end
     end
-    otherwise sMeaning = '<-- Error: Item' xItem 'is not a LOCAL item. Expected 0x, 1x, 2x, 3x, 4x, 5x, 7x, 8x, 9x or Ax'
+    otherwise sMeaning = '<-- Error: Item ('xItem') is not a LOCAL item. Expected 0x, 1x, 2x, 3x, 4x, 5x, 7x, 8x, 9x or Ax (where x = 8,9,A,B)'
   end
   call emitDecode xItem,xParm,'LOCAL',k.0LOCAL.sTag,xValue,sMeaning
   if bIndent
@@ -567,9 +582,9 @@ getSanity: procedure expose g.
   parse arg sFlags
   sError = ''
   if g.0REPORT_SIZE = 0
-  then sError = sError '<-- Error: REPORT_SIZE = 0'
+  then sError = sError '<-- Error: REPORT_SIZE must not be 0'
   if g.0REPORT_COUNT = 0
-  then sError = sError '<-- Error: REPORT_COUNT = 0'
+  then sError = sError '<-- Error: REPORT_COUNT must not be 0'
   if \isConstant(sFlags)
   then do
     nMinBits = getMinBits(g.0LOGICAL_MINIMUM)
@@ -986,7 +1001,7 @@ emitField: procedure expose k. o. f.
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 1)
           then do
             if nLogical > g.0LOGICAL_MAXIMUM
-            then call say '  'getStatement('', 'Value' getFormattedLogical(nLogical) '= Usage 0x'xPage||xUsage':' sUsageDesc '<-- Error: Value exceeds LOGICAL_MAXIMUM')
+            then call say '  'getStatement('', 'Value' getFormattedLogical(nLogical) '= Usage 0x'xPage||xUsage':' sUsageDesc '<-- Error: Value ('nLogical') exceeds LOGICAL_MAXIMUM')
             else call say '  'getStatement('', 'Value' getFormattedLogical(nLogical) '= Usage 0x'xPage||xUsage':' sUsageDesc)
           end
           nLogical = nLogical + 1
@@ -1436,7 +1451,7 @@ getUnit: procedure expose k.
   select                   
     when xSystem = '0' then sUnit = '0=None'
     when xSystem = 'F' then sUnit = 'F=Vendor-defined'
-    when pos(xSystem,'56789ABCDE') > 0 then sUnit = 'E=Reserved <-- Error: Measurement system type' xSystem 'is reserved'
+    when pos(xSystem,'56789ABCDE') > 0 then sUnit = 'E=Reserved <-- Error: Measurement system type ('xSystem') is reserved'
     otherwise do
       sUnit = xSystem'='k.0UNIT.0.xSystem
       if xLength      <> '0' then sUnit = sUnit','      xLength'='k.0UNIT.1.xSystem || getPower(xLength)
@@ -1550,6 +1565,9 @@ initStack: procedure expose g.
   g.0T = 0              /* set top of stack index */
 return
 
+isStackEmpty: procedure expose g.
+return g.0T = 0
+
 pushStack: procedure expose g.
   parse arg item
   tos = g.0T + 1        /* get new top of stack index */
@@ -1559,13 +1577,21 @@ return
 
 popStack: procedure expose g.
   tos = g.0T            /* get top of stack index for */
-  item = g.0E.tos       /* get item at top of stack */
-  g.0T = max(tos-1,1)
+  if tos > 0            /* if anything is on the stack */
+  then do
+    item = g.0E.tos     /* get item at top of stack */
+    g.0T = tos - 1
+  end
+  else item = ''        /* return null item */
 return item
 
 peekStack: procedure expose g.
   tos = g.0T            /* get top of stack index */
-  item = g.0E.tos       /* get item at top of stack */
+  if tos > 0            /* if anything is on the stack */
+  then do
+    item = g.0E.tos     /* get item at top of stack */
+  end
+  else item = ''        /* return null item */
 return item
 
 isAlphanumeric: procedure expose k.
