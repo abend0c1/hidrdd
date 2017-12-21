@@ -299,7 +299,7 @@ processMAIN:
         when nValue > 127 then sMeaning = 'Vendor Defined'
         when nValue > 6   then sMeaning = 'Reserved'
         otherwise do
-          sMeaning = g.0COLLECTION.xParm '(Usage=0x'xExtendedUsage':',
+          sMeaning = getCollectionDesc(xValue) '(Usage=0x'xExtendedUsage':',
                                            'Page='getPageDesc(xExtendedUsage)',',
                                            'Usage='getUsageDesc(xExtendedUsage)',',
                                            'Type='getUsageType(xExtendedUsage)')'
