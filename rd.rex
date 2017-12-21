@@ -1296,24 +1296,10 @@ getInputArrayFlags:
   if isConstant(sValue)
   then sFlags = sFlags '1=Constant'
   else sFlags = sFlags '0=Data'
-  if isVariable(sValue)
-  then sFlags = sFlags '1=Variable'
-  else sFlags = sFlags '0=Array'
+  sFlags = sFlags '0=Array'
   if isRelative(sValue)
   then sFlags = sFlags '1=Relative'
   else sFlags = sFlags '0=Absolute'
-  if isWrap(sValue)
-  then sFlags = sFlags '1=Ignored'
-  else sFlags = sFlags '0=Ignored'
-  if isNonLinear(sValue)
-  then sFlags = sFlags '1=Ignored'
-  else sFlags = sFlags '0=Ignored'
-  if isNoPrefState(sValue)
-  then sFlags = sFlags '1=NoPrefState'
-  else sFlags = sFlags '0=PrefState'
-  if isNull(sValue)
-  then sFlags = sFlags '1=Null'    
-  else sFlags = sFlags '0=NoNull'
 return strip(sFlags)
 
 getFlags:
