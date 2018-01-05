@@ -1,5 +1,5 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.17
+/* RDD! HID Report Descriptor Decoder v1.1.18
 
 Copyright (c) 2011-2017, Andrew J. Armstrong
 All rights reserved.
@@ -517,7 +517,20 @@ processLOCAL:
       if left(g.0USAGE_MINIMUM,4) <> left(g.0USAGE_MAXIMUM,4)
       then sMeaning = sMeaning '<-- Error: Usage page for USAGE_MAXIMUM and USAGE_MINIMUM must be the same' 
       else do
-        do nExtendedUsage = x2d(g.0USAGE_MINIMUM) to x2d(g.0USAGE_MAXIMUM)
+        nUsageMin = x2d(g.0USAGE_MINIMUM)
+        nUsageMax = x2d(g.0USAGE_MAXIMUM)
+        if nUsageMax < nUsageMin
+        then do
+          sMeaning = sMeaning '<-- Error: USAGE_MININUM ('g.0USAGE_MINIMUM') must be less than USAGE_MAXIMUM ('g.0USAGE_MAXIMUM')'
+          temp = g.0USAGE_MAXIMUM /* Compromise: swap USAGE_MINIMUM and USAGE_MAXIMUM */
+          g.0USAGE_MAXIMUM = g.0USAGE_MINIMUM
+          g.0USAGE_MINIMUM = temp 
+          nUsageMin = x2d(g.0USAGE_MINIMUM)
+          nUsageMax = x2d(g.0USAGE_MAXIMUM)
+        end
+        if nUsageMax - nUsageMin + 1 < 3 /* 1 or 2 usages can be more efficiently specified as individual usages */
+        then sMeaning = sMeaning '<-- Info: Number of usages is less than 3. Specify individual USAGEs instead of USAGE_MINIMUM/USAGE_MAXIMUM'
+        do nExtendedUsage = nUsageMin to nUsageMax
           xExtendedUsage = d2x(nExtendedUsage,8)
           call addUsage xExtendedUsage
         end
