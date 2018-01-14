@@ -805,6 +805,18 @@ emitHeading: procedure expose o.
   call say 
 return  
 
+emitUsages: procedure expose o. 
+  arg xUsages
+  nUsagesPerLine = 8
+  nUsages = words(xUsages)
+  xFirstUsages = subword(xUsages,1,nUsagesPerLine)
+  call say '  // Usages: ' xFirstUsages
+  if nUsages > nUsagesPerLine
+  then do i = nUsagesPerLine+1 to nUsages by nUsagesPerLine
+    call say '  //         ' subword(xUsages,i,nUsagesPerLine)
+  end
+return
+
 emitField: procedure expose k. o. f.
   parse arg nField,xFlags sGlobals','sLocals','xUsages','sFlags','sCollectionName
   call setGlobals sGlobals
@@ -818,7 +830,7 @@ emitField: procedure expose k. o. f.
     call say '  // Flags:  ' xFlags':' sFlags
     call say '  // Globals:' getFormattedGlobals()
     call say '  // Locals: ' getFormattedLocals()
-    call say '  // Usages: ' strip(xUsages)
+    call emitUsages xUsages
     call say '  // Coll:   ' sCollectionName
   end
   sFlags = x2c(xFlags)
