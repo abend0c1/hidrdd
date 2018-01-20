@@ -2027,10 +2027,10 @@ Prolog:
   k.0UNIT.00E0E121 = 'Inductance in henrys [0.1 μH units],-7 H'
 /*k.0UNIT.01000001 = 'Luminous flux in lumen [1 lm units],0 cd sr' */                                 /* same units as Luminous intensity (see above) */
 /*k.0UNIT.010000E1 = 'Luminance in lux [1 lx units],4 cd/m²'       */                                 /* same units as Luminance (see above) */
-/*k.0UNIT.0000F001 = 'Activity referred to a radionuclide in becquerels [1 Bq units],0 Bq'            /* same units as Frequency (see above) */
+/*k.0UNIT.0000F001 = 'Activity referred to a radionuclide in becquerels [1 Bq units],0 Bq' */         /* same units as Frequency (see above) */
   k.0UNIT.0000E021 = 'Absorbed dose in gray [1 μGy units],-6 Gy'
 /*k.0UNIT.0000E021 = 'Dose equivalent in sievert [1 μSv units],-6 Sv' */                              /* same units as Absorbed dose (see above) */
-/*k.0UNIT.1000F001 = 'Catalytic activity in katal [1 mol/s units],0 mol/s'                            /* cannot be represented: no mole support */
+/*k.0UNIT.1000F001 = 'Catalytic activity in katal [1 mol/s units],0 mol/s' */                         /* cannot be represented: no mole support */
   
   /* Coherent derived units whose names and symbols include SI coherent derived units with special names and symbols */
   k.0UNIT.0000F1F1 = 'Dynamic viscosity in pascal seconds [0.1 Pa s units],-1 Pa s'
@@ -2044,21 +2044,21 @@ Prolog:
   k.0UNIT.000FE021 = 'Specific heat capacity in joule per kilogram kelvin [100 μJ/(kg K) units],-4 J/(kg K)'
   k.0UNIT.0000E021 = 'Specific energy in joule per kilogram [100 μJ/kg units],-4 J/kg'
   k.0UNIT.000FD111 = 'Thermal conductivity in watts per metre per kelvin [10 μW/(m K) units],-5 W/(m K)'
-/*k.0UNIT.0000E1F1 = 'Energy density in joule per cubic metre [1 MJ/m³ units],6 J/m³'                 /* same units as Pressure (see above) */
+/*k.0UNIT.0000E1F1 = 'Energy density in joule per cubic metre [1 MJ/m³ units],6 J/m³' */              /* same units as Pressure (see above) */
   k.0UNIT.00F0D111 = 'Electric field strength in volt per metre [10 μV/m units],-5 V/m'
   k.0UNIT.001010D1 = 'Electric charge density in coulomb per m³ [1 MC/m³ units],6 C/m³'
   k.0UNIT.001010E1 = 'Surface charge density in coulomb per m² [10 kC/m² units],4 C/m²'
 /*k.0UNIT.001010E1 = 'Electric flux density in coulomb per m² [10 kC/m² units],4 C/m²' */             /* same units as Surface charge density (see above) */
   k.0UNIT.00204FD1 = 'Permittivity in farad per metre [1 GF/m units],9 F/m' /* WTF! */
   k.0UNIT.00E0E111 = 'Permeability in henry per metre [0.01 H/m units],-2 H/m'
-/*k.0UNIT.F000E121 = 'Molar energy in joule per mole [0.1 μJ/mol units],-7 J/mol'                     /* cannot be represented: no mole support */
-/*k.0UNIT.F00FE121 = 'Molar entropy in joule per mole kelvin [0.1 μJ/(mol K) units],-7 J/(mol K)'     /* cannot be represented: no mole support */
+/*k.0UNIT.F000E121 = 'Molar energy in joule per mole [0.1 μJ/mol units],-7 J/mol' */                  /* cannot be represented: no mole support */
+/*k.0UNIT.F00FE121 = 'Molar entropy in joule per mole kelvin [0.1 μJ/(mol K) units],-7 J/(mol K)' */  /* cannot be represented: no mole support */
   k.0UNIT.00101F00 = 'Exposure (x-rays and gamma rays) in coulomb per kilogram [0.001 C/kg units],-3 C/kg'
   k.0UNIT.0000D020 = 'Absorbed dose rate in gray per second [1 μGy/s units],-6 Gy/s'
 /*k.0UNIT.0000D121 = 'Radiant intensity in watt per steradian [0.1 μW/sr units],-7 W/sr' */                /* same units as Power (see above) */
 /*k.0UNIT.0000D101 = 'Radiance in watt per square metre steradian [1 mW/(m² sr) units],-3 W/(m² sr)' */    /* same units as Heat flux density (see above) */
-/*k.0UNIT.F00FE121 = 'Molar entropy in joule per mole kelvin [0.1 μJ/(mol K) units],-7 J/(mol K)'          /* cannot be represented: no mole support */
-/*k.0UNIT.1000FD00 = 'Catalytic activity concentration in katal per cubic metre [1 Gkat/m³ units],9 kat/m³' /* cannot be represented: no mole support */
+/*k.0UNIT.F00FE121 = 'Molar entropy in joule per mole kelvin [0.1 μJ/(mol K) units],-7 J/(mol K)' */       /* cannot be represented: no mole support */
+/*k.0UNIT.1000FD00 = 'Catalytic activity concentration in katal per cubic metre [1 Gkat/m³ units],9 kat/m³' */ /* cannot be represented: no mole support */
 
   /* Others */
   k.0UNIT.0000F111 = 'Momentum [1 g cm/s units],-5 kg m/s'
