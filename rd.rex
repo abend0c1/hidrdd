@@ -1,7 +1,7 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.18
+/* RDD! HID Report Descriptor Decoder v1.1.19
 
-Copyright (c) 2011-2017, Andrew J. Armstrong
+Copyright (c) 2011-2018, Andrew J. Armstrong
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
@@ -1462,7 +1462,7 @@ getUnit: procedure expose k.
   select                   
     when xSystem = '0' then sUnit = '0=None'
     when xSystem = 'F' then sUnit = 'F=Vendor-defined'
-    when pos(xSystem,'56789ABCDE') > 0 then sUnit = 'E=Reserved <-- Error: Measurement system type ('xSystem') is reserved'
+    when pos(xSystem,'56789ABCDE') > 0 then sUnit = xSystem'=Reserved <-- Error: Measurement system type ('xSystem') is reserved'
     otherwise do
       sUnit = xSystem'='k.0UNIT.0.xSystem
       if xLength      <> '0' then sUnit = sUnit','      xLength'='k.0UNIT.1.xSystem || getPower(xLength)
@@ -1990,59 +1990,86 @@ Prolog:
   k.0UNIT.00010001 = 'Temperature in kelvin [1 K units],0 K'
   k.0UNIT.00100001 = 'Current in amperes [1 A units],0 A'
   k.0UNIT.01000001 = 'Luminous intensity in candelas [1 cd units],0 cd'
+/*k.0UNIT.10000000 = 'Amount of substance in moles [1 mol units],0 mol' */                            /* cannot be represented: no mole support */
 
   /* Coherent derived units in the SI expressed in terms of base units */
   k.0UNIT.00000021 = 'Area [1 cm² units],-4 m²'
   k.0UNIT.00000031 = 'Volume [1 cm³ units],-6 m³'
   k.0UNIT.0000F011 = 'Velocity [1 cm/s units],-2 m/s'
   k.0UNIT.0000E011 = 'Acceleration [1 cm/s² units],-2 m/s²'
+  k.0UNIT.000000F0 = 'Wavenumber in reciprocal metres [100 /cm units],2 /m'
   k.0UNIT.000001D1 = 'Mass density [1 g/cm³ units],3 kg/m³'
   k.0UNIT.000001E1 = 'Surface density [1 g/cm² units],1 kg/m²'
   k.0UNIT.00000F31 = 'Specific volume [1 cm³/g units],-3 m³/kg'
   k.0UNIT.001000E1 = 'Current density [1 A/cm² units],4 A/m²'
   k.0UNIT.001000F1 = 'Magnetic field strength [1 A/cm units],2 A/m'
+/*k.0UNIT.10000031 = 'Amount concentration in mole per cubic metre [1 mol/cm³ units],-6 mol/m³' */    /* cannot be represented: no mole support */
+/*k.0UNIT.000001D1 = 'Mass concentration [1 g/cm³ units],3 kg/m³' */                                  /* same units as mass density (see above) */
   k.0UNIT.010000E1 = 'Luminance [1 cd/cm² units],4 cd/m²'
+/*k.0UNIT.00000001 = 'Refractive index [dimensionless]' */ 
+/*k.0UNIT.00000001 = 'Relative permeability [dimensionless]' */ 
 
   /* Coherent derived units in the SI with special names and symbols */
+/*k.0UNIT.00000001 = 'Plane angle in radians [1 rad units],0 m/m'    */ 
+/*k.0UNIT.00000001 = 'Solid angle in steradians [1 sr units], m²/m²' */ 
   k.0UNIT.0000F001 = 'Frequency in hertz [1 Hz units],0 Hz'
   k.0UNIT.0000E111 = 'Force in newtons [10 μN units],-5 N'
   k.0UNIT.0000E1F1 = 'Pressure in pascals [0.1 Pa units],-1 Pa'
   k.0UNIT.0000E121 = 'Energy in joules [0.1 μJ units],-7 J'
   k.0UNIT.0000D121 = 'Power in watts [0.1 μW units],-7 W'
   k.0UNIT.00101001 = 'Electric charge in coulombs [1 C units],0 C'
-  k.0UNIT.00F0D121 = 'Voltage [0.1 μV units],-7 V'
+  k.0UNIT.00F0D121 = 'Electric potential difference in volts [0.1 μV units],-7 V'
   k.0UNIT.00204FE1 = 'Capacitance in farads [10 MF units],7 F' /* sheesh! */
-  k.0UNIT.00E0D121 = 'Resistance in ohms [0.1 μΩ units],-7 Ω'
-  k.0UNIT.00203FE1 = 'Conductance in siemens [10 MS units],7 S'
+  k.0UNIT.00E0D121 = 'Electric resistance in ohms [0.1 μΩ units],-7 Ω'
+  k.0UNIT.00203FE1 = 'Electric conductance in siemens [10 MS units],7 S'
   k.0UNIT.00F0E121 = 'Magnetic flux in webers [0.1 μWb units],-7 Wb'
   k.0UNIT.00F0E101 = 'Magnetic flux density in teslas [1 mT units],-3 T'
   k.0UNIT.00E0E121 = 'Inductance in henrys [0.1 μH units],-7 H'
-  k.0UNIT.010000E1 = 'Luminance [1 cd/cm² units],4 cd/m²'
-
+/*k.0UNIT.01000001 = 'Luminous flux in lumen [1 lm units],0 cd sr' */                                 /* same units as Luminous intensity (see above) */
+/*k.0UNIT.010000E1 = 'Luminance in lux [1 lx units],4 cd/m²'       */                                 /* same units as Luminance (see above) */
+/*k.0UNIT.0000F001 = 'Activity referred to a radionuclide in becquerels [1 Bq units],0 Bq'            /* same units as Frequency (see above) */
+  k.0UNIT.0000E021 = 'Absorbed dose in gray [1 μGy units],-6 Gy'
+/*k.0UNIT.0000E021 = 'Dose equivalent in sievert [1 μSv units],-6 Sv' */                              /* same units as Absorbed dose (see above) */
+/*k.0UNIT.1000F001 = 'Catalytic activity in katal [1 mol/s units],0 mol/s'                            /* cannot be represented: no mole support */
+  
   /* Coherent derived units whose names and symbols include SI coherent derived units with special names and symbols */
   k.0UNIT.0000F1F1 = 'Dynamic viscosity in pascal seconds [0.1 Pa s units],-1 Pa s'
-  k.0UNIT.0000E121 = 'Moment of force in newton metres [0.1 μN m units],-7 N m'
-  k.0UNIT.0000E121 = 'Surface tension in newton per metre [1 g/s² units],-3 kg/s²'
-  k.0UNIT.0000F002 = 'Angular velocity [1 rad/s units],0 rad/s'
-  k.0UNIT.0000E002 = 'Angular acceleration [1 rad/s² units],0 rad/s²'
+/*k.0UNIT.0000E121 = 'Moment of force in newton metres [0.1 μN m units],-7 N m' */                    /* same units as Energy (see above) */
+  k.0UNIT.0000E101 = 'Surface tension in newton per metre [1 g/s² units],-3 kg/s²'
+  /*      xLAKTMLs */
+  k.0UNIT.0000F012 = 'Angular velocity [1 rad/s units],0 rad/s'
+  k.0UNIT.0000E012 = 'Angular acceleration [1 rad/s² units],0 rad/s²'
   k.0UNIT.0000D101 = 'Heat flux density in watt per square metre [1 mW/m² units],-3 W/m²'
   k.0UNIT.000FE121 = 'Heat capacity in joule per kelvin [0.1 μJ/K units],-7 J/K'
   k.0UNIT.000FE021 = 'Specific heat capacity in joule per kilogram kelvin [100 μJ/(kg K) units],-4 J/(kg K)'
   k.0UNIT.0000E021 = 'Specific energy in joule per kilogram [100 μJ/kg units],-4 J/kg'
   k.0UNIT.000FD111 = 'Thermal conductivity in watts per metre per kelvin [10 μW/(m K) units],-5 W/(m K)'
+/*k.0UNIT.0000E1F1 = 'Energy density in joule per cubic metre [1 MJ/m³ units],6 J/m³'                 /* same units as Pressure (see above) */
   k.0UNIT.00F0D111 = 'Electric field strength in volt per metre [10 μV/m units],-5 V/m'
   k.0UNIT.001010D1 = 'Electric charge density in coulomb per m³ [1 MC/m³ units],6 C/m³'
   k.0UNIT.001010E1 = 'Surface charge density in coulomb per m² [10 kC/m² units],4 C/m²'
+/*k.0UNIT.001010E1 = 'Electric flux density in coulomb per m² [10 kC/m² units],4 C/m²' */             /* same units as Surface charge density (see above) */
   k.0UNIT.00204FD1 = 'Permittivity in farad per metre [1 GF/m units],9 F/m' /* WTF! */
   k.0UNIT.00E0E111 = 'Permeability in henry per metre [0.01 H/m units],-2 H/m'
+/*k.0UNIT.F000E121 = 'Molar energy in joule per mole [0.1 μJ/mol units],-7 J/mol'                     /* cannot be represented: no mole support */
+/*k.0UNIT.F00FE121 = 'Molar entropy in joule per mole kelvin [0.1 μJ/(mol K) units],-7 J/(mol K)'     /* cannot be represented: no mole support */
+  k.0UNIT.00101F00 = 'Exposure (x-rays and gamma rays) in coulomb per kilogram [0.001 C/kg units],-3 C/kg'
+  k.0UNIT.0000D020 = 'Absorbed dose rate in gray per second [1 μGy/s units],-6 Gy/s'
+/*k.0UNIT.0000D121 = 'Radiant intensity in watt per steradian [0.1 μW/sr units],-7 W/sr' */                /* same units as Power (see above) */
+/*k.0UNIT.0000D101 = 'Radiance in watt per square metre steradian [1 mW/(m² sr) units],-3 W/(m² sr)' */    /* same units as Heat flux density (see above) */
+/*k.0UNIT.F00FE121 = 'Molar entropy in joule per mole kelvin [0.1 μJ/(mol K) units],-7 J/(mol K)'          /* cannot be represented: no mole support */
+/*k.0UNIT.1000FD00 = 'Catalytic activity concentration in katal per cubic metre [1 Gkat/m³ units],9 kat/m³' /* cannot be represented: no mole support */
+
+  /* Others */
   k.0UNIT.0000F111 = 'Momentum [1 g cm/s units],-5 kg m/s'
+  k.0UNIT.0000D100 = 'Jerk (change in acceleration) [0.1 cm/s³ units],-3 m/s³'
 
   /* Other common units (non-metric):
           .---------- Reserved
           |.--------- Luminous intensity (in candelas) - same as metric
           ||.-------- Current (in amperes) - same as metric
           |||.------- Temperature (in degrees Fahrenheit)
-          ||||.------ Time (in seconds)
+          ||||.------ Time (in seconds) - same as metric
           |||||.----- Mass (in slugs)
           ||||||.---- Length (in inches)
           |||||||.--- System of measurement (either 3 or 4 for non-metric measurement system)
@@ -2057,7 +2084,7 @@ Prolog:
   k.0UNIT.00010003 = 'Temperature in degrees Fahrenheit [1 °F units],0 °F'
   k.0UNIT.00000014 = 'Rotation in degrees [1° units],0 degrees'
   k.0UNIT.0000F014 = 'Angular velocity [1°/s units],0 °/s'
-  k.0UNIT.0000E004 = 'Angular acceleration [1°/s² units],0 °/s²'
+  k.0UNIT.0000E014 = 'Angular acceleration [1°/s² units],0 °/s²'
 
   
   /*      .--Nibble number
