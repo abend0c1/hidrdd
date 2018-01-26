@@ -2288,7 +2288,16 @@ addLocal: procedure expose k.
 return
 
 clearGlobals: procedure expose g.
-  call setGlobals 0 0 0 0 0 0 0 0 0 0
+  call setGlobals 'n/a', /* USAGE_PAGE */
+                  'n/a', /* LOGICAL_MINIMUM */
+                  'n/a', /* LOGICAL_MAXIMUM */
+                  'n/a', /* PHYSICAL_MINIMUM */
+                  'n/a', /* PHYSICAL_MAXIMUM */
+                  'n/a', /* UNIT_EXPONENT */
+                  'n/a', /* UNIT */
+                  'n/a', /* REPORT_SIZE */
+                  'n/a', /* REPORT_ID */
+                  'n/a'  /* REPORT_COUNT */
 return
 
 clearLocals: procedure expose g.
