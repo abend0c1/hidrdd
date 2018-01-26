@@ -185,7 +185,7 @@ trace off
     end
   end
   if sCollectionStack <> ''
-  then say 'Missing END_COLLECTION MAIN tag (0xC0)'
+  then say 'Error: Missing END_COLLECTION MAIN tag (0xC0)'
   call Epilog
 return
 
@@ -415,7 +415,7 @@ processGLOBAL:
       if isAlphanumeric(c)
       then sMeaning = '('x2d(xValue)')' "'"c"'" updateHexValue('REPORT_ID',xValue)
       else sMeaning = '('x2d(xValue)')'         updateHexValue('REPORT_ID',xValue)
-      if nValue = 0 then sMeaning = sMeaning '<-- Error: REPORT_ID 0 is reserved'
+      if nValue = 0 then sMeaning = sMeaning '<-- Error: REPORT_ID 0x00 is reserved'
       if nValue > 255 then sMeaning = sMeaning '<-- Error: REPORT_ID must be in the range 0x01 to 0xFF'
     end
     when sTag = k.0GLOBAL.REPORT_COUNT then do
@@ -424,22 +424,22 @@ processGLOBAL:
       then sMeaning = sMeaning '<-- Error: REPORT_COUNT must be > 0'
     end
     when sTag = k.0GLOBAL.PUSH then do
-      xValue = ''
       call pushStack getGlobals()
       sMeaning = getFormattedGlobalsLong()
-      if nValue <> 0
-      then sMeaning = sMeaning '<-- Error: PUSH data field must be 0'
+      if nSize <> 0
+      then sMeaning = sMeaning '<-- Error: PUSH data field size must be 0 (0x'xValue 'ignored)'
+      xValue = ''
     end
     when sTag = k.0GLOBAL.POP then do
-      xValue = ''
-      if nValue <> 0
-      then sMeaning = sMeaning '<-- Error: POP data field must be 0'
+      if nSize <> 0
+      then sMeaning = sMeaning '<-- Error: POP data field size must be 0 (0x'xValue 'ignored)'
       if isStackEmpty()
       then sMeaning = sMeaning '<-- Error: No preceding PUSH'
       else do
         call setGlobals popStack()
-        sMeaning = getFormattedGlobalsLong()
+        sMeaning = getFormattedGlobalsLong() sMeaning
       end
+      xValue = ''
     end
     otherwise sMeaning = '<-- Error:  Item ('xItem') is not a GLOBAL item. Expected 0x, 1x, 2x, 3x, 4x, 5x, 6x, 7x, 8x, 9x, Ax or Bx (where x = 4,5,6,7)'
   end
