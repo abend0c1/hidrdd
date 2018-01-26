@@ -1896,7 +1896,6 @@ Prolog:
   call addMain '10100000'b,'COLLECTION'
   call addMain '11000000'b,'END_COLLECTION'
 
-  call clearGlobals
   call addGlobal '00000000'b,'USAGE_PAGE'
   call addGlobal '00010000'b,'LOGICAL_MINIMUM'
   call addGlobal '00100000'b,'LOGICAL_MAXIMUM'
@@ -2279,25 +2278,14 @@ addGlobal: procedure expose k.
   parse arg sCode,sName
   k.0GLOBAL.sCode = sName
   k.0GLOBAL.sName = sCode
+  sKey = '0'sName
+  g.sKey = 'undef' /* Initital GLOBAL item value is 'undefined' */
 return
 
 addLocal: procedure expose k.
   parse arg sCode,sName
   k.0LOCAL.sCode = sName
   k.0LOCAL.sName = sCode
-return
-
-clearGlobals: procedure expose g.
-  call setGlobals 'n/a', /* USAGE_PAGE */
-                  'n/a', /* LOGICAL_MINIMUM */
-                  'n/a', /* LOGICAL_MAXIMUM */
-                  'n/a', /* PHYSICAL_MINIMUM */
-                  'n/a', /* PHYSICAL_MAXIMUM */
-                  'n/a', /* UNIT_EXPONENT */
-                  'n/a', /* UNIT */
-                  'n/a', /* REPORT_SIZE */
-                  'n/a', /* REPORT_ID */
-                  'n/a'  /* REPORT_COUNT */
 return
 
 clearLocals: procedure expose g.
