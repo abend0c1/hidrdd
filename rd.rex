@@ -316,6 +316,8 @@ processMAIN:
         if \g.0IN_APP_COLLECTION 
         then sMeaning = sMeaning '<-- Error: No enclosing Application Collection'
       end
+      if g.0IN_DELIMITER
+      then sMeaning = sMeaning '<-- Error: DELIMITER set has not been closed'
       call emitDecode xItem,xParm,'MAIN','COLLECTION',xValue,sMeaning
       g.0INDENT = g.0INDENT + 2
       call clearLocals
@@ -339,6 +341,8 @@ processMAIN:
         end
         g.0INDENT = g.0INDENT - 2
         xCollectionType = d2x(nCollectionType,2)
+        if g.0IN_DELIMITER
+        then sMeaning = sMeaning '<-- Error: DELIMITER set has not been closed'
         call emitDecode xItem,xParm,'MAIN','END_COLLECTION',,getCollectionDesc(xCollectionType) sMeaning
       end
       n = words(f.0COLLECTION_NAME)
@@ -611,6 +615,8 @@ getSanity: procedure expose g.
     if g.0PHYSICAL_MAXIMUM < g.0PHYSICAL_MINIMUM
     then sError = sError '<-- Error: PHYSICAL_MAXIMUM ('g.0PHYSICAL_MAXIMUM') is less than PHYSICAL_MINIMUM ('g.0PHYSICAL_MINIMUM')'
   end
+  if g.0IN_DELIMITER
+  then sMeaning = sMeaning '<-- Error: DELIMITER set has not been closed'
 return sError
 
 getMinBits: procedure 
