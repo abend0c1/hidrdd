@@ -335,7 +335,7 @@ processMAIN:
            If physical units are not reset to 0 after they are needed, then they will be
            applied to ALL subsequent LOGICAL_MINIMUM and LOGICAL_MAXIMUM values.
         */
-        if g.0PHYSICAL_MINIMUM <> 0 | g.0PHYSICAL_MAXIMUM <> 0 | g.0UNIT <> 0 | g.0UNIT_EXPONENT <> 0
+        if isSpecified(g.0PHYSICAL_MINIMUM) | isSpecified(g.0PHYSICAL_MAXIMUM) | isSpecified(g.0UNIT) | isSpecified(g.0UNIT_EXPONENT)
         then do 
           sMeaning = sMeaning '<-- Warning: Physical units are still in effect' getFormattedPhysicalUnits()
         end
@@ -1442,6 +1442,10 @@ isOn: procedure
   sBit  = right(sBit, 4,'00'x)
 return bitand(sByte,sBit) = sBit
 
+isSpecified: procedure
+  arg n
+return n <> '' & n <> 0
+
 getUnitExponent: procedure expose k.
   parse arg nValue
   /*
@@ -2279,7 +2283,7 @@ addGlobal: procedure expose k.
   k.0GLOBAL.sCode = sName
   k.0GLOBAL.sName = sCode
   sKey = '0'sName
-  g.sKey = 'undef' /* Initital GLOBAL item value is 'undefined' */
+  g.sKey = '' /* Initial GLOBAL item value is 'undefined' */
 return
 
 addLocal: procedure expose k.
@@ -2321,28 +2325,28 @@ getFormattedGlobals: procedure expose g.
 return sGlobals
 
 getGlobals: procedure expose g.
-  sGlobals = g.0USAGE_PAGE,
-             g.0LOGICAL_MINIMUM,
-             g.0LOGICAL_MAXIMUM,
-             g.0PHYSICAL_MINIMUM,
-             g.0PHYSICAL_MAXIMUM,
-             g.0UNIT_EXPONENT,
-             g.0UNIT,
-             g.0REPORT_SIZE,
-             g.0REPORT_ID,
+  sGlobals = g.0USAGE_PAGE'/'||,
+             g.0LOGICAL_MINIMUM'/'||,
+             g.0LOGICAL_MAXIMUM'/'||,
+             g.0PHYSICAL_MINIMUM'/'||,
+             g.0PHYSICAL_MAXIMUM'/'||,
+             g.0UNIT_EXPONENT'/'||,
+             g.0UNIT'/'||,
+             g.0REPORT_SIZE'/'||,
+             g.0REPORT_ID'/'||,
              g.0REPORT_COUNT
 return sGlobals
 
 setGlobals: procedure expose g.
-  parse arg  g.0USAGE_PAGE,
-             g.0LOGICAL_MINIMUM,
-             g.0LOGICAL_MAXIMUM,
-             g.0PHYSICAL_MINIMUM,
-             g.0PHYSICAL_MAXIMUM,
-             g.0UNIT_EXPONENT,
-             g.0UNIT,
-             g.0REPORT_SIZE,
-             g.0REPORT_ID,
+  parse arg  g.0USAGE_PAGE'/',
+             g.0LOGICAL_MINIMUM'/',
+             g.0LOGICAL_MAXIMUM'/',
+             g.0PHYSICAL_MINIMUM'/',
+             g.0PHYSICAL_MAXIMUM'/',
+             g.0UNIT_EXPONENT'/',
+             g.0UNIT'/',
+             g.0REPORT_SIZE'/',
+             g.0REPORT_ID'/',
              g.0REPORT_COUNT,
              .
 return
