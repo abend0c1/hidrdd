@@ -5,6 +5,7 @@
 0x09, 0x22,                         //   USAGE (Finger)
 0xa1, 0x02,                         //     COLLECTION (Logical)
 0x09, 0x42,                         //       USAGE (Tip Switch)
+0x14,                               //       LOGICAL_MINIMUM (0)
 0x25, 0x01,                         //       LOGICAL_MAXIMUM (1)
 0x75, 0x01,                         //       REPORT_SIZE (1)
 0x95, 0x01,                         //       REPORT_COUNT (1)

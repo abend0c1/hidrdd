@@ -10,6 +10,7 @@
 a1 01 Collection(Application),
 75 08 Report Size
 95 02 Report Count
+14       Logical Minimum (0)
 26 ff 00 Logical Maximum
 
 09 01 Usage(Pointer),

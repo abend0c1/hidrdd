@@ -31,3 +31,4 @@ c0 End Collection(),
 |    1 = Stat Ready
 |    2 = Err Not a loadable character
 |    3 = No event - outside Logical Minimum=0 Logical Maximum=2 range
+| ...also, Logical Minimum is not specified and is therefore undefined
