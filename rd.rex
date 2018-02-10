@@ -335,7 +335,7 @@ processMAIN:
            If physical units are not reset to 0 after they are needed, then they will be
            applied to ALL subsequent LOGICAL_MINIMUM and LOGICAL_MAXIMUM values.
         */
-        if g.0PHYSICAL_MINIMUM <> 0 | g.0PHYSICAL_MAXIMUM <> 0 | g.0UNIT <> 0 | g.0UNIT_EXPONENT <> 0
+        if isSpecified(g.0PHYSICAL_MINIMUM) | isSpecified(g.0PHYSICAL_MAXIMUM) | isSpecified(g.0UNIT) | isSpecified(g.0UNIT_EXPONENT)
         then do 
           sMeaning = sMeaning '<-- Warning: Physical units are still in effect' getFormattedPhysicalUnits()
         end
@@ -598,26 +598,46 @@ return
 getSanity: procedure expose g.
   parse arg sFlags
   sError = ''
-  if g.0REPORT_SIZE = 0
-  then sError = sError '<-- Error: REPORT_SIZE must not be 0'
-  if g.0REPORT_COUNT = 0
-  then sError = sError '<-- Error: REPORT_COUNT must not be 0'
+  if isUndefined(g.0REPORT_SIZE)  then sError = sError '<-- Error: REPORT_SIZE is undefined'
+  if g.0REPORT_SIZE = 0           then sError = sError '<-- Error: REPORT_SIZE must not be 0'
+  if isUndefined(g.0REPORT_COUNT) then sError = sError '<-- Error: REPORT_COUNT is undefined'
+  if g.0REPORT_COUNT = 0          then sError = sError '<-- Error: REPORT_COUNT must not be 0'
   if \isConstant(sFlags)
   then do
-    nMinBits = getMinBits(g.0LOGICAL_MINIMUM)
-    if g.0REPORT_SIZE < nMinBits
-    then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM') which needs' nMinBits 'bits.'
-    nMinBits = getMinBits(g.0LOGICAL_MAXIMUM)
-    if g.0REPORT_SIZE < nMinBits
-    then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') which needs' nMinBits 'bits.'
-    if g.0LOGICAL_MAXIMUM < g.0LOGICAL_MINIMUM
-    then sError = sError '<-- Error: LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') is less than LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM')'
-    if g.0PHYSICAL_MAXIMUM < g.0PHYSICAL_MINIMUM
-    then sError = sError '<-- Error: PHYSICAL_MAXIMUM ('g.0PHYSICAL_MAXIMUM') is less than PHYSICAL_MINIMUM ('g.0PHYSICAL_MINIMUM')'
+    if isUndefined(g.0LOGICAL_MINIMUM) then sError = sError '<-- Error: LOGICAL_MINIMUM is undefined'
+    if isUndefined(g.0LOGICAL_MAXIMUM) then sError = sError '<-- Error: LOGICAL_MAXIMUM is undefined'
+    if isDefined(g.0LOGICAL_MINIMUM) & isDefined(g.0LOGICAL_MAXIMUM) & isDefined(g.0REPORT_SIZE) & isDefined(g.0REPORT_COUNT)
+    then do
+      nMinBits = getMinBits(g.0LOGICAL_MINIMUM)
+      if g.0REPORT_SIZE < nMinBits
+      then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM') which needs' nMinBits 'bits.'
+      nMinBits = getMinBits(g.0LOGICAL_MAXIMUM)
+      if g.0REPORT_SIZE < nMinBits
+      then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') which needs' nMinBits 'bits.'
+      if g.0LOGICAL_MAXIMUM < g.0LOGICAL_MINIMUM
+      then sError = sError '<-- Error: LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') is less than LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM')'
+    end
+    if isDefined(g.0PHYSICAL_MINIMUM) & isUndefined(g.0PHYSICAL_MAXIMUM)
+    then sError = sError '<-- Error: PHYSICAL_MAXIMUM is undefined'
+    if isUndefined(g.0PHYSICAL_MINIMUM) & isDefined(g.0PHYSICAL_MAXIMUM)
+    then sError = sError '<-- Error: PHYSICAL_MINIMUM is undefined'
+    if isDefined(g.0PHYSICAL_MINIMUM) & isDefined(g.0PHYSICAL_MAXIMUM)
+    then do
+      if g.0PHYSICAL_MAXIMUM < g.0PHYSICAL_MINIMUM
+      then sError = sError '<-- Error: PHYSICAL_MAXIMUM ('g.0PHYSICAL_MAXIMUM') is less than PHYSICAL_MINIMUM ('g.0PHYSICAL_MINIMUM')'
+    end
   end
   if g.0IN_DELIMITER
   then sMeaning = sMeaning '<-- Error: DELIMITER set has not been closed'
 return sError
+
+isUndefined: procedure
+  arg nValue
+return nValue = ''
+
+isDefined: procedure
+  arg nValue
+return nValue <> ''
 
 getMinBits: procedure 
   parse arg n
@@ -1055,7 +1075,7 @@ emitFieldDecl: procedure expose g. k. f. o.
   then sComment = getRange()
   else sComment = 'Usage 0x'xPage||xUsage':' getUsageMeaningText(xExtendedUsage)',' getRange()
 
-  if g.0UNIT <> 0 | g.0PHYSICAL_MAXIMUM <> 0 | g.0PHYSICAL_MINIMUM <> 0
+  if isSpecified(g.0UNIT) | isSpecified(g.0PHYSICAL_MAXIMUM) | isSpecified(g.0PHYSICAL_MINIMUM)
   then sComment = sComment || getUnitConversionFormula()
 
   if wordpos(g.0REPORT_SIZE,'8 16 32 64') > 0
@@ -1072,17 +1092,24 @@ emitFieldDecl: procedure expose g. k. f. o.
   end
 return
 
+
+getValueOrZero: procedure
+  arg nValue
+  if nValue = '' then nValue = 0
+return nValue
+
 getUnitConversionFormula: procedure expose g. k. f. o.
   xUnit = g.0UNIT
 
-  if g.0PHYSICAL_MAXIMUM = 0 & g.0PHYSICAL_MINIMUM = 0
+  nLogicalMinimum  = getValueOrZero(g.0LOGICAL_MINIMUM) /* for expediency */
+  nLogicalMaximum  = getValueOrZero(g.0LOGICAL_MAXIMUM)
+  nPhysicalMinimum = getValueOrZero(g.0PHYSICAL_MINIMUM)
+  nPhysicalMaximum = getValueOrZero(g.0PHYSICAL_MAXIMUM)
+
+  if nPhysicalMinimum = 0 & nPhysicalMaximum = 0
   then do
-    nPhysicalMaximum = g.0LOGICAL_MAXIMUM
-    nPhysicalMinimum = g.0LOGICAL_MINIMUM
-  end
-  else do
-    nPhysicalMaximum = g.0PHYSICAL_MAXIMUM
-    nPhysicalMinimum = g.0PHYSICAL_MINIMUM
+    nPhysicalMinimum = nLogicalMinimum
+    nPhysicalMaximum = nLogicalMaximum
   end
 
   if g.0UNIT <> 0
@@ -1102,7 +1129,7 @@ getUnitConversionFormula: procedure expose g. k. f. o.
   else sPhysicalUnits = '10'getSuperscript(g.0UNIT_EXPONENT + nBaseUnitExponent) sBaseUnit 'units'
 
   n = nPhysicalMaximum - nPhysicalMinimum
-  d = g.0LOGICAL_MAXIMUM - g.0LOGICAL_MINIMUM
+  d = nLogicalMaximum - nLogicalMinimum
   nGCD = getGreatestCommonDenominator(n,d)
   if nGCD > 1
   then do
@@ -1110,11 +1137,13 @@ getUnitConversionFormula: procedure expose g. k. f. o.
     d = d / nGCD
   end
 
-  sFormula = calc(calc(calc('Value','-',g.0LOGICAL_MINIMUM),'x',calc(n,'/',d)),'+',nPhysicalMinimum)
+  sFormula = calc(calc(calc('Value','-',nLogicalMinimum),'x',calc(n,'/',d)),'+',nPhysicalMinimum)
   if left(sFormula,10) = 'Value x 1 ' then sFormula = 'Value' substr(sFormula,11)  /* kludge */
-  if g.0UNIT = 0
-  then sFormula = ', Physical =' sFormula 
-  else sFormula = ', Physical =' sFormula 'in' sPhysicalUnits
+  select
+    when g.0UNIT = '' then sFormula = ', Physical =' sFormula /* UNIT is not defined */
+    when g.0UNIT = 0  then sFormula = ', Physical =' sFormula
+    otherwise              sFormula = ', Physical =' sFormula 'in' sPhysicalUnits
+  end
 return sFormula
 
 getGreatestCommonDenominator: procedure
@@ -1441,6 +1470,10 @@ isOn: procedure
   sByte = right(sByte,4,'00'x)
   sBit  = right(sBit, 4,'00'x)
 return bitand(sByte,sBit) = sBit
+
+isSpecified: procedure
+  arg nValue
+return nValue <> '' & nValue <> 0
 
 getUnitExponent: procedure expose k.
   parse arg nValue
@@ -1896,13 +1929,12 @@ Prolog:
   call addMain '10100000'b,'COLLECTION'
   call addMain '11000000'b,'END_COLLECTION'
 
-  call clearGlobals
   call addGlobal '00000000'b,'USAGE_PAGE'
   call addGlobal '00010000'b,'LOGICAL_MINIMUM'
   call addGlobal '00100000'b,'LOGICAL_MAXIMUM'
   call addGlobal '00110000'b,'PHYSICAL_MINIMUM'
   call addGlobal '01000000'b,'PHYSICAL_MAXIMUM'
-  call addGlobal '01010000'b,'UNIT_EXPONENT'
+  call addGlobal '01010000'b,'UNIT_EXPONENT',0
   call addGlobal '01100000'b,'UNIT'
   call addGlobal '01110000'b,'REPORT_SIZE'
   call addGlobal '10000000'b,'REPORT_ID'
@@ -2275,20 +2307,18 @@ addMain: procedure expose k.
   k.0MAIN.sName = sCode
 return
 
-addGlobal: procedure expose k.
-  parse arg sCode,sName
+addGlobal: procedure expose k. g.
+  parse arg sCode,sName,nValue
   k.0GLOBAL.sCode = sName
   k.0GLOBAL.sName = sCode
+  sKey = '0'sName
+  g.sKey = nValue
 return
 
 addLocal: procedure expose k.
   parse arg sCode,sName
   k.0LOCAL.sCode = sName
   k.0LOCAL.sName = sCode
-return
-
-clearGlobals: procedure expose g.
-  call setGlobals 0 0 0 0 0 0 0 0 0 0
 return
 
 clearLocals: procedure expose g.
@@ -2324,28 +2354,28 @@ getFormattedGlobals: procedure expose g.
 return sGlobals
 
 getGlobals: procedure expose g.
-  sGlobals = g.0USAGE_PAGE,
-             g.0LOGICAL_MINIMUM,
-             g.0LOGICAL_MAXIMUM,
-             g.0PHYSICAL_MINIMUM,
-             g.0PHYSICAL_MAXIMUM,
-             g.0UNIT_EXPONENT,
-             g.0UNIT,
-             g.0REPORT_SIZE,
-             g.0REPORT_ID,
+  sGlobals = g.0USAGE_PAGE'/'||,
+             g.0LOGICAL_MINIMUM'/'||,
+             g.0LOGICAL_MAXIMUM'/'||,
+             g.0PHYSICAL_MINIMUM'/'||,
+             g.0PHYSICAL_MAXIMUM'/'||,
+             g.0UNIT_EXPONENT'/'||,
+             g.0UNIT'/'||,
+             g.0REPORT_SIZE'/'||,
+             g.0REPORT_ID'/'||,
              g.0REPORT_COUNT
 return sGlobals
 
 setGlobals: procedure expose g.
-  parse arg  g.0USAGE_PAGE,
-             g.0LOGICAL_MINIMUM,
-             g.0LOGICAL_MAXIMUM,
-             g.0PHYSICAL_MINIMUM,
-             g.0PHYSICAL_MAXIMUM,
-             g.0UNIT_EXPONENT,
-             g.0UNIT,
-             g.0REPORT_SIZE,
-             g.0REPORT_ID,
+  parse arg  g.0USAGE_PAGE'/',
+             g.0LOGICAL_MINIMUM'/',
+             g.0LOGICAL_MAXIMUM'/',
+             g.0PHYSICAL_MINIMUM'/',
+             g.0PHYSICAL_MAXIMUM'/',
+             g.0UNIT_EXPONENT'/',
+             g.0UNIT'/',
+             g.0REPORT_SIZE'/',
+             g.0REPORT_ID'/',
              g.0REPORT_COUNT,
              .
 return
