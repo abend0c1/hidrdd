@@ -734,7 +734,7 @@ emitInputFields: procedure expose inputField. k. o. f.
   /* Cycle through all the input fields accumulated and when the report_id
      changes, then emit a new structure */
   f.0LASTCOLLECTION = ''
-  xLastReportId = ''
+  xLastReportId = 'junk'
   do i = 1 to inputField.0
     parse var inputField.i xFlags sGlobals','sLocals','
     call setGlobals sGlobals
@@ -755,7 +755,7 @@ emitOutputFields: procedure expose outputField. k. o. f.
   /* Cycle through all the output fields accumulated and when the report_id
      changes, then emit a new structure */
   f.0LASTCOLLECTION = ''
-  xLastReportId = ''
+  xLastReportId = 'junk'
   do i = 1 to outputField.0
     parse var outputField.i xFlags sGlobals','sLocals','
     call setGlobals sGlobals
@@ -776,7 +776,7 @@ emitFeatureFields: procedure expose featureField. k. o. f.
   /* Cycle through all the feature fields accumulated and when the report_id
      changes, then emit a new structure */
   f.0LASTCOLLECTION = ''
-  xLastReportId = ''
+  xLastReportId = 'junk'
   do i = 1 to featureField.0
     parse var featureField.i xFlags sGlobals','sLocals','
     call setGlobals sGlobals
