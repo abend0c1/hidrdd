@@ -734,7 +734,7 @@ emitInputFields: procedure expose inputField. k. o. f.
   /* Cycle through all the input fields accumulated and when the report_id
      changes, then emit a new structure */
   f.0LASTCOLLECTION = ''
-  xLastReportId = 'junk'
+  xLastReportId = 'unknown'
   do i = 1 to inputField.0
     parse var inputField.i xFlags sGlobals','sLocals','
     call setGlobals sGlobals
@@ -755,7 +755,7 @@ emitOutputFields: procedure expose outputField. k. o. f.
   /* Cycle through all the output fields accumulated and when the report_id
      changes, then emit a new structure */
   f.0LASTCOLLECTION = ''
-  xLastReportId = 'junk'
+  xLastReportId = 'unknown'
   do i = 1 to outputField.0
     parse var outputField.i xFlags sGlobals','sLocals','
     call setGlobals sGlobals
@@ -776,7 +776,7 @@ emitFeatureFields: procedure expose featureField. k. o. f.
   /* Cycle through all the feature fields accumulated and when the report_id
      changes, then emit a new structure */
   f.0LASTCOLLECTION = ''
-  xLastReportId = 'junk'
+  xLastReportId = 'unknown'
   do i = 1 to featureField.0
     parse var featureField.i xFlags sGlobals','sLocals','
     call setGlobals sGlobals
@@ -795,7 +795,7 @@ return
 
 emitBeginStructure: procedure expose g. k. f. o.
   parse arg sStructureName,xReportId,sDirection
-  if xReportId <> 0
+  if isSpecified(xReportId)
   then do
     f.0TYPEDEFNAME = getUniqueName(sStructureName || xReportId)'_t'
     call emitHeading getPageDesc(g.0USAGE_PAGE) sStructureName xReportId '('sDirection')'
