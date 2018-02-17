@@ -1,5 +1,5 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.19
+/* RDD! HID Report Descriptor Decoder v1.1.20
 
 Copyright (c) 2011-2018, Andrew J. Armstrong
 All rights reserved.
