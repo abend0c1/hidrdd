@@ -238,9 +238,17 @@ readDescriptor: procedure expose g. k. o.
             xData = xData || xLine
           end
           else do /* scan from left to right for hex */
-            do i = 1 to words(sLine)
-              sWord = word(sLine,i)
+            parse var sLine sDefine sIdentifier sValue .
+            if sDefine = '#define' & isIdentifier(sIdentifier) 
+            then select
+              when left(sValue,2) = '0x' then g.0DEFINE.sIdentifier = substr(sValue,3)
+              when isDec(sValue)         then g.0DEFINE.sIdentifier = d2x(sValue)
+              otherwise nop 
+            end
+            else do i = 1 to words(sLine)
+              sWord = strip(word(sLine,i),'TRAILING',',')
               select
+                when g.0DEFINE.sWord <> '' then sWord = g.0DEFINE.sWord
                 when left(sWord,2) = '0x' then sWord = substr(sWord,3)
                 when left(sWord,1) = "'" then do
                   sWord = strip(sWord,'BOTH',"'")
@@ -261,6 +269,12 @@ readDescriptor: procedure expose g. k. o.
     else say 'Could not open file' sFile
   end
 return xData
+
+isIdentifier: procedure
+  arg firstletter +1 0 name
+  bIsIdentifier = verify(firstletter,'ABCDEFGHIJKLMNOPQRSTUVWXYZ_','NOMATCH') = 0,
+                & verify(name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789','NOMATCH') = 0
+return bIsIdentifier
 
 processMAIN:
   select
@@ -2266,6 +2280,14 @@ return
 isHex: procedure
   parse arg xString
 return xString <> '' & datatype(xString,'X')
+
+is0x: procedure
+  parse arg xString 0 '0x'xValue
+return left(xString,2) = '0x' & datatype(xValue,'X')
+
+isDec: procedure
+  parse arg n
+return n <> '' & datatype(n,'WHOLE')
 
 toUpper: procedure
   parse arg sText
