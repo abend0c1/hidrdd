@@ -242,7 +242,7 @@ readDescriptor: procedure expose g. k. o.
             if sDefine = '#define' & isIdentifier(sIdentifier) 
             then select
               when left(sValue,2) = '0x' then g.0DEFINE.sIdentifier = substr(sValue,3)
-              when isDec(sValue)         then g.0DEFINE.sIdentifier = d2x(sValue)
+              when isDec(sValue)         then g.0DEFINE.sIdentifier = d2x(sValue,2)
               otherwise nop 
             end
             else do i = 1 to words(sLine)
