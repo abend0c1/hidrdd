@@ -449,6 +449,7 @@ processGLOBAL:
       xValue = ''
     end
     when sTag = k.0GLOBAL.POP then do
+      g.0INDENT = g.0INDENT - 2
       if nSize <> 0
       then sMeaning = sMeaning '<-- Error: POP data field size must be 0 (0x'xValue 'ignored)'
       if isStackEmpty()
@@ -462,6 +463,8 @@ processGLOBAL:
     otherwise sMeaning = '<-- Error:  Item ('xItem') is not a GLOBAL item. Expected 0x, 1x, 2x, 3x, 4x, 5x, 6x, 7x, 8x, 9x, Ax or Bx (where x = 4,5,6,7)'
   end
   call emitDecode xItem,xParm,'GLOBAL',k.0GLOBAL.sTag,xValue,sMeaning
+  if sTag = k.0GLOBAL.PUSH
+  then g.0INDENT = g.0INDENT + 2
 return
 
 addUsage: procedure expose g. k.
