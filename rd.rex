@@ -631,12 +631,12 @@ getSanity: procedure expose g.
     if isUndefined(g.0LOGICAL_MAXIMUM) then sError = sError '<-- Error: LOGICAL_MAXIMUM is undefined'
     if isDefined(g.0LOGICAL_MINIMUM) & isDefined(g.0LOGICAL_MAXIMUM) & isDefined(g.0REPORT_SIZE) & isDefined(g.0REPORT_COUNT)
     then do
-      nMinBits = getMinBits(g.0LOGICAL_MINIMUM)
-      if g.0REPORT_SIZE < nMinBits
-      then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM') which needs' nMinBits 'bits.'
-      nMinBits = getMinBits(g.0LOGICAL_MAXIMUM)
-      if g.0REPORT_SIZE < nMinBits
-      then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') which needs' nMinBits 'bits.'
+      nBitsForLogicalMinimum = getMinBits(g.0LOGICAL_MINIMUM)
+      if g.0REPORT_SIZE < nBitsForLogicalMinimum
+      then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM') which needs' nBitsForLogicalMinimum 'bits.'
+      nBitsForLogicalMaximum = getMinBits(g.0LOGICAL_MAXIMUM)
+      if g.0REPORT_SIZE < nBitsForLogicalMaximum
+      then sError = sError '<-- Error: REPORT_SIZE ('g.0REPORT_SIZE') is too small for LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') which needs' nBitsForLogicalMaximum 'bits.'
       if g.0LOGICAL_MAXIMUM < g.0LOGICAL_MINIMUM
       then sError = sError '<-- Error: LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM') is less than LOGICAL_MINIMUM ('g.0LOGICAL_MINIMUM')'
     end
