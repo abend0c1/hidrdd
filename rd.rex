@@ -518,6 +518,8 @@ processLOCAL:
       then sMeaning = '<-- Warning: Undocumented usage'
       if xPage = '0000'
       then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
+      if isSpecified(g.0USAGE_MAXIMUM)
+      then call appendRangeOfUsages
     end
     when sTag = k.0LOCAL.USAGE_MAXIMUM then do
       if length(sValue) = 4
@@ -535,27 +537,8 @@ processLOCAL:
       then sMeaning = '<-- Warning: Undocumented usage'
       if xPage = '0000'
       then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
-      if left(g.0USAGE_MINIMUM,4) <> left(g.0USAGE_MAXIMUM,4)
-      then sMeaning = sMeaning '<-- Error: Usage page for USAGE_MAXIMUM and USAGE_MINIMUM must be the same' 
-      else do
-        nUsageMin = x2d(g.0USAGE_MINIMUM)
-        nUsageMax = x2d(g.0USAGE_MAXIMUM)
-        if nUsageMax < nUsageMin
-        then do
-          sMeaning = sMeaning '<-- Error: USAGE_MININUM ('g.0USAGE_MINIMUM') must be less than USAGE_MAXIMUM ('g.0USAGE_MAXIMUM')'
-          temp = g.0USAGE_MAXIMUM /* Compromise: swap USAGE_MINIMUM and USAGE_MAXIMUM */
-          g.0USAGE_MAXIMUM = g.0USAGE_MINIMUM
-          g.0USAGE_MINIMUM = temp 
-          nUsageMin = x2d(g.0USAGE_MINIMUM)
-          nUsageMax = x2d(g.0USAGE_MAXIMUM)
-        end
-        if nUsageMax - nUsageMin + 1 < 3 /* 1 or 2 usages can be more efficiently specified as individual usages */
-        then sMeaning = sMeaning '<-- Info: Number of usages is less than 3. Specify individual USAGEs instead of USAGE_MINIMUM/USAGE_MAXIMUM'
-        do nExtendedUsage = nUsageMin to nUsageMax
-          xExtendedUsage = d2x(nExtendedUsage,8)
-          call addUsage xExtendedUsage
-        end
-      end
+      if isSpecified(g.0USAGE_MINIMUM)
+      then call appendRangeOfUsages
     end
     when sTag = k.0LOCAL.DESIGNATOR_INDEX then do
       sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue) recommendedSize(nValue,nSize)
@@ -602,6 +585,32 @@ processLOCAL:
   then do
     g.0INDENT = g.0INDENT + 2
     bIndent = 0
+  end
+return
+
+appendRangeOfUsages:
+  if left(g.0USAGE_MINIMUM,4) <> left(g.0USAGE_MAXIMUM,4)
+  then sMeaning = sMeaning '<-- Error: USAGE_PAGE for USAGE_MAXIMUM and USAGE_MINIMUM must be the same' 
+  else do
+    nUsageMin = x2d(g.0USAGE_MINIMUM)
+    nUsageMax = x2d(g.0USAGE_MAXIMUM)
+    if nUsageMax < nUsageMin
+    then do
+      sMeaning = sMeaning '<-- Error: USAGE_MININUM ('g.0USAGE_MINIMUM') must be less than USAGE_MAXIMUM ('g.0USAGE_MAXIMUM')'
+      temp = g.0USAGE_MAXIMUM /* Compromise: swap USAGE_MINIMUM and USAGE_MAXIMUM */
+      g.0USAGE_MAXIMUM = g.0USAGE_MINIMUM
+      g.0USAGE_MINIMUM = temp 
+      nUsageMin = x2d(g.0USAGE_MINIMUM)
+      nUsageMax = x2d(g.0USAGE_MAXIMUM)
+    end
+    if nUsageMax - nUsageMin + 1 < 3 /* 1 or 2 usages can be more efficiently specified as individual usages */
+    then sMeaning = sMeaning '<-- Info: Consider specifying individual USAGEs instead of USAGE_MINIMUM/USAGE_MAXIMUM'
+    do nExtendedUsage = nUsageMin to nUsageMax
+      xExtendedUsage = d2x(nExtendedUsage,8)
+      call addUsage xExtendedUsage
+    end
+    g.0USAGE_MINIMUM = 0
+    g.0USAGE_MAXIMUM = 0
   end
 return
 
