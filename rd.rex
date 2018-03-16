@@ -1075,7 +1075,7 @@ emitField: procedure expose k. o. f.
           if sUsageDesc <> '' | (sUsageDesc = '' & o.0VERBOSITY > 1)
           then do
             if nLogical > g.0LOGICAL_MAXIMUM
-            then call say '  'getStatement('', 'Value' getFormattedLogical(nLogical) '= Usage 0x'xPage||xUsage':' sUsageDesc '<-- Error: Value ('nLogical') exceeds LOGICAL_MAXIMUM')
+            then call say '  'getStatement('', 'Value' getFormattedLogical(nLogical) '= Usage 0x'xPage||xUsage':' sUsageDesc '<-- Error: Value ('nLogical') exceeds LOGICAL_MAXIMUM ('g.0LOGICAL_MAXIMUM')'
             else call say '  'getStatement('', 'Value' getFormattedLogical(nLogical) '= Usage 0x'xPage||xUsage':' sUsageDesc)
           end
           nLogical = nLogical + 1
