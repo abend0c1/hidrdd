@@ -175,7 +175,6 @@ trace off
     xItem = c2x(sItem)
     xParm = c2x(sParm)
     sValue = reverse(sParm) /* 0xllhh --> 0xhhll */
-    xValue = right(c2x(sValue),8,'0')
     sMeaning = ''
     select
       when sType = k.0TYPE.MAIN   then call processMAIN
@@ -277,6 +276,7 @@ isIdentifier: procedure
 return bIsIdentifier
 
 processMAIN:
+  xValue = right(c2x(sValue),8,'0')
   select
     when sTag = k.0MAIN.INPUT then do
       sFlags = getInputFlags()
@@ -403,41 +403,42 @@ processGLOBAL:
       end
     end
     when sTag = k.0GLOBAL.LOGICAL_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('LOGICAL_MINIMUM',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('LOGICAL_MINIMUM',nValue) recommendedSize()
     end
     when sTag = k.0GLOBAL.LOGICAL_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('LOGICAL_MAXIMUM',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('LOGICAL_MAXIMUM',nValue) recommendedSize()
     end
     when sTag = k.0GLOBAL.PHYSICAL_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('PHYSICAL_MINIMUM',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('PHYSICAL_MINIMUM',nValue) recommendedSize()
     end
     when sTag = k.0GLOBAL.PHYSICAL_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('PHYSICAL_MAXIMUM',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('PHYSICAL_MAXIMUM',nValue) recommendedSize()
     end
     when sTag = k.0GLOBAL.UNIT_EXPONENT then do
       nUnitExponent = getUnitExponent(nValue) 
-      sMeaning = '(Unit Value x 10'getSuperscript(nUnitExponent)')' updateValue('UNIT_EXPONENT',nUnitExponent)
+      sMeaning = '(Unit Value x 10'getSuperscript(nUnitExponent)')' updateValue('UNIT_EXPONENT',nUnitExponent) recommendedSize()
     end
     when sTag = k.0GLOBAL.UNIT then do
-      xValue = right(xValue,8,'0')
-      parse var k.0UNIT.xValue sUnitDesc','
-      sMeaning = sUnitDesc '('getUnit(xValue)')' updateHexValue('UNIT',xValue)
+      xValue8 = right(xValue,8,'0')
+      nValue = x2d(xValue8)
+      parse var k.0UNIT.xValue8 sUnitDesc','
+      sMeaning = sUnitDesc '('getUnit(xValue8)')' updateHexValue('UNIT',xValue8) recommendedSize()
     end
     when sTag = k.0GLOBAL.REPORT_SIZE then do
-      sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue) recommendedSize()
       if nValue <= 0
       then sMeaning = sMeaning '<-- Error: REPORT_SIZE must be > 0'
     end
     when sTag = k.0GLOBAL.REPORT_ID then do
       c = x2c(xValue)
       if isAlphanumeric(c)
-      then sMeaning = '('x2d(xValue)')' "'"c"'" updateHexValue('REPORT_ID',xValue)
-      else sMeaning = '('x2d(xValue)')'         updateHexValue('REPORT_ID',xValue)
+      then sMeaning = '('x2d(xValue)')' "'"c"'" updateHexValue('REPORT_ID',xValue) recommendedSize()
+      else sMeaning = '('x2d(xValue)')'         updateHexValue('REPORT_ID',xValue) recommendedSize()
       if nValue = 0 then sMeaning = sMeaning '<-- Error: REPORT_ID 0x00 is reserved'
       if nValue > 255 then sMeaning = sMeaning '<-- Error: REPORT_ID must be in the range 0x01 to 0xFF'
     end
     when sTag = k.0GLOBAL.REPORT_COUNT then do
-      sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue) recommendedSize()
       if nValue <= 0
       then sMeaning = sMeaning '<-- Error: REPORT_COUNT must be > 0'
     end
@@ -476,7 +477,7 @@ processLOCAL:
   bIndent = 0
   select
     when sTag = k.0LOCAL.USAGE then do
-      if length(sValue) = 4
+      if length(sValue) = 4 & left(sValue,2) <> '0000'x 
       then do /* Both page and usage are specified: ppppuuuu */
         xPage = left(xValue,4)
         call loadPage xPage
@@ -485,12 +486,12 @@ processLOCAL:
       else do /* Only usage is specified: uuuu */
         xUsage = right(xValue,4,'0')
         xValue = xPage || xUsage
-        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE',xValue)
+        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE',xValue) recommendedSize()
+        if xPage = '0000'
+        then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       end
       if sMeaning = '' 
       then sMeaning = '<-- Warning: Undocumented usage'
-      if xPage = '0000'
-      then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       if g.0IN_DELIMITER
       then do /* only use the first usage in the delimited set */
         if g.0FIRST_USAGE
@@ -500,7 +501,7 @@ processLOCAL:
       else call addUsage xValue
     end
     when sTag = k.0LOCAL.USAGE_MINIMUM then do
-      if length(sValue) = 4
+      if length(sValue) = 4 & left(sValue,2) <> '0000'x
       then do /* Both page and usage are specified: ppppuuuu */
         xPage = left(xValue,4)
         call loadPage xPage
@@ -509,17 +510,17 @@ processLOCAL:
       else do /* Only usage is specified: uuuu */
         xUsage = right(xValue,4,'0')
         xValue = xPage || xUsage
-        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MINIMUM',xValue)
+        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MINIMUM',xValue) recommendedSize()
+        if xPage = '0000'
+        then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       end
       if sMeaning = '' 
       then sMeaning = '<-- Warning: Undocumented usage'
-      if xPage = '0000'
-      then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       if isSpecified(g.0USAGE_MAXIMUM)
       then call appendRangeOfUsages
     end
     when sTag = k.0LOCAL.USAGE_MAXIMUM then do
-      if length(sValue) = 4
+      if length(sValue) = 4 & left(sValue,2) <> '0000'x
       then do /* Both page and usage are specified: ppppuuuu */
         xPage = left(xValue,4)
         call loadPage xPage
@@ -528,37 +529,37 @@ processLOCAL:
       else do /* Only usage is specified: uuuu */
         xUsage = right(xValue,4,'0')
         xValue = xPage || xUsage
-        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MAXIMUM',xValue)
+        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MAXIMUM',xValue) recommendedSize()
+        if xPage = '0000'
+        then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       end
       if sMeaning = '' 
       then sMeaning = '<-- Warning: Undocumented usage'
-      if xPage = '0000'
-      then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       if isSpecified(g.0USAGE_MINIMUM)
       then call appendRangeOfUsages
     end
     when sTag = k.0LOCAL.DESIGNATOR_INDEX then do
-      sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_INDEX',nValue) recommendedSize()
     end
     when sTag = k.0LOCAL.DESIGNATOR_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('DESIGNATOR_MINIMUM',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_MINIMUM',nValue) recommendedSize()
     end
     when sTag = k.0LOCAL.DESIGNATOR_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('DESIGNATOR_MAXIMUM',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('DESIGNATOR_MAXIMUM',nValue) recommendedSize()
     end
     when sTag = k.0LOCAL.STRING_INDEX then do
-      sMeaning = '('nValue')' updateValue('STRING_INDEX',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('STRING_INDEX',nValue) recommendedSize()
     end
     when sTag = k.0LOCAL.STRING_MINIMUM then do
-      sMeaning = '('nValue')' updateValue('STRING_MINIMUM',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('STRING_MINIMUM',nValue) recommendedSize()
     end
     when sTag = k.0LOCAL.STRING_MAXIMUM then do
-      sMeaning = '('nValue')' updateValue('STRING_MAXIMUM',nValue) recommendedSize(nValue,nSize)
+      sMeaning = '('nValue')' updateValue('STRING_MAXIMUM',nValue) recommendedSize()
     end
     when sTag = k.0LOCAL.DELIMITER then do
       select
         when nValue = 1 then do
-          sMeaning = '('nValue') Open set'
+          sMeaning = '('nValue') Open set' recommendedSize()
           if g.0IN_DELIMITER
           then sMeaning = sMeaning '<-- Error: Already in a DELIMITER set'
           g.0IN_DELIMITER = 1
@@ -566,7 +567,7 @@ processLOCAL:
           bIndent = 1
         end
         when nValue = 0 then do
-          sMeaning = '('nValue') Close set'
+          sMeaning = '('nValue') Close set' recommendedSize()
           if \g.0IN_DELIMITER
           then sMeaning = sMeaning '<-- Error: Not already in a DELIMITER set'
           g.0IN_DELIMITER = 0
@@ -669,8 +670,7 @@ getMinBits: procedure
   else nMinBits = length(strip(x2b(d2x(n,16)),'LEADING','0'))
 return nMinBits
 
-recommendedSize: procedure expose g. xItem xValue
-  parse arg nValue,nSize
+recommendedSize: procedure expose g. xItem xParm nValue nSize
   sItem0 = bitand(x2c(xItem),'11111100'b)
   xItem0 = c2x(sItem0)
   xItem1 = c2x(bitor(sItem0,'00000001'b))
@@ -681,22 +681,22 @@ recommendedSize: procedure expose g. xItem xValue
     end
     when nSize = 1 then do
       select
-        when nValue = 0                   then return '<-- Info: Consider replacing' xItem xValue 'with' xItem0
+        when nValue = 0                   then return '<-- Info: Consider replacing' xItem xParm 'with' xItem0
         otherwise nop
       end
     end
     when nSize = 2 then do
       select
-        when nValue = 0                   then return '<-- Info: Consider replacing' xItem xValue 'with' xItem0
-        when inRange(nValue,-128,127)     then return '<-- Info: Consider replacing' xItem xValue 'with' xItem1 d2x(nValue, 2)
+        when nValue = 0                   then return '<-- Info: Consider replacing' xItem xParm 'with' xItem0
+        when inRange(nValue,-128,127)     then return '<-- Info: Consider replacing' xItem xParm 'with' xItem1 left(xParm,2)
         otherwise nop
       end
     end
     when nSize = 4 then do
       select
-        when nValue = 0                   then return '<-- Info: Consider replacing' xItem xValue 'with' xItem0
-        when inRange(nValue,-128,127)     then return '<-- Info: Consider replacing' xItem xValue 'with' xItem1 d2x(nValue,2)
-        when inrange(nValue,-32768,32767) then return '<-- Info: Consider replacing' xItem xValue 'with' xItem2 d2x(nValue,4)
+        when nValue = 0                   then return '<-- Info: Consider replacing' xItem xParm 'with' xItem0
+        when inRange(nValue,-128,127)     then return '<-- Info: Consider replacing' xItem xParm 'with' xItem1 left(xParm,2)
+        when inrange(nValue,-32768,32767) then return '<-- Info: Consider replacing' xItem xParm 'with' xItem2 left(xParm,4)
         otherwise nop
       end
     end
