@@ -486,7 +486,7 @@ processLOCAL:
       else do /* Only usage is specified: uuuu */
         xUsage = right(xValue,4,'0')
         xValue = xPage || xUsage
-        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE',xValue) recommendedSize()
+        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE',xValue) recommendedUnsignedSize()
         if xPage = '0000'
         then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       end
@@ -510,7 +510,7 @@ processLOCAL:
       else do /* Only usage is specified: uuuu */
         xUsage = right(xValue,4,'0')
         xValue = xPage || xUsage
-        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MINIMUM',xValue) recommendedSize()
+        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MINIMUM',xValue) recommendedUnsignedSize()
         if xPage = '0000'
         then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       end
@@ -529,7 +529,7 @@ processLOCAL:
       else do /* Only usage is specified: uuuu */
         xUsage = right(xValue,4,'0')
         xValue = xPage || xUsage
-        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MAXIMUM',xValue) recommendedSize()
+        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE_MAXIMUM',xValue) recommendedUnsignedSize()
         if xPage = '0000'
         then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       end
@@ -697,6 +697,41 @@ recommendedSize: procedure expose g. xItem xParm nValue nSize
         when nValue = 0                   then return '<-- Info: Consider replacing' xItem xParm 'with' xItem0
         when inRange(nValue,-128,127)     then return '<-- Info: Consider replacing' xItem xParm 'with' xItem1 left(xParm,2)
         when inrange(nValue,-32768,32767) then return '<-- Info: Consider replacing' xItem xParm 'with' xItem2 left(xParm,4)
+        otherwise nop
+      end
+    end
+    otherwise nop 
+  end
+return ''
+
+recommendedUnsignedSize: procedure expose g. xItem xParm sValue nSize
+  uValue = c2d(sValue) /* unsigned interpretation of sValue */
+  sItem0 = bitand(x2c(xItem),'11111100'b)
+  xItem0 = c2x(sItem0)
+  xItem1 = c2x(bitor(sItem0,'00000001'b))
+  xItem2 = c2x(bitor(sItem0,'00000010'b))
+  xItem4 = c2x(bitor(sItem0,'00000011'b))
+  select 
+    when nSize = 0 then do
+    end
+    when nSize = 1 then do
+      select
+        when uValue = 0                   then return '<-- Info: Consider replacing' xItem xParm 'with' xItem0
+        otherwise nop
+      end
+    end
+    when nSize = 2 then do
+      select
+        when uValue = 0                   then return '<-- Info: Consider replacing' xItem xParm 'with' xItem0
+        when inRange(uValue,0,255)        then return '<-- Info: Consider replacing' xItem xParm 'with' xItem1 left(xParm,2)
+        otherwise nop
+      end
+    end
+    when nSize = 4 then do
+      select
+        when nValue = 0                   then return '<-- Info: Consider replacing' xItem xParm 'with' xItem0
+        when inRange(uValue,0,255)        then return '<-- Info: Consider replacing' xItem xParm 'with' xItem1 left(xParm,2)
+        when inrange(uValue,0,65535)      then return '<-- Info: Consider replacing' xItem xParm 'with' xItem2 left(xParm,4)
         otherwise nop
       end
     end
