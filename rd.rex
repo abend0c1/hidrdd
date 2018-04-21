@@ -303,6 +303,7 @@ processMAIN:
       call clearLocals
     end
     when sTag = k.0MAIN.COLLECTION then do
+      g.0EXPECTED_COLLECTION_USAGE = ''
       xExtendedUsage = g.0USAGE
       sCollectionName = getUsageDesc(xExtendedUsage)
       f.0COLLECTION_NAME = strip(f.0COLLECTION_NAME space(sCollectionName,0))
@@ -313,15 +314,18 @@ processMAIN:
         when nValue > 127 then sMeaning = 'Vendor Defined'
         when nValue > 6   then sMeaning = 'Reserved'
         otherwise do
+          sUsageType = getUsageType(xExtendedUsage)
           sMeaning = getCollectionDesc(xValue) '(Usage=0x'xExtendedUsage':',
                                            'Page='getPageDesc(xExtendedUsage)',',
                                            'Usage='getUsageDesc(xExtendedUsage)',',
-                                           'Type='getUsageType(xExtendedUsage)')'
-          if left(xExtendedUsage,2) <> 'FF' & pos(sCollectionType,getUsageType(xExtendedUsage)) = 0
+                                           'Type='sUsageType')'
+          say '<'xExtendedUsage'><'sCollectionType'><'sUsageType'>'pos(sCollectionType,sUsageType)
+          if sUsageType = ''
           then do
-            sMeaning = sMeaning '<-- Warning: USAGE type should be' sCollectionType,
-                                '('getCollectionDesc(xValue)')'
+            sMeaning = sMeaning '<-- Error: COLLECTION must be preceded by a USAGE'
           end
+          if left(xExtendedUsage,2) <> 'FF' & pos(sCollectionType,sUsageType) = 0
+          then sMeaning = sMeaning '<-- Warning: USAGE type should be' sCollectionType '('getCollectionDesc(xValue)' Collection)'
         end
       end
       if sCollectionType = 'CA' 
@@ -332,7 +336,7 @@ processMAIN:
       end
       if g.0IN_DELIMITER
       then sMeaning = sMeaning '<-- Error: DELIMITER set has not been closed'
-      call emitDecode xItem,xParm,'MAIN','COLLECTION',xValue,sMeaning
+      call emitDecode xItem,xParm,'MAIN','COLLECTION',right(xValue,2),sMeaning
       g.0INDENT = g.0INDENT + 2
       call clearLocals
     end
@@ -479,14 +483,18 @@ processLOCAL:
     when sTag = k.0LOCAL.USAGE then do
       if length(sValue) = 4 & left(sValue,2) <> '0000'x 
       then do /* Both page and usage are specified: ppppuuuu */
+        xExtendedUsage = xValue
         xPage = left(xValue,4)
         call loadPage xPage
-        sMeaning = getPageAndUsageMeaning(xValue) updateHexValue('USAGE',xValue)
+        sUsageMeaning = getPageAndUsageMeaning(xValue)
+        sMeaning =  sUsageMeaning updateHexValue('USAGE',xValue)
       end
       else do /* Only usage is specified: uuuu */
         xUsage = right(xValue,4,'0')
         xValue = xPage || xUsage
-        sMeaning = getUsageMeaning(xValue) updateHexValue('USAGE',xValue) recommendedUnsignedSize()
+        xExtendedUsage = xValue
+        sUsageMeaning = getUsageMeaning(xValue)
+        sMeaning =  sUsageMeaning updateHexValue('USAGE',xValue) recommendedUnsignedSize()
         if xPage = '0000'
         then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       end
@@ -499,6 +507,21 @@ processLOCAL:
         g.0FIRST_USAGE = 0 
       end
       else call addUsage xValue
+      sUsageType = getUsageType(xExtendedUsage)
+      if isInSet(sUsageType,"CP CA CL CR NAry UM US") /* If this is a USAGE for a COLLECTION */
+      then do
+        g.0EXPECTED_COLLECTION_USAGE = xExtendedUsage sUsageMeaning
+        g.0EXPECTED_COLLECTION_ITEM  = 'A1' getCollectionCode(sUsageType)
+      end
+      else do /* This USAGE is not for a COLLECTION */
+        if g.0EXPECTED_COLLECTION_USAGE <> ''
+        then do
+          parse var g.0EXPECTED_COLLECTION_ITEM . xCollectionType 
+          sCollectionType = getCollectionDesc(xCollectionType)
+          sMeaning = sMeaning '<-- Error:' sCollectionType 'COLLECTION item ('g.0EXPECTED_COLLECTION_ITEM') expected for' g.0EXPECTED_COLLECTION_USAGE
+        end
+        g.0EXPECTED_COLLECTION_USAGE = '' /* stops further nagging */
+      end
     end
     when sTag = k.0LOCAL.USAGE_MINIMUM then do
       if length(sValue) = 4 & left(sValue,2) <> '0000'x
@@ -662,6 +685,10 @@ return nValue = ''
 isDefined: procedure
   arg nValue
 return nValue <> ''
+
+isInSet: procedure
+  arg sKey,sSet 
+return wordpos(sKey,sSet) > 0
 
 getMinBits: procedure 
   parse arg n
@@ -1392,6 +1419,10 @@ getCollectionType: procedure expose g.
   xType = right(xType,2,'0')
 return g.0COLLECTION_TYPE.xType
 
+getCollectionCode: procedure expose g.
+  parse upper arg sName +2
+return g.0COLLECTION_TYPE.sName
+
 getCollectionDesc: procedure expose g.
   parse arg xType
   xType = right(xType,2,'0')
@@ -1933,6 +1964,7 @@ getSuperscript: procedure expose k.
 return sSuperscript
 
 Prolog:
+  g.0EXPECTED_COLLECTION_USAGE = '' /* A USAGE with type CL, NAry, UM or US that has been seen */
   g.0REDUNDANT = 0         /* Item already has the same value set */
   g.0IN_DELIMITER = 0      /* Inside a delimited set of usages */
   g.0FIRST_USAGE  = 0      /* First delimited usage has been processed */
@@ -2025,26 +2057,27 @@ Prolog:
   call addType 'CACP','Application or Physical Collection'
   call addType 'CL','Logical Collection'
   call addType 'CP','Physical Collection'
+  call addType 'CR','Report Collection'
   call addType 'DF','Dynamic Flag'
   call addType 'DV','Dynamic Value'
-  call addType 'DVDF','Dynamic Value/Flag'
+  call addType 'DVDF','Dynamic Value or Dynamic Flag'
   call addType 'LC','Linear Control'
   call addType 'MC','Momentary Control'
-  call addType 'MCDV','Momentary Control/Dynamic Value'
-  call addType 'NAry','Named Array'
+  call addType 'MCDV','Momentary Control or Dynamic Value'
+  call addType 'NAry','Named Array Collection'
   call addType 'OOC','On/Off Control'
   call addType 'OSC','One Shot Control'
-  call addType 'OSC-NAry','One Shot Control/Named Array'
+  call addType 'OSC-NAry','One Shot Control or Named Array Collection'
   call addType 'RTC','Re-trigger Control'
-  call addType 'MULTI','Selector, On/Off, Momentary, or One Shot'
+  call addType 'MULTI','Selector, On/Off Control, Momentary Control, or One Shot Control'
   call addType 'Sel','Selector'
   call addType 'SF','Static Flag'
   call addType 'SFDF','Static Flag or Dynamic Flag'
-  call addType 'SFDFSEL','Static/Dynamic Flag or Selector'
+  call addType 'SFDFSEL','Static Flag, Dynamic Flag, or Selector'
   call addType 'SV','Static Value'
   call addType 'SVDV','Static Value or Dynamic Value'
-  call addType 'UM','Usage Modifier'
-  call addType 'US','Usage Switch'
+  call addType 'UM','Usage Modifier Collection'
+  call addType 'US','Usage Switch Collection'
 
   k.0SUPER. = ''
   call addSuperscript '0','⁰'
