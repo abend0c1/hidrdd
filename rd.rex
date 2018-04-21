@@ -319,7 +319,6 @@ processMAIN:
                                            'Page='getPageDesc(xExtendedUsage)',',
                                            'Usage='getUsageDesc(xExtendedUsage)',',
                                            'Type='sUsageType')'
-          say '<'xExtendedUsage'><'sCollectionType'><'sUsageType'>'pos(sCollectionType,sUsageType)
           if sUsageType = ''
           then do
             sMeaning = sMeaning '<-- Error: COLLECTION must be preceded by a USAGE'
@@ -334,6 +333,8 @@ processMAIN:
         if \g.0IN_APP_COLLECTION 
         then sMeaning = sMeaning '<-- Error: No enclosing Application Collection'
       end
+      if sCollectionType = 'NA'
+      then g.0IN_NAMED_ARRAY_COLLECTION = 1
       if g.0IN_DELIMITER
       then sMeaning = sMeaning '<-- Error: DELIMITER set has not been closed'
       call emitDecode xItem,xParm,'MAIN','COLLECTION',right(xValue,2),sMeaning
@@ -341,6 +342,7 @@ processMAIN:
       call clearLocals
     end
     when sTag = k.0MAIN.END_COLLECTION then do
+      g.0IN_NAMED_ARRAY_COLLECTION = 0
       if length(sValue) <> 0
       then sMeaning = '<-- Error: Data ('c2x(sValue)') is not applicable to END_COLLECTION items'
       parse var sCollectionStack nCollectionType sCollectionStack /* pop the collection stack */
@@ -519,6 +521,10 @@ processLOCAL:
           parse var g.0EXPECTED_COLLECTION_ITEM . xCollectionType 
           sCollectionType = getCollectionDesc(xCollectionType)
           sMeaning = sMeaning '<-- Error:' sCollectionType 'COLLECTION item ('g.0EXPECTED_COLLECTION_ITEM') expected for' g.0EXPECTED_COLLECTION_USAGE
+        end
+        else do 
+          if g.0IN_NAMED_ARRAY_COLLECTION & sUsageType <> 'Sel'
+          then sMeaning = sMeaning '<-- Error: A Named Array Collection must only contain Selector USAGEs'
         end
         g.0EXPECTED_COLLECTION_USAGE = '' /* stops further nagging */
       end
@@ -1969,6 +1975,7 @@ Prolog:
   g.0IN_DELIMITER = 0      /* Inside a delimited set of usages */
   g.0FIRST_USAGE  = 0      /* First delimited usage has been processed */
   g.0IN_APP_COLLECTION = 0 /* Inside an Application Collection */
+  g.0IN_NAMED_ARRAY_COLLECTION = 0 /* Inside a Named Array Collection */
   f.0COLLECTION_NAME = ''  /* Collection hierarchy names */
 
   k.0I8  = 'int8_t'
