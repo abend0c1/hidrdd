@@ -314,16 +314,16 @@ processMAIN:
         when nValue > 127 then sMeaning = 'Vendor Defined'
         when nValue > 6   then sMeaning = 'Reserved'
         otherwise do
-          sUsageType = getUsageType(xExtendedUsage)
+          sUsageTypeCode = getUsageTypeCode(xExtendedUsage)
           sMeaning = getCollectionDesc(xValue) '(Usage=0x'xExtendedUsage':',
                                            'Page='getPageDesc(xExtendedUsage)',',
                                            'Usage='getUsageDesc(xExtendedUsage)',',
-                                           'Type='sUsageType')'
-          if sUsageType = ''
+                                           'Type='getUsageType(xExtendedUsage)')'
+          if sUsageTypeCode = ''
           then do
             sMeaning = sMeaning '<-- Error: COLLECTION must be preceded by a USAGE'
           end
-          if left(xExtendedUsage,2) <> 'FF' & pos(sCollectionType,sUsageType) = 0
+          if left(xExtendedUsage,2) <> 'FF' & pos(sCollectionType,sUsageTypeCode) = 0
           then sMeaning = sMeaning '<-- Warning: USAGE type should be' sCollectionType '('getCollectionDesc(xValue)' Collection)'
         end
       end
@@ -501,7 +501,7 @@ processLOCAL:
         then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       end
       if sMeaning = '' 
-      then sMeaning = '<-- Warning: Undocumented usage'
+      then sMeaning = undocumentedUsage(xValue)
       if g.0IN_DELIMITER
       then do /* only use the first usage in the delimited set */
         if g.0FIRST_USAGE
@@ -509,21 +509,21 @@ processLOCAL:
         g.0FIRST_USAGE = 0 
       end
       else call addUsage xValue
-      sUsageType = getUsageType(xExtendedUsage)
-      if isInSet(sUsageType,"CP CA CL CR NAry UM US") /* If this is a USAGE for a COLLECTION */
+      sUsageTypeCode = getUsageTypeCode(xExtendedUsage)
+      if isInSet(sUsageTypeCode,"CP CA CL CR NAry UM US") /* If this is a USAGE for a COLLECTION */
       then do
-        g.0EXPECTED_COLLECTION_USAGE = xExtendedUsage sUsageMeaning
-        g.0EXPECTED_COLLECTION_ITEM  = 'A1' getCollectionCode(sUsageType)
+        g.0EXPECTED_COLLECTION_USAGE = '0x'xExtendedUsage sUsageMeaning
+        g.0EXPECTED_COLLECTION_ITEM  = 'A1' getCollectionCode(sUsageTypeCode)
       end
       else do /* This USAGE is not for a COLLECTION */
         if g.0EXPECTED_COLLECTION_USAGE <> ''
         then do
           parse var g.0EXPECTED_COLLECTION_ITEM . xCollectionType 
           sCollectionType = getCollectionDesc(xCollectionType)
-          sMeaning = sMeaning '<-- Error:' sCollectionType 'COLLECTION item ('g.0EXPECTED_COLLECTION_ITEM') expected for' g.0EXPECTED_COLLECTION_USAGE
+          sMeaning = sMeaning '<-- Error:' sCollectionType 'COLLECTION item ('g.0EXPECTED_COLLECTION_ITEM') expected for USAGE' g.0EXPECTED_COLLECTION_USAGE
         end
         else do 
-          if g.0IN_NAMED_ARRAY_COLLECTION & sUsageType <> 'Sel'
+          if g.0IN_NAMED_ARRAY_COLLECTION & \isInSet(sUsageTypeCode,'Sel MULTI SFDFSEL')
           then sMeaning = sMeaning '<-- Error: A Named Array Collection must only contain Selector USAGEs'
         end
         g.0EXPECTED_COLLECTION_USAGE = '' /* stops further nagging */
@@ -544,7 +544,7 @@ processLOCAL:
         then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       end
       if sMeaning = '' 
-      then sMeaning = '<-- Warning: Undocumented usage'
+      then sMeaning = undocumentedUsage(xValue)
       if isSpecified(g.0USAGE_MAXIMUM)
       then call appendRangeOfUsages
     end
@@ -563,7 +563,7 @@ processLOCAL:
         then sMeaning = sMeaning '<-- Error: USAGE_PAGE must not be 0'
       end
       if sMeaning = '' 
-      then sMeaning = '<-- Warning: Undocumented usage'
+      then sMeaning = undocumentedUsage(xValue)
       if isSpecified(g.0USAGE_MINIMUM)
       then call appendRangeOfUsages
     end
@@ -614,6 +614,10 @@ processLOCAL:
     bIndent = 0
   end
 return
+
+undocumentedUsage: procedure
+  parse arg xPage +4 xUsage +4
+return '<-- Warning: Undocumented usage (document it by inserting' xUsage 'into file' xPage'.conf)'
 
 appendRangeOfUsages:
   if left(g.0USAGE_MINIMUM,4) <> left(g.0USAGE_MAXIMUM,4)
@@ -1399,7 +1403,10 @@ return sPageDesc
 
 getUsageMeaning: procedure expose k.
   parse arg xPage +4 xUsage +4 /* ppppuuuu */
-return k.0USAGE.xPage.xUsage
+  parse var k.0USAGE.xPage.xUsage sMeaning ' ('sUsageTypeCode'='sUsageType')'
+  if sUsageType <> ''
+  then sMeaning = sMeaning '('sUsageType')'
+return sMeaning
 
 getUsageMeaningText: procedure expose k.
   parse arg xPage +4 xUsage +4 /* ppppuuuu */
@@ -1415,9 +1422,14 @@ getUsageDesc: procedure expose k.
   parse var k.0USAGE.xPage.xUsage sUsageDesc '('
 return strip(sUsageDesc)
 
+getUsageTypeCode: procedure expose k.
+  parse arg xPage +4 xUsage +4 /* ppppuuuu */
+  parse var k.0USAGE.xPage.xUsage '('sUsageTypeCode'='
+return sUsageTypeCode
+
 getUsageType: procedure expose k.
   parse arg xPage +4 xUsage +4 /* ppppuuuu */
-  parse var k.0USAGE.xPage.xUsage '('sUsageType'='
+  parse var k.0USAGE.xPage.xUsage '('sUsageTypeCode'='sUsageType')'
 return sUsageType
 
 getCollectionType: procedure expose g.
