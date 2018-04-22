@@ -39,6 +39,12 @@ trace off
     return
   end
 
+  if getOption('--codes')
+  then do
+    call showCodes
+    return
+  end
+
   o.0HELP      = getOption('--help')
   if o.0HELP | sCommandLine = ''
   then do
@@ -2029,6 +2035,7 @@ Prolog:
   call addCountableOption '-v','--verbose' ,'Output more detail'
   call addBooleanOption   '-V','--version' ,'Display version and exit'
   call addBooleanOption   '-?','--help'    ,'Display this information'
+  call addBooleanOption   '-C','--codes'   ,'Display the list of valid hex codes and their meaning'
 
   call setOptions sCommandLine
 
@@ -2543,6 +2550,52 @@ setLocals: procedure expose g.
              g.0STRING_MINIMUM,        
              g.0STRING_MAXIMUM,
              .
+return
+
+showCodes: procedure
+  say 'Table of item codes in hexadecimal. The item code varies depending on the'
+  say 'length of the subsequent item data field as follows:'
+  say ''
+  say '                              Data Field Length'
+  say 'Item                           0    1    2    4   Comment'
+  say '---------------------------   --   --   --   --   -----------------------------'
+  say '(MAIN)   INPUT                80   81   82   83   Defines input to the host device'
+  say '(MAIN)   OUTPUT               90   91   92   93   Defines output from the host device'
+  say '(MAIN)   COLLECTION           A0   A1   A2   A3   See collection types below'
+  say '(MAIN)   FEATURE              B0   B1   B2   B3   Defines data to or from the host device'
+  say '(MAIN)   END_COLLECTION       C0                  Item data field is not supported'
+  say '(GLOBAL) USAGE_PAGE                05   06   07   USAGE_PAGE 00 is invalid'
+  say '(GLOBAL) LOGICAL_MINIMUM      14   15   16   17'
+  say '(GLOBAL) LOGICAL_MAXIMUM      24   25   26   27'
+  say '(GLOBAL) PHYSICAL_MINIMUM     34   35   36   37'
+  say '(GLOBAL) PHYSICAL_MAXIMUM     44   45   46   47'
+  say '(GLOBAL) UNIT_EXPONENT        54   55   56   57'
+  say '(GLOBAL) UNIT                 64   65   66   67'
+  say '(GLOBAL) REPORT_ID                 85   86   87   REPORT_ID=0 is reserved'
+  say '(GLOBAL) REPORT_SIZE               75   76   77   REPORT_SIZE=0 is invalid'
+  say '(GLOBAL) REPORT_COUNT         94   95   96   97   REPORT_COUNT=0 is not useful'
+  say '(GLOBAL) PUSH                 A4                  Item data field is not supported'
+  say '(GLOBAL) POP                  B4                  Item data field is not supported'
+  say '(LOCAL)  USAGE                08   09   0A   0B'
+  say '(LOCAL)  USAGE_MINIMUM        18   19   1A   1B'
+  say '(LOCAL)  USAGE_MAXIMUM        28   29   2A   2B'
+  say '(LOCAL)  DESIGNATOR_INDEX     38   39   3A   3B'
+  say '(LOCAL)  DESIGNATOR_MINIMUM   48   49   4A   4B'
+  say '(LOCAL)  DESIGNATOR_MAXIMUM   58   59   5A   5B'
+  say '(LOCAL)  STRING_INDEX         78   79   7A   7B'
+  say '(LOCAL)  STRING_MINIMUM       88   89   8A   8B'
+  say '(LOCAL)  STRING_MAXIMUM       98   99   9A   9B'
+  say '(LOCAL)  DELIMITER            A8   A9   AA   AB'
+  say '' 
+  say 'COLLECTION item codes are as follows:'
+  say ''
+  say 'Physical Collection:          A1 00               Alternatively: A0'
+  say 'Application Collection:       A1 01               Alternatively: A2 01 00, or A3 01 00 00 00'
+  say 'Logical Collection:           A1 02'
+  say 'Report Collection:            A1 03'
+  say 'Named Array Collection:       A1 04               Must contain only Selector usages'
+  say 'Usage Switch Collection:      A1 05'
+  say 'Usage Modifier Collection:    A1 06'
 return
 
 Epilog:
