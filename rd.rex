@@ -59,9 +59,9 @@ trace off
     say 'command line option if the hex strings are on the rightmost part of each line.'
     say 
     say 'Usage:'
-    say '      rexx' sThis '[-h format] [-i fileinc] [-o fileout] [-dsvxb] -f filein'
+    say '      rexx' sThis '[-h format] [-i fileinc] [-o fileout] [-dsvxOrb] -f filein'
     say '   or:'
-    say '      rexx' sThis '[-h format] [-i fileinc] [-o fileout] [-dsvx]  -c hex'
+    say '      rexx' sThis '[-h format] [-i fileinc] [-o fileout] [-dsvxO]  -c hex'
     say
     say 'Where:'
     say '      filein           = Input file path to be decoded'
@@ -1819,7 +1819,7 @@ setOption: procedure expose g. k.
         g.0OPTION.nOption = g.0OPTION.nOption + 1
       end
       when nOptionType = k.0OPTION_BOOLEAN then do
-        g.0OPTION.nOption = \g.0OPTION.nOption
+        g.0OPTION.nOption = sValue
       end
       when nOptionType = k.0OPTION_LIST then do
         n = g.0OPTION.nOption.0 
@@ -1893,17 +1893,23 @@ setOptions: procedure expose g. k.
 return
 
 handleOption: procedure expose g. k.
-  parse arg sOption
+  parse arg sOriginalOption
+  sOption = sOriginalOption
+  bNegated = left(sOption,5) = '--no-'
+  if bNegated
+  then sOption = '--'substr(sOption,6) /* e.g. sOption='--no-decode' becomes sOption='--decode' with bNegated = 1 */
   bGetNextToken = 1
   if getOptionIndex(sOption) = 0
   then do
-    say 'Invalid option ignored:' sOption
+    say 'Invalid option ignored:' sOriginalOption
   end
   else do
     nOptionType = getOptionType(sOption)
     select
       when nOptionType = k.0OPTION_COUNT then do /* --key [--key ...] */
-        call setOption sOption
+        if bNegated
+        then say 'Cannot negate non-boolean option:' sOriginalOption
+        else call setOption sOption
       end
       when nOptionType = k.0OPTION_LIST then do /* --key [val ...] */
         sArgs = ''
@@ -1913,10 +1919,12 @@ handleOption: procedure expose g. k.
           g.0TOKEN = getNextToken()
           bGetNextToken = 0
         end
-        call setOption sOption,strip(sArgs)
+        if bNegated
+        then say 'Cannot negate non-boolean option:' sOriginalOption
+        else call setOption sOption,strip(sArgs)
       end
       when nOptionType = k.0OPTION_BOOLEAN then do /* --key */
-        call setOption sOption
+        call setOption sOption,\bNegated
       end
       otherwise do           /* --key val1 ... valn */
         sArgs = ''
@@ -1927,7 +1935,9 @@ handleOption: procedure expose g. k.
           g.0TOKEN = getNextToken()
           bGetNextToken = 0
         end
-        call setOption sOption,strip(sArgs)
+        if bNegated
+        then say 'Cannot negate non-boolean option:' sOriginalOption
+        else call setOption sOption,strip(sArgs)
       end
     end
   end
@@ -2010,8 +2020,8 @@ Prolog:
   call addBooleanOption   '-b','--binary'  ,'Input file is binary (not text)'
   call addListOption      '-o','--output'  ,'Write output to the specified file (default is console)'
   call addBooleanOption   '-O','--opt'     ,'Optimise by ignoring redundant items'
-  call addBooleanOption   '-s','--struct'  ,'Output C structure declarations (default)'
-  call addBooleanOption   '-d','--decode'  ,'Output decoded report descriptor'
+  call addBooleanOption   '-s','--struct'  ,'Output C structure declarations (default)',1
+  call addBooleanOption   '-d','--decode'  ,'Output decoded report descriptor (default)',1
   call addListOption      '-h','--header'  ,'Output C header in AVR, MIKROC or MICROCHIP format'
   call addBooleanOption   '-x','--dump'    ,'Output hex dump of report descriptor'
   call addBooleanOption   '-a','--all'     ,'Output all valid array indices and usages'
