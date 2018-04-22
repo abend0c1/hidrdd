@@ -1143,7 +1143,9 @@ emitField: procedure expose k. o. f.
     if o.0ALL
     then do /* Document the valid indexes in the array */
       g.0LOGICAL_MAXIMUM_WIDTH = length(g.0LOGICAL_MAXIMUM)
-      nLogical = g.0LOGICAL_MINIMUM
+      if g.0LOGICAL_MINIMUM = ''
+      then nLogical = 0 /* only to avoid a prang */
+      else nLogical = g.0LOGICAL_MINIMUM
       if nUsages > 0 
       then do
         do i = 1 to nUsages 
