@@ -1052,7 +1052,7 @@ emitField: procedure expose k. o. f.
         do nIgnored = i to nUsages
           xIgnoredUsage = word(xUsages,nIgnored)
           parse var xIgnoredUsage xPage +4 xUsage +4
-          call say '  'getStatement('','Usage 0x'xPage||xUsage getUsageMeaning(xIgnoredUsage) getRange() '<-- Ignored: REPORT_COUNT ('g.0REPORT_COUNT') is too small')
+          call say '  'getStatement('','Usage 0x'xPage||xUsage getUsageMeaningText(xIgnoredUsage)',' getRange() '<-- Ignored: REPORT_COUNT ('g.0REPORT_COUNT') is too small')
         end
       end
       /* Now replicate the last usage to fill the report count */
