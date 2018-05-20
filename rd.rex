@@ -246,8 +246,10 @@ readDescriptor: procedure expose g. k. o.
             parse var sLine sDefine sIdentifier sValue .
             if sDefine = '#define' & isIdentifier(sIdentifier) 
             then select
-              when left(sValue,2) = '0x' then g.0DEFINE.sIdentifier = substr(sValue,3)
-              when isDec(sValue)         then g.0DEFINE.sIdentifier = d2x(sValue,2)
+              when left(sValue,2) = '0x' then g.0DEFINE.sIdentifier = substr(sValue,3)               /* 0xYYYY  */
+              when isDec(sValue)         then g.0DEFINE.sIdentifier = d2x(sValue,2)                  /* YYY     */
+              when isChar(sValue)        then g.0DEFINE.sIdentifier = c2x(substr(sValue,2,1))        /* 'Y'     */
+              when isString(sValue)      then g.0DEFINE.sIdentifier = strip(sValue,'BOTH','"')       /* "YYYY"  */
               otherwise nop 
             end
             else do i = 1 to words(sLine)
@@ -2403,6 +2405,14 @@ return left(xString,2) = '0x' & datatype(xValue,'X')
 isDec: procedure
   parse arg n
 return n <> '' & datatype(n,'WHOLE')
+
+isChar: procedure
+  parse arg s
+return length(s) = 3 & left(s,1) = "'" & right(s,1) = "'"
+
+isString: procedure
+  parse arg s
+return length(s) > 2 & left(s,1) = '"' & right(s,1) = '"'
 
 toUpper: procedure
   parse arg sText
