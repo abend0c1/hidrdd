@@ -1,5 +1,5 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.23
+/* RDD! HID Report Descriptor Decoder v1.1.24
 
 Copyright (c) 2011-2018, Andrew J. Armstrong
 All rights reserved.
@@ -439,11 +439,13 @@ processGLOBAL:
       sMeaning = sUnitDesc '('getUnit(xValue8)')' updateHexValue('UNIT',xValue8) recommendedSize()
     end
     when sTag = k.0GLOBAL.REPORT_SIZE then do
+      nValue = x2d(xValue) /* REPORT_SIZE is an unsigned value */
       sMeaning = '('nValue') Number of bits per field' updateValue('REPORT_SIZE',nValue) recommendedSize()
-      if nValue <= 0
+      if nValue = 0
       then sMeaning = sMeaning '<-- Error: REPORT_SIZE must be > 0'
     end
     when sTag = k.0GLOBAL.REPORT_ID then do
+      nValue = x2d(xValue) /* REPORT_ID is an unsigned value */
       c = x2c(xValue)
       if isAlphanumeric(c)
       then sMeaning = '('x2d(xValue)')' "'"c"'" updateHexValue('REPORT_ID',xValue) recommendedSize()
@@ -452,8 +454,9 @@ processGLOBAL:
       if nValue > 255 then sMeaning = sMeaning '<-- Error: REPORT_ID must be in the range 0x01 to 0xFF'
     end
     when sTag = k.0GLOBAL.REPORT_COUNT then do
+      nValue = x2d(xValue) /* REPORT_COUNT is an unsigned value */
       sMeaning = '('nValue') Number of fields' updateValue('REPORT_COUNT',nValue) recommendedSize()
-      if nValue <= 0
+      if nValue = 0
       then sMeaning = sMeaning '<-- Error: REPORT_COUNT must be > 0'
     end
     when sTag = k.0GLOBAL.PUSH then do
