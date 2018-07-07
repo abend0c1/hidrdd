@@ -2099,6 +2099,7 @@ Prolog:
   call addType 'CA','Application Collection'
   call addType 'CACP','Application or Physical Collection'
   call addType 'CL','Logical Collection'
+  call addType 'CLCP','Logical or Physical Collection'
   call addType 'CP','Physical Collection'
   call addType 'CR','Report Collection'
   call addType 'DF','Dynamic Flag'
