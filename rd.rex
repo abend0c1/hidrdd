@@ -1219,8 +1219,7 @@ getUnitConversionFormula: procedure expose g. k. f. o.
     nPhysicalMinimum = nLogicalMinimum
     nPhysicalMaximum = nLogicalMaximum
   end
-
-  if g.0UNIT <> 0
+  if x2d(g.0UNIT) \== '00000000'
   then do
     parse var k.0UNIT.xUnit sDesc' ['sUnits'],'nBaseUnitExponent sBaseUnit /* e.g. Force in newtons [10 μN units],-5 N */
     parse var sDesc sQuantity ' in ' sUnitName
@@ -1248,9 +1247,9 @@ getUnitConversionFormula: procedure expose g. k. f. o.
   sFormula = calc(calc(calc('Value','-',nLogicalMinimum),'x',calc(n,'/',d)),'+',nPhysicalMinimum)
   if left(sFormula,10) = 'Value x 1 ' then sFormula = 'Value' substr(sFormula,11)  /* kludge */
   select
-    when g.0UNIT = '' then sFormula = ', Physical =' sFormula /* UNIT is not defined */
-    when g.0UNIT = 0  then sFormula = ', Physical =' sFormula
-    otherwise              sFormula = ', Physical =' sFormula 'in' sPhysicalUnits
+    when g.0UNIT = ''           then sFormula = ', Physical =' sFormula /* UNIT is not defined */
+    when g.0UNIT == '00000000'  then sFormula = ', Physical =' sFormula
+    otherwise                        sFormula = ', Physical =' sFormula 'in' sPhysicalUnits
   end
 return sFormula
 
