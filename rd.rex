@@ -1,5 +1,5 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.24
+/* RDD! HID Report Descriptor Decoder v1.1.25
 
 Copyright (c) 2011-2018, Andrew J. Armstrong
 All rights reserved.
@@ -839,7 +839,6 @@ return left(sLabel, max(length(sLabel),50)) '//' sComment
 emitInputFields: procedure expose inputField. k. o. f.
   /* Cycle through all the input fields accumulated and when the report_id
      changes, then emit a new structure */
-  f.0LASTCOLLECTION = ''
   xLastReportId = 'unknown'
   do i = 1 to inputField.0
     parse var inputField.i xFlags sGlobals','sLocals','
@@ -860,7 +859,6 @@ return
 emitOutputFields: procedure expose outputField. k. o. f.
   /* Cycle through all the output fields accumulated and when the report_id
      changes, then emit a new structure */
-  f.0LASTCOLLECTION = ''
   xLastReportId = 'unknown'
   do i = 1 to outputField.0
     parse var outputField.i xFlags sGlobals','sLocals','
@@ -881,7 +879,6 @@ return
 emitFeatureFields: procedure expose featureField. k. o. f.
   /* Cycle through all the feature fields accumulated and when the report_id
      changes, then emit a new structure */
-  f.0LASTCOLLECTION = ''
   xLastReportId = 'unknown'
   do i = 1 to featureField.0
     parse var featureField.i xFlags sGlobals','sLocals','
@@ -901,6 +898,7 @@ return
 
 emitBeginStructure: procedure expose g. k. f. o.
   parse arg sStructureName,xReportId,sDirection
+  f.0LASTCOLLECTION = ''
   if isSpecified(xReportId)
   then do
     f.0TYPEDEFNAME = getUniqueName(sStructureName || xReportId)'_t'
