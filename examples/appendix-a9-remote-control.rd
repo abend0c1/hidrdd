@@ -15,7 +15,7 @@
 09 01 Usage(Consumer Control),
 a1 01 Collection(Linked), <-- Application (not "Linked")
   09 02 Usage(Numeric Key Pad),
-  a1 02 Collection(Logical),
+  a1 04 Collection(Named Array), <-- Named Array (not "Logical")
     05 09 UsagePage(Button),
     09 01 Usage(Button 1),
     09 02 Usage(Button 2),
@@ -47,7 +47,7 @@ a1 01 Collection(Linked), <-- Application (not "Linked")
   09 34 Usage(Sleep Mode),
   09 60 Usage(Data On Screen),
   09 64 Usage(Broadcast Mode),     ; Broadcast
-  09 80 Usage(Selection Back),     ; Return
+  09 46 Usage(Menu Escape),        ; Return <-- No such usage as "Selection Back"
   09 81 Usage(Assign Selection),   ; Enter Choice
   15 01 Logical Minimum(1),
   25 07 Logical Maximum(7),
@@ -56,7 +56,7 @@ a1 01 Collection(Linked), <-- Application (not "Linked")
   81 40 Input(Data, Array, Absolute, Null State),
 
   09 80 Usage(Selection),
-  a1 02 Collection(Logical),       ; Three choice buttons
+  a1 04 Collection(Named Array),       ; Three choice buttons <-- Named Array (not "Logical")
     05 09 UsagePage(Button),
     09 01 Usage(Button 1),           ; Choice 1
     09 02 Usage(Button 2),           ; Choice 2

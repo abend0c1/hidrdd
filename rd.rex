@@ -289,6 +289,8 @@ processMAIN:
     when sTag = k.0MAIN.INPUT then do
       sFlags = getInputFlags()
       call emitDecode xItem,xParm,'MAIN','INPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity(sValue)
+      if g.0IN_NAMED_ARRAY_COLLECTION = 1
+      then g.0USAGE = g.0NAMED_ARRAY_USAGE
       n = inputField.0 + 1
       inputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       inputField.0 = n
@@ -297,6 +299,8 @@ processMAIN:
     when sTag = k.0MAIN.OUTPUT then do
       sFlags = getOutputFlags()
       call emitDecode xItem,xParm,'MAIN','OUTPUT',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity(sValue)
+      if g.0IN_NAMED_ARRAY_COLLECTION = 1
+      then g.0USAGE = g.0NAMED_ARRAY_USAGE
       n = outputField.0 + 1
       outputField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       outputField.0 = n
@@ -305,6 +309,8 @@ processMAIN:
     when sTag = k.0MAIN.FEATURE then do
       sFlags = getFeatureFlags()
       call emitDecode xItem,xParm,'MAIN','FEATURE',xValue,getDimension(g.0REPORT_COUNT, g.0REPORT_SIZE) sFlags getSanity(sValue)
+      if g.0IN_NAMED_ARRAY_COLLECTION = 1
+      then g.0USAGE = g.0NAMED_ARRAY_USAGE
       n = featureField.0 + 1
       featureField.n = xValue getGlobals()','getLocals()','g.0USAGES','sFlags','f.0COLLECTION_NAME
       featureField.0 = n
@@ -314,9 +320,9 @@ processMAIN:
       g.0EXPECTED_COLLECTION_USAGE = ''
       xExtendedUsage = g.0USAGE
       sCollectionName = getUsageDesc(xExtendedUsage)
-      f.0COLLECTION_NAME = strip(f.0COLLECTION_NAME space(sCollectionName,0))
-      nValue = c2d(sValue)
       sCollectionType = getCollectionType(xValue)
+      f.0COLLECTION_NAME = strip(f.0COLLECTION_NAME sCollectionType':'space(sCollectionName,0))
+      nValue = c2d(sValue)
       sCollectionStack = nValue sCollectionStack /* push onto collection stack */
       select 
         when nValue > 127 then sMeaning = 'Vendor Defined'
@@ -342,7 +348,10 @@ processMAIN:
         then sMeaning = sMeaning '<-- Error: No enclosing Application Collection'
       end
       if sCollectionType = 'NA'
-      then g.0IN_NAMED_ARRAY_COLLECTION = 1
+      then do
+        g.0IN_NAMED_ARRAY_COLLECTION = 1
+        g.0NAMED_ARRAY_USAGE = xExtendedUsage /* remember so a field name can be generated later */
+      end
       if g.0IN_DELIMITER
       then sMeaning = sMeaning '<-- Error: DELIMITER set has not been closed'
       call emitDecode xItem,xParm,'MAIN','COLLECTION',right(xValue,2),sMeaning
@@ -948,9 +957,10 @@ emitUsages: procedure expose o.
 return
 
 emitField: procedure expose k. o. f.
-  parse arg nField,xFlags sGlobals','sLocals','xUsages','sFlags','sCollectionName
+  parse arg nField,xFlags sGlobals','sLocals','xUsages','sFlags','sCollectionNames
   call setGlobals sGlobals
   call setLocals sLocals
+  sCollectionName = getCollectionName(sCollectionNames)
   if o.0VERBOSITY > 0
   then do
     call say
@@ -961,7 +971,7 @@ emitField: procedure expose k. o. f.
     call say '  // Globals:' getFormattedGlobals()
     call say '  // Locals: ' getFormattedLocals()
     call emitUsages xUsages
-    call say '  // Coll:   ' sCollectionName
+    call say '  // Coll:   ' sCollectionNames
   end
   sFlags = x2c(xFlags)
   nUsages = words(xUsages)
@@ -1141,7 +1151,7 @@ emitField: procedure expose k. o. f.
     if nUsages = 0 & isConstant(sFlags) 
     then call emitPaddingFieldDecl g.0REPORT_COUNT,nField
     else do /* data */
-      call emitFieldDecl g.0REPORT_COUNT,xPage
+      call emitFieldDecl g.0REPORT_COUNT,g.0USAGE
     end
     if o.0ALL
     then do /* Document the valid indexes in the array */
@@ -1364,6 +1374,8 @@ getSaneLabel: procedure
   sLastWord = ''
   do i = 1 to words(sLabel)
     sWord = word(sLabel,i)
+    if pos(':',sWord) > 0
+    then parse var sWord ':'sWord /* Strip any CA:, CL:, CP:, NA: prefix */
     if sWord <> sLastWord
     then do
       sNewLabel = sNewLabel sWord
@@ -1441,6 +1453,14 @@ getUsageType: procedure expose k.
   parse arg xPage +4 xUsage +4 /* ppppuuuu */
   parse var k.0USAGE.xPage.xUsage '('sUsageTypeCode'='sUsageType')'
 return sUsageType
+
+getCollectionName: procedure
+  parse arg sCollectionNames
+  nCollectionNames = words(sCollectionNames)
+  sLastName = word(sCollectionNames,nCollectionNames)
+  if left(sLastName,3) = 'NA:'
+  then sCollectionNames = subword(sCollectionNames,1,nCollectionNames-1)
+return sCollectionNames
 
 getCollectionType: procedure expose g.
   parse arg xType
