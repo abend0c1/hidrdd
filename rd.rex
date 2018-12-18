@@ -530,7 +530,7 @@ processLOCAL:
       end
       else call addUsage xValue
       sUsageTypeCode = getUsageTypeCode(xExtendedUsage)
-      if isInSet(sUsageTypeCode,"CP CA CL CR NAry UM US") /* If this is a USAGE for a COLLECTION */
+      if isInSet(sUsageTypeCode,"CP CA CL CACL CACP CLCP CR NAry UM US") /* If this is a USAGE for a COLLECTION */
       then do
         g.0EXPECTED_COLLECTION_USAGE = '0x'xExtendedUsage sUsageMeaning
         g.0EXPECTED_COLLECTION_ITEM  = 'A1' getCollectionCode(sUsageTypeCode)
@@ -2114,6 +2114,7 @@ Prolog:
 
   call addType 'BB','Buffered Bytes'
   call addType 'CA','Application Collection'
+  call addType 'CACL','Application or Logical Collection'
   call addType 'CACP','Application or Physical Collection'
   call addType 'CL','Logical Collection'
   call addType 'CLCP','Logical or Physical Collection'
