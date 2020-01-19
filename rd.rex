@@ -335,7 +335,7 @@ processMAIN:
                                            'Type='getUsageType(xExtendedUsage)')'
           if sUsageTypeCode = ''
           then do
-            sMeaning = sMeaning '<-- Error: COLLECTION must be preceded by a USAGE'
+            sMeaning = sMeaning '<-- Error: COLLECTION must be preceded by a known USAGE'
           end
           if left(xExtendedUsage,2) <> 'FF' & pos(sCollectionType,sUsageTypeCode) = 0
           then sMeaning = sMeaning '<-- Warning: USAGE type should be' sCollectionType '('getCollectionDesc(xValue)' Collection)'
