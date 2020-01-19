@@ -2253,8 +2253,11 @@ Prolog:
 
   /* Others */
   k.0UNIT.0000F111 = 'Momentum [1 g cm/s units],-5 kg m/s'
-  k.0UNIT.0000D100 = 'Jerk (change in acceleration) [0.1 cm/s³ units],-3 m/s³'
-
+  k.0UNIT.0000D010 = 'Jerk (change in acceleration) [1 cm/s³ units],-3 m/s³'
+  k.0UNIT.0000C010 = 'Snap (change in jerk) [1 cm/s⁴ units],-4 m/s⁴'
+  k.0UNIT.0000B010 = 'Crackle (change in snap) [1 cm/s⁵ units],-5 m/s⁵'
+  k.0UNIT.0000A010 = 'Pop (change in crackle) [1 cm/s⁶ units],-6 m/s⁶'
+  
   /* Other common units (non-metric):
           .---------- Reserved
           |.--------- Luminous intensity (in candelas) - same as metric
