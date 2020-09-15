@@ -647,7 +647,7 @@ appendRangeOfUsages:
     nUsageMax = x2d(g.0USAGE_MAXIMUM)
     if nUsageMax < nUsageMin
     then do
-      sMeaning = sMeaning '<-- Error: USAGE_MININUM ('g.0USAGE_MINIMUM') must be less than USAGE_MAXIMUM ('g.0USAGE_MAXIMUM')'
+      sMeaning = sMeaning '<-- Error: USAGE_MINIMUM ('g.0USAGE_MINIMUM') must be less than USAGE_MAXIMUM ('g.0USAGE_MAXIMUM')'
       temp = g.0USAGE_MAXIMUM /* Compromise: swap USAGE_MINIMUM and USAGE_MAXIMUM */
       g.0USAGE_MAXIMUM = g.0USAGE_MINIMUM
       g.0USAGE_MINIMUM = temp 
@@ -1092,7 +1092,7 @@ emitField: procedure expose k. o. f.
        LOGICAL_MAXIMUM indexes the last explicit usage. 
        Any index outside the LOGICAL_MINIMUM and LOGICAL_MAXIMUM range is
        considered to be a "no value" usage.
-       E.g. LOGICAL_MININUM 7, LOGICAL_MAXIMUM 9, 
+       E.g. LOGICAL_MINIMUM 7, LOGICAL_MAXIMUM 9, 
             USAGE C, USAGE B, USAGE A:
             index usage
               7     C     <-- Explicit 
@@ -1108,7 +1108,7 @@ emitField: procedure expose k. o. f.
        indexed by a corresponding index between LOGICAL_MINIMUM and 
        LOGICAL_MAXIMUM.
        E.g. LOGICAL_MINIMUM 7, LOGICAL_MAXIMUM 9, 
-            USAGE_MININUM A, USAGE_MAXIMUM C:
+            USAGE_MINIMUM A, USAGE_MAXIMUM C:
             index usage
               7     A     <-- First in range
               8     B
@@ -1121,7 +1121,7 @@ emitField: procedure expose k. o. f.
 
     3. Both of the above in any combination.
        E.g. LOGICAL_MINIMUM 7, LOGICAL_MAXIMUM 9, 
-            USAGE_MININUM B, USAGE_MAXIMUM C
+            USAGE_MINIMUM B, USAGE_MAXIMUM C
             USAGE A:
             index usage
               7     B     <-- First in range
