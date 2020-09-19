@@ -2324,7 +2324,7 @@ Prolog:
   do i = 1 to getOptionCount('--include')
     sIncludeFile = getOption('--include',i)
     if openFile(sIncludeFile)
-    then call loadUsageFile getOption('--include',i)
+    then call loadUsageFile sIncludeFile
     else say 'Could not open file' sIncludeFile
   end
 return
@@ -2358,62 +2358,25 @@ return
 
 parseUsageDefinition: procedure expose k. g.
   parse arg sLine
-  parse upper arg s1 s2 .
+  parse upper arg s1 .
   select
-    when s1 = '' then nop /* null is valid hex so nip it in the bud here */
-    when s1 = 'PAGE' then do
-      parse var sLine . xPage sPage
-      if pos('-',xPage) = 0
-      then do
-        if isHex(xPage)
-        then do
-          xPage = right(xPage,4,'0')
-          k.0PAGE.xPage = sPage
-          g.0PAGE = xPage
-        end
-      end
-      else do
-        parse var xPage xPageFrom'-'xPageTo
-        if isHex(xPageFrom) & isHex(xPageTo)
-        then do
-          do i = x2d(xPageFrom) to x2d(xPageTo)
-            xPage = d2x(i,4)
-            k.0PAGE.xPage = sPage
-            g.0PAGE = xPage
-          end
-        end
-      end
+    when \isHex(s1) then return /* Ignore line if first word is not hex */
+    when length(s1) = 4 then do /* Parse page definition */
+      parse var sLine xPage sPage
+      k.0PAGE.xPage = sPage
+      g.0CACHED.xPage = 1 /* Remember that this page is loaded */
     end
-    when isHex(s1) | pos('-',s1) > 0 then do
-      parse var sLine xUsage sUsage','sType','sLabel
+    when length(s1) = 8 then do /* Parse explicit usage definition */
+      parse var sLine . sUsage','sType','sLabel
+      parse var s1 xPage +4 xUsage +4
       sDesc = k.0TYPE.sType
-      xPage = g.0PAGE
       if sDesc <> ''
       then sUsageDesc = sUsage '('sType'='sDesc')'
       else sUsageDesc = sUsage 
       sUsageLabel = getCamelCase(sUsage, sLabel)
-      if pos('-',xUsage) = 0
-      then do
-        if isHex(xUsage)
-        then do
-          xUsage = right(xUsage,4,'0')
-          sDesc = k.0TYPE.sType
-          xPage = g.0PAGE
-          k.0USAGE.xPage.xUsage = sUsageDesc
-          k.0LABEL.xPage.xUsage = sUsageLabel
-        end
-      end
-      else do
-        parse var xUsage xUsageFrom'-'xUsageTo
-        if isHex(xUsageFrom) & isHex(xUsageTo)
-        then do
-          do i = x2d(xUsageFrom) to x2d(xUsageTo)
-            xUsage = d2x(i,4)
-            k.0USAGE.xPage.xUsage = sUsageDesc
-            k.0LABEL.xPage.xUsage = sUsageLabel
-          end
-        end
-      end
+      sDesc = k.0TYPE.sType
+      k.0USAGE.xPage.xUsage = sUsageDesc
+      k.0LABEL.xPage.xUsage = sUsageLabel
     end
     otherwise nop
   end
