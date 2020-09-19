@@ -1,7 +1,7 @@
 /*REXX*/
-/* RDD! HID Report Descriptor Decoder v1.1.27
+/* RDD! HID Report Descriptor Decoder v2.0
 
-Copyright (c) 2011-2018, Andrew J. Armstrong
+Copyright (c) 2011-2020, Andrew J. Armstrong
 All rights reserved.
 
 This program is free software: you can redistribute it and/or modify
