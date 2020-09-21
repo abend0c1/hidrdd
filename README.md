@@ -80,7 +80,7 @@ Examples
     rexx rd.rex myinputfile.h
     ...generates C structure declarations for the hex strings found in myinputfile.h
 
-    rexx rd.rex --include mybuttonmap.txt myinputfile.h
+    rexx rd.rex --include mybuttonmap.txt -f myinputfile.h
     ...generates C structure declarations for the hex strings found in myinputfile.h 
     using vendor-defined usages defined in mybuttonmap.txt
 
@@ -88,24 +88,38 @@ Examples
     ...decodes the hex strings found on the rightmost side of each line of the
     usblyzer.txt input file
 
+Configuration File Format
+-------------------------
+
+The configuration file (rd.conf) format is identical to the [Include File Format shown below](#include-file-format).
+It contains the approximately 3000 known usages that are documented by usb.org.
+The maximum number of usages is 4294967296 so it makes sense to store the small number of
+known ones in a single file. However, if you have vendor-defined usages then you may want to include the 
+definitions for them using an "include" file...
+
+
 Include File Format
 -------------------
-  
-Refer to FFA0-Plantronics.txt for an example.
+
+Vendor usages can be defined in a separate file which will be automatically loaded if you name it
+pppp.conf - where pppp is the hex vendor usage page number. You can name it anything you like, but if you do that you will
+have to explicitly include it by coding "--include your.special.usages" on the command line.
+
+See FFA0-Plantronics.txt for an example. This example file would be automatically loaded if it was named FFA0.conf.
 
 Each USB HID Usage code is a 4 byte value comprising a 2 byte Usage Page and a 2 byte Usage within that page. Vendor-specific usages must have a Usage Page code in the range 0xFF00 to 0xFFFF. Within each Usage Page, there can be up to 65536 usages (from 0x0000 to 0xFFFF). The official USB HID Usage Tables specification defines usages for almost everything imaginable - including parts of the human body...although, strangely, it stops short of defining usages for any of the [naughty bits](http://en.wiktionary.org/wiki/naughty_bit). If you need to define a usage for naughty bits, then a vendor-specific usage page is the place to do it.
 
 The --include file contains the following lines of comma-separated values...
 
-* One line, identified by "PAGE", describing the the vendor-specific usage page:
+* One line describing the the vendor-specific usage page:
     * pppp - The vendor-specific Usage Page in hex (FF00 to FFFF)
     * vendordesc - A short description of the vendor and product
     * vendorprefix - A very short (few letters) abbreviation of the vendor and product which is used as a prefix on any generated C language variable names
 
 * One line for each usage within the vendor-specific page:
-    * uuuu - The Usage number in hex (0 to FFFF). Leading zeros are optional.
+    * ppppuuuu - The explicit usage number comprising the vendor page number (pppp) in hex and usage number (uuuu) in hex.
     * usagedesc - A short description of the usage
-    * usagetype - Optional: An abbreviation of the type of the usage. This is largely for future use and has no impact on the decoding. The following usage types are at least known about:
+    * usagetype - Optional: An abbreviation of the type of the usage. This is largely for future use and has no impact on the decoding. The following usage types are currently documented in the usb.org documents:
         * BB - Buffered Bytes
         * CA - Application Collection
         * CL - Logical Collection
@@ -128,19 +142,19 @@ The --include file contains the following lines of comma-separated values...
         * SV-DV - Static or Dynamic Value
         * UM - Usage Modifier
         * US - Usage Switch
-    * usageshortname - Optional: A short name of the usage which is used in any generated C language variable names. Normally this is extracted from the "usagedesc", but if you want to specify a different short name, then define it here.
+    * usageshortname - Optional: A short name of the usage which is used in any generated C language variable names. Normally camel-case names are generated from the "usagedesc", for example, "System Speaker Mute" would be translated to variable name
+    "SystemSpeakerMute", but if you want to specify a different short name, for example, "Mute", then you can define it here.
 
-* Blank lines are ignored, as is any line that does not begin with either "PAGE" or a hexadecimal usage number (uuuu).
+* Blank lines are ignored, as is any line that does not begin with a hexadecimal number (pppp or ppppuuuu).
 
-The file should look like this:
+The include file should look like this:
 
-        // A vendor PAGE line should precede one or more usages:
-        PAGE pppp,vendordesc,vendorprefix
-        // Each usage line is identified by a hexadecimal usage number (uuuu):
-        uuuu,usagedesc,usagetype[,usageshortname]
+        // A usage page definition line should precede one or more usages in that page:
+        pppp pagedesc,vendorprefix
+
+        // Each usage line is identified by a hexadecimal usage number (ppppuuuu):
+        ppppuuuu usagedesc,usagetype[,usageshortname]
         .
         .
         .
-        uuuu,usagedesc,usagetype[,usageshortname]
-
-...and it can contain more than one vendor-specific page.
+        ppppuuuu usagedesc,usagetype[,usageshortname]
