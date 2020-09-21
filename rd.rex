@@ -127,7 +127,7 @@ trace off
   then do
     if \openFile(o.0OUTPUT,'WRITE REPLACE')
     then do
-      say 'Could not open output file:' sFileOut'. Using console'
+      say 'Could not open output file: --output' sFileOut'. Will use console instead'
       o.0OUTPUT = '' /* console */
     end 
   end
@@ -146,7 +146,7 @@ trace off
   if xData = ''
   then do /* try reading hex values from the rightmost end of each line */
     o.0RIGHT = 1 /* force the --right option */
-    xData = readDescriptor(sFile,sData)
+    xData = readDescriptor(sFile,sData,'quiet')
   end
 
   if o.0DUMP
@@ -199,7 +199,7 @@ getVersion: procedure
 return sVersion
 
 readDescriptor: procedure expose g. k. o.
-  parse arg sFile,sData
+  parse arg sFile,sData,sQuiet
   if sData <> ''
   then do
     xData = space(sData,0)
@@ -273,7 +273,10 @@ readDescriptor: procedure expose g. k. o.
       end
       rc = closeFile(sFile)  
     end
-    else say 'Could not open file' sFile
+    else do
+      if sQuiet <> 'quiet'
+      then say 'Could not open input file: --file "'sFile'"'
+    end
   end
 return xData
 
@@ -2325,7 +2328,7 @@ Prolog:
     sIncludeFile = getOption('--include',i)
     if openFile(sIncludeFile)
     then call loadUsageFile sIncludeFile
-    else say 'Could not open file' sIncludeFile
+    else say 'Could not open include file: --include "'sIncludeFile'"'
   end
 return
 
