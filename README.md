@@ -1,6 +1,7 @@
 ![RDD! icon](images/rdd-128x128-nobg.png)
-RDD! HID Report Descriptor Decoder
-==================================
+
+# RDD! HID Report Descriptor Decoder
+
 This will read a USB Human Interface Device (HID) report descriptor from the
 specified input file then attempt to decode it and, optionally, create a
 C language header file from it. It also does some minimal sanity checks
@@ -15,8 +16,8 @@ each line. Commas (,) and semicolons (;) are ignored. Specify the --right
 option if the hex strings are on the rightmost side of each line.
 
 
-Features
---------
+## Features
+
 * Decodes all the USB HID descriptors currently published by usb.org
 * Converts HID Report Descriptor into C language structure declarations
 * Highlights common errors such as redundant descriptor tags, field size errors etc
@@ -24,8 +25,7 @@ Features
 * Decodes vendor-specific descriptors (if you supply a simple definition file)
 
 
-Usage
------
+## Usage
 
       rexx rd.rex [-h format] [-i fileinc] [-o fileout] [-dsvxb] -f filein
 
@@ -60,15 +60,15 @@ Where:
       -vv              = Modifies --all so that even array field indices that
                          have blank usage descriptions are listed
 
-Prerequisites
--------------
+## Prerequisites
+
 You need a REXX interpreter installed, such as
   1. [Regina REXX](http://regina-rexx.sourceforge.net)
   2. [Open Object REXX](http://www.oorexx.org/)
 
 
-Examples
--------
+## Examples
+
     rexx rd.rex -d --hex 05010906 A1010508 19012903 15002501 75019503 91029505 9101 C0
     ...decodes the given hex string. Spaces are not significant
 
@@ -89,8 +89,7 @@ Examples
     ...decodes the hex strings found on the rightmost side of each line of the
     usblyzer.txt input file
 
-Configuration File Format
--------------------------
+## Configuration File Format
 
 The configuration file (rd.conf) format is identical to the [Include File Format shown below](#include-file-format).
 It contains the approximately 3000 known usages that are documented by usb.org.
@@ -99,8 +98,7 @@ known ones in a single file. However, if you have vendor-defined usages then you
 definitions for them using an "include" file...
 
 
-Include File Format
--------------------
+## Include File Format
 
 Vendor usages can be defined in a separate file which will be automatically loaded if you name it
 pppp.conf - where pppp is the hex vendor usage page number. You can name it anything you like, but if you do that you will
