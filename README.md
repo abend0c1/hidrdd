@@ -1,3 +1,4 @@
+![RDD! icon](images/rdd-128x128-nobg.png)
 RDD! HID Report Descriptor Decoder
 ==================================
 This will read a USB Human Interface Device (HID) report descriptor from the
