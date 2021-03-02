@@ -146,7 +146,7 @@ The --include file contains the following lines of comma-separated values...
         | Sel          | Selector                                      |
         | SF           | Static Flag                                   |
         | SV           | Static Value                                  |
-|
+
 
     * usageshortname - Optional: A short name of the usage which is used in any generated C language variable names. Normally camel-case names are generated from the "usagedesc", for example, "System Speaker Mute" would be translated to variable name
     "SystemSpeakerMute", but if you want to specify a different short name, for example, "Mute", then you can define it here.
