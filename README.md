@@ -118,29 +118,36 @@ The --include file contains the following lines of comma-separated values...
 * One line for each usage within the vendor-specific page:
     * ppppuuuu - The explicit usage number comprising the vendor page number (pppp) in hex and usage number (uuuu) in hex.
     * usagedesc - A short description of the usage
-    * usagetype - Optional: An abbreviation of the type of the usage. This is largely for future use and has no impact on the decoding. The following usage types are currently documented in the usb.org documents:
-        * BB - Buffered Bytes
-        * CA - Application Collection
-        * CL - Logical Collection
-        * CP - Physical Collection
-        * DF - Dynamic Flag
-        * DV - Dynamic Value
-        * DV-DF - Dynamic Value/Flag
-        * LC - Linear Control
-        * MC - Momentary Control
-        * NAry - Named Array
-        * OOC - On/Off Control
-        * OSC - One Shot Control
-        * OSC-NAry - One Shot Control/Named Array
-        * RTC - Re-trigger Control
-        * MULTI - Selector, On/Off, Momentary or One Shot
-        * Sel - Selector
-        * SF - Static Flag
-        * SF-DF - Static or Dynamic Flag
-        * SV - Static Value
-        * SV-DV - Static or Dynamic Value
-        * UM - Usage Modifier
-        * US - Usage Switch
+    * usagetype - Optional: An abbreviation of the type of the usage. The following usage types are currently documented in the usb.org documents:
+
+        | Controls:    |                      |
+        | --------     | -------------------- |
+        | LC           | Linear Control       |
+        | MC           | Momentary Control    |  
+        | OOC          | On/Off Control       |
+        | OSC          | One Shot Control     |
+        | RTC          | Re-trigger Control   |
+
+        | Collections: |                                               |
+        | -----------  | --------------------------------------------- |
+        |  CA          | Application Collection                        |
+        |  CL          | Logical Collection                            |
+        |  CP          | Physical Collection                           |
+        |  CR          | Report Collection                             |
+        |  NAry        | Named Array Logical Collection                |
+        |  UM          | Usage Modifier Logical Collection             |
+        |  US          | Usage Switch Logical Collection               |
+
+        | Data:        |                                               |
+        | -----------  | --------------------------------------------- |
+        | BB           | Buffered Bytes                                |
+        | DF           | Dynamic Flag                                  |
+        | DV           | Dynamic Value                                 |
+        | Sel          | Selector                                      |
+        | SF           | Static Flag                                   |
+        | SV           | Static Value                                  |
+|
+
     * usageshortname - Optional: A short name of the usage which is used in any generated C language variable names. Normally camel-case names are generated from the "usagedesc", for example, "System Speaker Mute" would be translated to variable name
     "SystemSpeakerMute", but if you want to specify a different short name, for example, "Mute", then you can define it here.
 
