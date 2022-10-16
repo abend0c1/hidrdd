@@ -851,6 +851,7 @@ return left(sLabel, max(length(sLabel),50)) '//' sComment
 emitInputFields: procedure expose inputField. k. o. f.
   /* Cycle through all the input fields accumulated and when the report_id
      changes, then emit a new structure */
+  g.0BIT_OFFSET = 0
   xLastReportId = 'unknown'
   do i = 1 to inputField.0
     parse var inputField.i xFlags sGlobals','sLocals','
@@ -871,6 +872,7 @@ return
 emitOutputFields: procedure expose outputField. k. o. f.
   /* Cycle through all the output fields accumulated and when the report_id
      changes, then emit a new structure */
+  g.0BIT_OFFSET = 0
   xLastReportId = 'unknown'
   do i = 1 to outputField.0
     parse var outputField.i xFlags sGlobals','sLocals','
@@ -891,6 +893,7 @@ return
 emitFeatureFields: procedure expose featureField. k. o. f.
   /* Cycle through all the feature fields accumulated and when the report_id
      changes, then emit a new structure */
+  g.0BIT_OFFSET = 0
   xLastReportId = 'unknown'
   do i = 1 to featureField.0
     parse var featureField.i xFlags sGlobals','sLocals','
@@ -959,15 +962,17 @@ emitUsages: procedure expose o.
   end
 return
 
-emitField: procedure expose k. o. f.
+emitField: procedure expose k. o. f. g.0BIT_OFFSET
   parse arg nField,xFlags sGlobals','sLocals','xUsages','sFlags','sCollectionNames
   call setGlobals sGlobals
   call setLocals sLocals
   sCollectionName = getCollectionName(sCollectionNames)
+  g.0FIELD_TYPE = getFieldType()
   if o.0VERBOSITY > 0
   then do
     call say
     call say '  // Field:  ' nField
+    call say '  // Offset: ' g.0BIT_OFFSET
     call say '  // Width:  ' g.0REPORT_SIZE
     call say '  // Count:  ' g.0REPORT_COUNT
     call say '  // Flags:  ' xFlags':' sFlags
@@ -978,7 +983,6 @@ emitField: procedure expose k. o. f.
   end
   sFlags = x2c(xFlags)
   nUsages = words(xUsages)
-  g.0FIELD_TYPE = getFieldType()
   if o.0VERBOSITY > 0
   then do
     if isData(sFlags)
@@ -1179,6 +1183,7 @@ emitField: procedure expose k. o. f.
       end
     end
   end
+  g.0BIT_OFFSET = g.0BIT_OFFSET + g.0REPORT_COUNT * g.0REPORT_SIZE
 return
 
 getFormattedLogical: procedure expose g.
@@ -1199,6 +1204,8 @@ emitFieldDecl: procedure expose g. k. f. o.
 
   if wordpos(g.0REPORT_SIZE,'8 16 32 64') > 0
   then do
+    if g.0BIT_OFFSET // g.0FIELD_ALIGNMENT > 0 /* If the field offset is not a multiple of the field type size in bits */
+    then sComment = sComment '<-- Error: Field not aligned on' g.0FIELD_ALIGNMENT'-bit boundary <-- Info: Need' G.0FIELD_ALIGNMENT - g.0BIT_OFFSET // G.0FIELD_ALIGNMENT 'padding bits before this field'
     if nReportCount = 1
     then call say '  'getStatement(g.0FIELD_TYPE sFieldName';'                   ,sComment)
     else call say '  'getStatement(g.0FIELD_TYPE sFieldName'['nReportCount'];'   ,sComment)
@@ -1323,21 +1330,25 @@ return
 getFieldType: procedure expose g. k.
   select
     when g.0REPORT_SIZE <= 8 then do
+      g.0FIELD_ALIGNMENT = 8
       if g.0LOGICAL_MINIMUM < 0 
       then sFieldType = k.0I8
       else sFieldType = k.0U8
     end
     when g.0REPORT_SIZE <= 16 then do
+      g.0FIELD_ALIGNMENT = 16
       if g.0LOGICAL_MINIMUM < 0 
       then sFieldType = k.0I16
       else sFieldType = k.0U16
     end
     when g.0REPORT_SIZE <= 32 then do
+      g.0FIELD_ALIGNMENT = 32
       if g.0LOGICAL_MINIMUM < 0 
       then sFieldType = k.0I32
       else sFieldType = k.0U32
     end
     otherwise do
+      g.0FIELD_ALIGNMENT = 64
       if g.0LOGICAL_MINIMUM < 0 
       then sFieldType = k.0I64
       else sFieldType = k.0U64
