@@ -48,7 +48,8 @@ Where:
       -r --right       = Read hex input from the rightmost side of each line
       -b --binary      = Input file is binary (not text)
       -o --output      = Write output to the specified file (default is console)
-      -s --struct      = Output C structure declarations (default)
+      -s --struct      = Output C structure declarations (default).
+                         Note: You must direct your compiler to pack these structures
       -d --decode      = Output decoded report descriptor
       -h --header      = Output C header in AVR, MIKROC or MICROCHIP format
       -x --dump        = Output hex dump of report descriptor

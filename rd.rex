@@ -398,9 +398,13 @@ processMAIN:
         end
         if o.0STRUCT 
         then do
+          call say 
+          call say '// All structure fields should be byte-aligned...'
+          call say '#pragma pack(push,1)'
           if featureField.0 > 0 then call emitFeatureFields
           if inputField.0 > 0   then call emitInputFields
           if outputField.0 > 0  then call emitOutputFields
+          call say '#pragma pack(pop)'
         end
         featureField.0 = 0
         inputField.0 = 0
