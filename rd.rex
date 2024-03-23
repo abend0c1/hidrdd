@@ -1740,8 +1740,8 @@ emitDecode: procedure expose g. o. f.
         sChunk = sChunk '0x'xByte','
       end
       if xValue = '' 
-      then sDecode = left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
-      else sDecode = left(sChunk,30) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
+      then sDecode = left(sChunk,31) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) sDescription
+      else sDecode = left(sChunk,31) '//'left('',g.0INDENT) left('('sType')',8) left(sTag,18) '0x'xValue sDescription
     end
     otherwise do
       if xValue = '' 
