@@ -537,7 +537,7 @@ processLOCAL:
       end
       else call addUsage xValue
       sUsageTypeCode = getUsageTypeCode(xExtendedUsage)
-      if isInSet(sUsageTypeCode,"CP CA CL CACL CACP CLCP CR NAry UM US") /* If this is a USAGE for a COLLECTION */
+      if isInSet(sUsageTypeCode,"CP CA CL CACL CACP CLCP CLNAry CLSV CR NAry UM US") /* If this is a USAGE for a COLLECTION */
       then do
         g.0EXPECTED_COLLECTION_USAGE = '0x'xExtendedUsage sUsageMeaning
         g.0EXPECTED_COLLECTION_ITEM  = 'A1' getCollectionCode(sUsageTypeCode)
@@ -2136,6 +2136,8 @@ Prolog:
   call addType 'CACP','Application or Physical Collection'
   call addType 'CL','Logical Collection'
   call addType 'CLCP','Logical or Physical Collection'
+  call addType 'CLNAry','Logical Collection or Named Array Collection'
+  call addType 'CLSV','Logical Collection or Static Value'
   call addType 'CP','Physical Collection'
   call addType 'CR','Report Collection'
   call addType 'DF','Dynamic Flag'
@@ -2147,12 +2149,14 @@ Prolog:
   call addType 'NAry','Named Array Collection'
   call addType 'OOC','On/Off Control'
   call addType 'OSC','One Shot Control'
+  call addType 'OSCDF','One Shot Control or Dynamic Flag'
   call addType 'OSC-NAry','One Shot Control or Named Array Collection'
   call addType 'RTC','Re-trigger Control'
   call addType 'MULTI','Selector, On/Off Control, Momentary Control, or One Shot Control'
   call addType 'Sel','Selector'
   call addType 'SF','Static Flag'
   call addType 'SFDF','Static Flag or Dynamic Flag'
+  call addType 'SFDFDV','Static Flag, Dynamic Flag or Dynamic Value'
   call addType 'SFDFSEL','Static Flag, Dynamic Flag, or Selector'
   call addType 'SV','Static Value'
   call addType 'SVDV','Static Value or Dynamic Value'
